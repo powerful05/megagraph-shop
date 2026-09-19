@@ -12,6 +12,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.math.BigDecimal;
 import java.time.Instant;
+import com.megagraph.shop.shared.ValidationException;
 
 @Entity
 @Table(name = "product_sku")
@@ -68,6 +69,20 @@ public class ProductSku {
         this.availableStock = availableStock;
     }
 
+    public void reserve(int quantity) {
+        if (quantity <= 0 || availableStock == null || availableStock < quantity) {
+            throw new ValidationException("SKU_STOCK_INSUFFICIENT", "SKU 可售库存不足");
+        }
+        this.availableStock -= quantity;
+    }
+
+    public void release(int quantity) {
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("Release quantity must be positive");
+        }
+        this.availableStock += quantity;
+    }
+
     @PreUpdate
     void touch() {
         this.updatedAt = Instant.now();
@@ -111,5 +126,9 @@ public class ProductSku {
 
     public Instant getDeletedAt() {
         return deletedAt;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 }

@@ -7,7 +7,9 @@
     "dev:merchant": "pnpm --filter @megagraph/merchant-web dev",
     "dev:shopper": "pnpm --filter @megagraph/shopper-web dev",
     "build": "pnpm -r --if-present build",
-    "typecheck": "pnpm -r --if-present typecheck"
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test:backend": "mvn -s .mvn/settings.xml -f apps/backend/pom.xml test",
+    "package:backend": "mvn -s .mvn/settings.xml -f apps/backend/pom.xml package -DskipTests",
+    "verify": "pnpm typecheck && pnpm build && pnpm test:backend && pnpm package:backend"
   }
 }
-

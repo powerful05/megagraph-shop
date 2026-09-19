@@ -70,6 +70,14 @@ public class DevSeedConfig {
                 memberships.save(new MerchantUser(merchant.getId(), user.getId(), MerchantRole.OWNER));
             }
 
+            if (users.findByUsernameIgnoreCase("shopper@megagraph.local").isEmpty()) {
+                users.save(new UserAccount(
+                        "shopper@megagraph.local",
+                        passwordEncoder.encode("shopper123"),
+                        "示例顾客"
+                ));
+            }
+
             if (categories.count() == 0) {
                 Category apparel = categories.save(new Category(null, "服饰", 1));
                 categories.save(new Category(apparel.getId(), "上衣", 2));
@@ -78,4 +86,3 @@ public class DevSeedConfig {
         }
     }
 }
-

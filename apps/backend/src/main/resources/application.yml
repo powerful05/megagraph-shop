@@ -32,3 +32,6 @@ app:
     allowed-content-types: image/jpeg,image/png,image/webp
   dev-seed:
     enabled: false
+  orders:
+    payment-window: PT15M
+    expiry-scan-ms: 60000

@@ -1,0 +1,70 @@
+package com.megagraph.shop.commerce;
+
+import com.megagraph.shop.api.OrderItemResponse;
+import com.megagraph.shop.api.OrderResponse;
+import com.megagraph.shop.api.PaymentResponse;
+import com.megagraph.shop.api.ReservationResponse;
+import org.springframework.stereotype.Component;
+
+@Component
+public class OrderMapper {
+
+    private final SalesOrderItemRepository items;
+    private final PaymentOrderRepository payments;
+    private final StockReservationRepository reservations;
+
+    public OrderMapper(
+            SalesOrderItemRepository items,
+            PaymentOrderRepository payments,
+            StockReservationRepository reservations
+    ) {
+        this.items = items;
+        this.payments = payments;
+        this.reservations = reservations;
+    }
+
+    public OrderResponse toResponse(SalesOrder order) {
+        PaymentResponse payment = payments.findByOrderId(order.getId())
+                .map(value -> new PaymentResponse(
+                        value.getProvider(),
+                        value.getProviderPaymentId(),
+                        value.getStatus().name()
+                ))
+                .orElse(null);
+        return new OrderResponse(
+                order.getId(),
+                order.getOrderNo(),
+                order.getUserId(),
+                order.getMerchantId(),
+                order.getStatus().name(),
+                order.getTotalAmount(),
+                order.getCurrency(),
+                order.getRecipientName(),
+                order.getRecipientPhone(),
+                order.getShippingAddress(),
+                order.getExpiresAt(),
+                order.getCreatedAt(),
+                payment,
+                items.findByOrderIdOrderByIdAsc(order.getId()).stream()
+                        .map(value -> new OrderItemResponse(
+                                value.getProductId(),
+                                value.getSkuId(),
+                                value.getProductTitle(),
+                                value.getSkuCode(),
+                                value.getSkuName(),
+                                value.getUnitPrice(),
+                                value.getCurrency(),
+                                value.getQuantity(),
+                                value.getLineAmount()
+                        ))
+                        .toList(),
+                reservations.findByOrderIdOrderByIdAsc(order.getId()).stream()
+                        .map(value -> new ReservationResponse(
+                                value.getSkuId(),
+                                value.getQuantity(),
+                                value.getStatus().name()
+                        ))
+                        .toList()
+        );
+    }
+}

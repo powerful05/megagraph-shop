@@ -1,5 +1,7 @@
 package com.megagraph.shop.security;
 
+import java.util.ArrayList;
+import java.util.List;
 import com.megagraph.shop.identity.MerchantUserRepository;
 import com.megagraph.shop.identity.UserAccount;
 import com.megagraph.shop.identity.UserAccountRepository;
@@ -26,15 +28,15 @@ public class DatabaseUserDetailsService implements UserDetailsService {
         UserAccount account = users.findByUsernameIgnoreCase(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Unknown account"));
 
-        String[] authorities = memberships.findByUserId(account.getId()).stream()
+        List<String> authorities = new ArrayList<>(memberships.findByUserId(account.getId()).stream()
                 .map(membership -> "ROLE_MERCHANT_" + membership.getRole().name())
-                .toArray(String[]::new);
+                .toList());
+        authorities.add("ROLE_CUSTOMER");
 
         return User.withUsername(account.getUsername())
                 .password(account.getPasswordHash())
-                .authorities(authorities)
+                .authorities(authorities.toArray(String[]::new))
                 .disabled(account.getStatus() != UserStatus.ACTIVE)
                 .build();
     }
 }
-

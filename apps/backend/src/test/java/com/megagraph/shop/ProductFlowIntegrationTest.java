@@ -158,7 +158,7 @@ class ProductFlowIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(result -> assertThat(result.getResponse().getContentType()).isEqualTo(MediaType.IMAGE_PNG_VALUE));
 
-        assertThat(outboxEvents.findByAggregateIdOrderByCreatedAtAsc(productId))
+        assertThat(outboxEvents.findByAggregateTypeAndAggregateIdOrderByCreatedAtAsc("PRODUCT", productId))
                 .extracting("eventType")
                 .containsExactly("PRODUCT_PUBLISHED");
 
@@ -177,7 +177,7 @@ class ProductFlowIntegrationTest {
         mvc.perform(get("/api/shop/v1/media/{imageId}", imageId))
                 .andExpect(status().isNotFound());
 
-        assertThat(outboxEvents.findByAggregateIdOrderByCreatedAtAsc(productId))
+        assertThat(outboxEvents.findByAggregateTypeAndAggregateIdOrderByCreatedAtAsc("PRODUCT", productId))
                 .extracting("eventType")
                 .containsExactly("PRODUCT_PUBLISHED", "PRODUCT_OFF_SHELF");
     }
