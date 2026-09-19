@@ -1,4 +1,4 @@
-import type { Category, IngestionJob, MerchantProduct } from '@megagraph/domain-types'
+import type { Category, IngestionJob, MerchantProduct, SalesOrder } from '@megagraph/domain-types'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080'
 
@@ -45,6 +45,9 @@ export const merchantApi = {
   },
   products(credentials: Credentials) {
     return request<MerchantProduct[]>('/api/merchant/v1/products', credentials)
+  },
+  orders(credentials: Credentials) {
+    return request<SalesOrder[]>('/api/merchant/v1/orders', credentials)
   },
   upload(credentials: Credentials, image: File) {
     const data = new FormData()
@@ -100,4 +103,3 @@ export const merchantApi = {
     return URL.createObjectURL(await response.blob())
   },
 }
-

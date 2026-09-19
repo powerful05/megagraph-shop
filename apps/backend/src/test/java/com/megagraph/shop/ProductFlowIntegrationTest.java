@@ -153,7 +153,9 @@ class ProductFlowIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("暮色机能外套"))
                 .andExpect(jsonPath("$.priceFrom").value(699.00))
-                .andExpect(jsonPath("$.availableStock").value(12));
+                .andExpect(jsonPath("$.availableStock").value(12))
+                .andExpect(jsonPath("$.skus[0].code").value("JACKET-BLACK-M"))
+                .andExpect(jsonPath("$.skus[0].availableStock").value(12));
         mvc.perform(get("/api/shop/v1/media/{imageId}", imageId))
                 .andExpect(status().isOk())
                 .andExpect(result -> assertThat(result.getResponse().getContentType()).isEqualTo(MediaType.IMAGE_PNG_VALUE));

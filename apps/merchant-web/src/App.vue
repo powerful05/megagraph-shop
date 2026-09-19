@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import type { Category, MerchantProduct } from '@megagraph/domain-types'
+import type { Category, MerchantProduct, SalesOrder } from '@megagraph/domain-types'
 import { merchantApi, type Credentials } from './api'
 
 const isDevelopment = import.meta.env.DEV
@@ -15,6 +15,8 @@ const busy = ref(false)
 const error = ref('')
 const categories = ref<Category[]>([])
 const products = ref<MerchantProduct[]>([])
+const orders = ref<SalesOrder[]>([])
+const activeArea = ref<'products' | 'orders'>('products')
 const activeProduct = ref<MerchantProduct | null>(null)
 const selectedFile = ref<File | null>(null)
 const localPreviewUrl = ref('')
@@ -35,6 +37,11 @@ const canConfirm = computed(() => activeProduct.value?.draftStatus !== 'CONFIRME
 const canPublish = computed(() => activeProduct.value?.draftStatus === 'CONFIRMED'
   && activeProduct.value.publishStatus !== 'PUBLISHED')
 const canOffShelf = computed(() => activeProduct.value?.publishStatus === 'PUBLISHED')
+const pendingOrders = computed(() => orders.value.filter(order => order.status === 'PENDING_PAYMENT').length)
+const paidOrders = computed(() => orders.value.filter(order => order.status === 'PAID').length)
+const paidRevenue = computed(() => orders.value
+  .filter(order => order.status === 'PAID')
+  .reduce((total, order) => total + order.totalAmount, 0))
 
 async function execute(action: () => Promise<void>) {
   busy.value = true
@@ -52,12 +59,14 @@ async function login() {
   await execute(async () => {
     const me = await merchantApi.me(credentials)
     merchantRole.value = me.role
-    const [categoryList, productList] = await Promise.all([
+    const [categoryList, productList, orderList] = await Promise.all([
       merchantApi.categories(credentials),
       merchantApi.products(credentials),
+      merchantApi.orders(credentials),
     ])
     categories.value = categoryList
     products.value = productList
+    orders.value = orderList
     connected.value = true
     ElMessage.success('商家工作台已连接')
   })
@@ -109,6 +118,42 @@ async function setActiveProduct(product: MerchantProduct) {
 
 async function refreshProducts() {
   products.value = await merchantApi.products(credentials)
+}
+
+async function refreshOrders() {
+  await execute(async () => {
+    orders.value = await merchantApi.orders(credentials)
+    ElMessage.success('订单状态已刷新')
+  })
+}
+
+function formatPrice(price: number, currency = 'CNY') {
+  return new Intl.NumberFormat('zh-CN', {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(price)
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value))
+}
+
+function orderStatusLabel(status: SalesOrder['status']) {
+  return {
+    PENDING_PAYMENT: '等待支付',
+    PAID: '支付完成',
+    PAYMENT_FAILED: '支付失败',
+    CANCELLED: '已取消',
+    EXPIRED: '已超时',
+  }[status]
 }
 
 async function saveDraft() {
@@ -187,7 +232,16 @@ onBeforeUnmount(() => {
     </section>
 
     <template v-else>
-      <section class="workspace-grid">
+      <nav class="studio-tabs" aria-label="工作台区域">
+        <button type="button" :class="{ active: activeArea === 'products' }" @click="activeArea = 'products'">
+          商品入库 <span>{{ products.length }}</span>
+        </button>
+        <button type="button" :class="{ active: activeArea === 'orders' }" @click="activeArea = 'orders'">
+          交易订单 <span>{{ orders.length }}</span>
+        </button>
+      </nav>
+
+      <section v-if="activeArea === 'products'" class="workspace-grid">
         <aside class="glass-panel product-rail">
           <div class="section-heading">
             <div>
@@ -288,6 +342,89 @@ onBeforeUnmount(() => {
               </el-form>
             </div>
           </template>
+        </section>
+      </section>
+
+      <section v-else class="orders-workspace">
+        <div class="order-metrics">
+          <article class="glass-panel metric-card">
+            <span>ALL ORDERS</span>
+            <strong>{{ orders.length }}</strong>
+            <p>当前商家全部交易记录</p>
+          </article>
+          <article class="glass-panel metric-card attention">
+            <span>PENDING PAYMENT</span>
+            <strong>{{ pendingOrders }}</strong>
+            <p>等待顾客完成 Mock 支付</p>
+          </article>
+          <article class="glass-panel metric-card revenue">
+            <span>PAID REVENUE</span>
+            <strong>{{ formatPrice(paidRevenue) }}</strong>
+            <p>{{ paidOrders }} 笔已支付订单</p>
+          </article>
+        </div>
+
+        <section class="glass-panel order-ledger">
+          <header class="ledger-header">
+            <div>
+              <p class="step">03 / 交易</p>
+              <h2>订单事实台账</h2>
+              <p>订单金额、支付状态与库存预占均来自后端事实库。</p>
+            </div>
+            <el-button :loading="busy" @click="refreshOrders">刷新订单</el-button>
+          </header>
+
+          <div v-if="orders.length === 0" class="orders-empty">
+            <span>00</span>
+            <h3>还没有交易订单</h3>
+            <p>顾客完成结算后，属于当前商家的订单会显示在这里。</p>
+          </div>
+
+          <div v-else class="order-list">
+            <article v-for="order in orders" :key="order.id" class="merchant-order-card">
+              <header>
+                <div class="order-identity">
+                  <span>#{{ order.id }}</span>
+                  <strong>{{ order.orderNo }}</strong>
+                  <small>{{ formatDate(order.createdAt) }}</small>
+                </div>
+                <div class="order-statuses">
+                  <span :class="`order-status ${order.status.toLowerCase()}`">{{ orderStatusLabel(order.status) }}</span>
+                  <span class="payment-status">PAYMENT / {{ order.payment?.status ?? '—' }}</span>
+                </div>
+              </header>
+
+              <div class="merchant-order-body">
+                <div class="ordered-products">
+                  <p v-for="item in order.items" :key="item.skuId">
+                    <span>
+                      <strong>{{ item.productTitle }}</strong>
+                      <small>{{ item.skuCode }} · {{ item.skuName }}</small>
+                    </span>
+                    <span>× {{ item.quantity }}</span>
+                    <strong>{{ formatPrice(item.lineAmount, item.currency) }}</strong>
+                  </p>
+                </div>
+                <dl class="delivery-facts">
+                  <div><dt>收件人</dt><dd>{{ order.recipientName }}</dd></div>
+                  <div><dt>电话</dt><dd>{{ order.recipientPhone }}</dd></div>
+                  <div><dt>地址</dt><dd>{{ order.shippingAddress }}</dd></div>
+                </dl>
+              </div>
+
+              <footer>
+                <div class="reservation-facts">
+                  <span v-for="reservation in order.reservations" :key="reservation.skuId">
+                    SKU {{ reservation.skuId }} / {{ reservation.quantity }} 件 / {{ reservation.status }}
+                  </span>
+                </div>
+                <div class="merchant-order-total">
+                  <span>订单金额</span>
+                  <strong>{{ formatPrice(order.totalAmount, order.currency) }}</strong>
+                </div>
+              </footer>
+            </article>
+          </div>
         </section>
       </section>
     </template>

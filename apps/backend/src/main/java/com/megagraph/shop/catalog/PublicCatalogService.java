@@ -1,6 +1,7 @@
 package com.megagraph.shop.catalog;
 
 import com.megagraph.shop.api.PublicProductResponse;
+import com.megagraph.shop.api.PublicSkuResponse;
 import com.megagraph.shop.identity.MerchantRepository;
 import com.megagraph.shop.identity.MerchantStatus;
 import com.megagraph.shop.shared.NotFoundException;
@@ -81,8 +82,17 @@ public class PublicCatalogService {
                 currency,
                 availableStock,
                 imageUrl,
-                product.getPublishedAt()
+                product.getPublishedAt(),
+                sellableSkus.stream()
+                        .map(sku -> new PublicSkuResponse(
+                                sku.getId(),
+                                sku.getSkuCode(),
+                                sku.getSkuName(),
+                                sku.getPrice(),
+                                sku.getCurrency(),
+                                sku.getAvailableStock()
+                        ))
+                        .toList()
         );
     }
 }
-
