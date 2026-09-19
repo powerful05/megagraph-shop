@@ -1,0 +1,8 @@
+packages:
+  - "apps/merchant-web"
+  - "apps/shopper-web"
+  - "packages/*"
+allowBuilds:
+  esbuild: true
+minimumReleaseAgeExclude:
+  - element-plus@2.14.6

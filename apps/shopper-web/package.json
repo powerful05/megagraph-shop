@@ -1,0 +1,16 @@
+{
+  "name": "@megagraph/shopper-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev --host 0.0.0.0 --port 3000",
+    "build": "nuxt build",
+    "typecheck": "nuxt typecheck"
+  },
+  "dependencies": {
+    "@megagraph/domain-types": "workspace:*",
+    "nuxt": "4.5.2"
+  }
+}
+

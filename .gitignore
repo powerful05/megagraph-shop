@@ -1,0 +1,26 @@
+.DS_Store
+.idea/
+.vscode/
+.qwen/
+
+# Java
+**/target/
+*.log
+
+# Node
+node_modules/
+.pnpm-store/
+.nuxt/
+.output/
+dist/
+
+# Runtime data
+var/
+*.mv.db
+*.trace.db
+
+# Local configuration
+.env
+.env.local
+!.env.example
+

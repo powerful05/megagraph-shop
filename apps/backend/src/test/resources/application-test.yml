@@ -1,0 +1,16 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:megagraph-test;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+app:
+  dev-seed:
+    enabled: true
+  media:
+    upload-dir: ${java.io.tmpdir}/megagraph-shop-tests
+

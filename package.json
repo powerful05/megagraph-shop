@@ -1,0 +1,13 @@
+{
+  "name": "megagraph-shop",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.19.0",
+  "scripts": {
+    "dev:merchant": "pnpm --filter @megagraph/merchant-web dev",
+    "dev:shopper": "pnpm --filter @megagraph/shopper-web dev",
+    "build": "pnpm -r --if-present build",
+    "typecheck": "pnpm -r --if-present typecheck"
+  }
+}
+

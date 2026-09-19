@@ -1,0 +1,11 @@
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3307/megagraph_shop?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC}
+    username: ${DB_USERNAME:megagraph}
+    password: ${DB_PASSWORD:megagraph_local}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+app:
+  dev-seed:
+    enabled: ${APP_DEV_SEED_ENABLED:false}
+
