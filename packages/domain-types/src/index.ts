@@ -78,9 +78,17 @@ export interface ShoppingCart {
   items: CartItem[]
 }
 
-export type OrderStatus = 'PENDING_PAYMENT' | 'PAID' | 'PAYMENT_FAILED' | 'CANCELLED' | 'EXPIRED'
+export type OrderStatus =
+  | 'PENDING_PAYMENT'
+  | 'PAID'
+  | 'SHIPPED'
+  | 'COMPLETED'
+  | 'PAYMENT_FAILED'
+  | 'CANCELLED'
+  | 'EXPIRED'
 export type PaymentStatus = 'PENDING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED'
 export type ReservationStatus = 'RESERVED' | 'CONFIRMED' | 'RELEASED'
+export type ShipmentStatus = 'SHIPPED' | 'DELIVERED'
 export type MockPaymentResult = 'SUCCESS' | 'FAILURE' | 'CANCELLED'
 
 export interface OrderItem {
@@ -107,6 +115,15 @@ export interface StockReservation {
   status: ReservationStatus
 }
 
+export interface ShipmentSummary {
+  id: number
+  carrierName: string
+  trackingNo: string
+  status: ShipmentStatus
+  shippedAt: string
+  deliveredAt: string | null
+}
+
 export interface SalesOrder {
   id: number
   orderNo: string
@@ -121,6 +138,7 @@ export interface SalesOrder {
   expiresAt: string
   createdAt: string
   payment: PaymentSummary | null
+  shipment: ShipmentSummary | null
   items: OrderItem[]
   reservations: StockReservation[]
 }

@@ -7,6 +7,11 @@ export interface Credentials {
   password: string
 }
 
+export interface ShipmentDetails {
+  carrierName: string
+  trackingNo: string
+}
+
 interface ApiErrorBody {
   code?: string
   message?: string
@@ -48,6 +53,18 @@ export const merchantApi = {
   },
   orders(credentials: Credentials) {
     return request<SalesOrder[]>('/api/merchant/v1/orders', credentials)
+  },
+  shipOrder(
+    credentials: Credentials,
+    orderId: number,
+    idempotencyKey: string,
+    details: ShipmentDetails,
+  ) {
+    return request<SalesOrder>(`/api/merchant/v1/orders/${orderId}/ship`, credentials, {
+      method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey },
+      body: JSON.stringify(details),
+    })
   },
   upload(credentials: Credentials, image: File) {
     const data = new FormData()

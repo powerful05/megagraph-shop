@@ -39,7 +39,8 @@ const orders = ref<SalesOrder[]>([])
 const selectedSkuByProduct = reactive<Record<number, number>>({})
 
 const cartCount = computed(() => cart.value.items.reduce((total, item) => total + item.quantity, 0))
-const pendingOrderCount = computed(() => orders.value.filter(order => order.status === 'PENDING_PAYMENT').length)
+const actionableOrderCount = computed(() => orders.value
+  .filter(order => order.status === 'PENDING_PAYMENT' || order.status === 'SHIPPED').length)
 
 function imageUrl(path: string | null): string {
   return path ? `${apiBase}${path}` : ''
@@ -71,7 +72,9 @@ function chosenSku(product: PublicProduct): PublicSku | undefined {
 function orderStatusLabel(status: SalesOrder['status']): string {
   return {
     PENDING_PAYMENT: '等待支付',
-    PAID: '支付完成',
+    PAID: '待发货',
+    SHIPPED: '运输中',
+    COMPLETED: '已完成',
     PAYMENT_FAILED: '支付失败',
     CANCELLED: '已取消',
     EXPIRED: '已超时',
@@ -187,6 +190,14 @@ async function cancelOrder(order: SalesOrder) {
   })
 }
 
+async function confirmReceipt(order: SalesOrder) {
+  await execute(`receipt-${order.id}`, async () => {
+    const updated = await shopperApi.confirmReceipt(apiBase, credentials, order.id)
+    replaceOrder(updated)
+    notice.value = '已确认收货，订单已完成'
+  })
+}
+
 function replaceOrder(updated: SalesOrder) {
   orders.value = orders.value.map(order => order.id === updated.id ? updated : order)
 }
@@ -203,7 +214,7 @@ function replaceOrder(updated: SalesOrder) {
         <a href="#collection">新品</a>
         <a href="#principle">原则</a>
         <button type="button" @click="openPanel('orders')">
-          订单<span v-if="pendingOrderCount">{{ pendingOrderCount }}</span>
+          订单<span v-if="actionableOrderCount">{{ actionableOrderCount }}</span>
         </button>
         <button class="cart-trigger" type="button" @click="openPanel('cart')">
           购物袋<span>{{ cartCount }}</span>
@@ -215,7 +226,7 @@ function replaceOrder(updated: SalesOrder) {
       <div class="hero-copy">
         <p class="eyebrow">AI-NATIVE PRODUCT DISCOVERY</p>
         <h1>商品不只被搜索。<br><em>它被理解。</em></h1>
-        <p class="lede">从商品事实出发，完成一次真实可验证的选择。现在，你可以从已发布商品进入购物车、结算与本地 Mock 支付。</p>
+        <p class="lede">从商品事实出发，完成一次真实可验证的选择。现在，你可以从已发布商品走到结算、Mock 支付、物流和确认收货。</p>
         <div class="hero-actions">
           <a class="primary-link" href="#collection">开始选购 <span>↘</span></a>
           <button type="button" @click="connected ? openPanel('orders') : (loginOpen = true)">
@@ -301,6 +312,7 @@ function replaceOrder(updated: SalesOrder) {
         <span>01 / VERIFIED CATALOG</span>
         <span>02 / SERVER-SIDE PRICING</span>
         <span>03 / RESERVED INVENTORY</span>
+        <span>04 / TRACEABLE FULFILLMENT</span>
       </div>
     </section>
 
@@ -310,7 +322,7 @@ function replaceOrder(updated: SalesOrder) {
           <button class="close-button" type="button" aria-label="关闭" @click="loginOpen = false">×</button>
           <p class="eyebrow">SHOPPER SESSION</p>
           <h2 id="shopper-login-title">连接你的购物会话</h2>
-          <p>本地 Basic Auth 只用于验证阶段 2A 交易闭环，后续会替换为正式登录会话。</p>
+          <p>本地 Basic Auth 只用于验证阶段 2A–2B 交易与履约闭环，后续会替换为正式登录会话。</p>
           <form @submit.prevent="connectShopper">
             <label>账号<input v-model="credentials.username" autocomplete="username" /></label>
             <label>密码<input v-model="credentials.password" type="password" autocomplete="current-password" /></label>
@@ -411,6 +423,18 @@ function replaceOrder(updated: SalesOrder) {
                 <span>支付 / {{ order.payment?.status ?? '—' }}</span>
                 <span>库存 / {{ reservationSummary(order) }}</span>
               </div>
+              <div v-if="order.shipment" class="tracking-card">
+                <div>
+                  <span>FULFILLMENT / {{ order.shipment.status }}</span>
+                  <strong>{{ order.shipment.carrierName }}</strong>
+                </div>
+                <div>
+                  <span>物流单号</span>
+                  <strong>{{ order.shipment.trackingNo }}</strong>
+                </div>
+                <small v-if="order.shipment.deliveredAt">签收于 {{ formatDate(order.shipment.deliveredAt) }}</small>
+                <small v-else>发货于 {{ formatDate(order.shipment.shippedAt) }}</small>
+              </div>
               <div class="order-total">
                 <span>订单合计</span>
                 <strong>{{ formatPrice(order.totalAmount, order.currency) }}</strong>
@@ -422,6 +446,15 @@ function replaceOrder(updated: SalesOrder) {
                   <button type="button" :disabled="Boolean(busyAction)" @click="applyPayment(order, 'FAILURE')">模拟失败</button>
                   <button type="button" :disabled="Boolean(busyAction)" @click="cancelOrder(order)">取消订单</button>
                 </div>
+              </div>
+              <div v-else-if="order.status === 'SHIPPED'" class="receipt-action">
+                <div>
+                  <span>DELIVERY CONFIRMATION</span>
+                  <p>收到商品并检查无误后，再确认收货。</p>
+                </div>
+                <button type="button" :disabled="Boolean(busyAction)" @click="confirmReceipt(order)">
+                  {{ busyAction === `receipt-${order.id}` ? '确认中…' : '确认收货' }}
+                </button>
               </div>
             </article>
           </section>

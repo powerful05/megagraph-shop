@@ -78,7 +78,7 @@ h2 { margin: 0; font-size: clamp(44px, 7vw, 92px); font-weight: 480; letter-spac
 
 .principle-section { padding: 120px clamp(22px, 6vw, 88px) 64px; color: #f0ede5; background: #161613; }
 .manifesto { max-width: 1100px; margin: 0 0 100px; font-size: clamp(42px, 7vw, 104px); letter-spacing: -.065em; line-height: .97; }
-.principle-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; padding-top: 20px; border-top: 1px solid #33332e; color: #86867e; font-size: 9px; letter-spacing: .15em; }
+.principle-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; padding-top: 20px; border-top: 1px solid #33332e; color: #86867e; font-size: 9px; letter-spacing: .15em; }
 
 .modal-layer, .drawer-layer { position: fixed; inset: 0; z-index: 50; display: grid; background: rgba(10,10,9,.54); backdrop-filter: blur(10px); }
 .modal-layer { place-items: center; padding: 20px; }
@@ -131,12 +131,19 @@ h2 { margin: 0; font-size: clamp(44px, 7vw, 92px); font-weight: 480; letter-spac
 .order-card header small { color: #8d8980; }
 .order-card header > strong { padding: 6px 9px; border-radius: 999px; color: #5f5c55; background: #dedbd2; font-size: 10px; }
 .order-card header > .status-paid { color: #115a43; background: #c8f4e2; }
+.order-card header > .status-shipped { color: #174f71; background: #cfe9fa; }
+.order-card header > .status-completed { color: #4c3d74; background: #e3dcf6; }
 .order-card header > .status-pending_payment { color: #5a4611; background: #f4e7b8; }
 .order-card header > .status-payment_failed, .order-card header > .status-cancelled, .order-card header > .status-expired { color: #6c3939; background: #efd7d4; }
 .order-items { margin: 18px 0; padding: 14px 0; border-top: 1px solid #d8d4ca; border-bottom: 1px solid #d8d4ca; }
 .order-items p { display: flex; justify-content: space-between; gap: 16px; margin: 7px 0; color: #625f58; font-size: 12px; }
 .order-facts { display: flex; flex-wrap: wrap; gap: 8px; }
 .order-facts span { padding: 6px 8px; border: 1px solid #d4d0c6; color: #77746c; font-size: 9px; letter-spacing: .08em; }
+.tracking-card { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; padding: 14px; border: 1px solid #bdced8; background: rgba(220,239,250,.42); }
+.tracking-card > div { display: grid; gap: 5px; }
+.tracking-card span { color: #6d8491; font-size: 9px; letter-spacing: .09em; }
+.tracking-card strong { color: #223f50; font-size: 12px; }
+.tracking-card small { grid-column: 1 / -1; color: #74838b; }
 .order-total { margin-top: 18px; }
 .order-total strong { font-size: 22px; }
 .payment-simulator { margin-top: 20px; padding: 14px; color: #e9e6de; background: #171714; }
@@ -144,6 +151,10 @@ h2 { margin: 0; font-size: clamp(44px, 7vw, 92px); font-weight: 480; letter-spac
 .payment-simulator div { display: flex; flex-wrap: wrap; gap: 7px; }
 .payment-simulator button { padding: 8px 10px; border: 1px solid #474741; color: #e9e6de; background: transparent; cursor: pointer; }
 .payment-simulator button:first-child { border-color: #9dfbd6; color: #9dfbd6; }
+.receipt-action { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 20px; padding: 14px; color: #e9e6de; background: #171714; }
+.receipt-action span { color: #9dfbd6; font-size: 9px; font-weight: 800; letter-spacing: .12em; }
+.receipt-action p { margin: 6px 0 0; color: #aaa79f; font-size: 11px; line-height: 1.5; }
+.receipt-action button { flex: 0 0 auto; padding: 10px 14px; border: 1px solid #9dfbd6; color: #10271f; background: #9dfbd6; cursor: pointer; }
 .toast { position: fixed; z-index: 80; right: 24px; bottom: 24px; max-width: min(460px, calc(100vw - 48px)); margin: 0; padding: 14px 18px; border-radius: 2px; box-shadow: 0 16px 50px rgba(0,0,0,.28); }
 .toast.error { color: #fff0ee; background: #7c302a; }
 .toast.success { color: #10271f; background: #9dfbd6; }
@@ -174,6 +185,9 @@ h2 { margin: 0; font-size: clamp(44px, 7vw, 92px); font-weight: 480; letter-spac
   .drawer-tabs { padding-right: 20px; padding-left: 20px; }
   .login-card { padding: 30px 22px; }
   .principle-grid { grid-template-columns: 1fr; }
+  .tracking-card { grid-template-columns: 1fr; }
+  .tracking-card small { grid-column: auto; }
+  .receipt-action { align-items: stretch; flex-direction: column; }
 }
 
 @media (prefers-reduced-motion: reduce) {

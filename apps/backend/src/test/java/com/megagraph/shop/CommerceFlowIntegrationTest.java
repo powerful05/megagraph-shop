@@ -143,6 +143,88 @@ class CommerceFlowIntegrationTest {
     }
 
     @Test
+    void merchantCanShipPaidOrderAndShopperCanConfirmReceipt() throws Exception {
+        PublishedSku published = publishProduct("履约测试外套", "FULFILL-" + UUID.randomUUID(), 299.00, 3);
+        mvc.perform(put("/api/shop/v1/cart/items/{skuId}", published.skuId())
+                        .with(shopper())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"quantity\":1}"))
+                .andExpect(status().isOk());
+
+        JsonNode created = createOrder("fulfillment-order-" + UUID.randomUUID());
+        long orderId = created.required("id").asLong();
+
+        mvc.perform(post("/api/merchant/v1/orders/{orderId}/ship", orderId)
+                        .with(httpBasic(MERCHANT_USERNAME, MERCHANT_PASSWORD))
+                        .header("Idempotency-Key", "ship-before-payment-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"carrierName\":\"顺丰速运\",\"trackingNo\":\"SF10000001\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("ORDER_NOT_READY_TO_SHIP"));
+
+        applyMockPayment(orderId, "fulfillment-payment-" + UUID.randomUUID(), "SUCCESS");
+        String shipmentKey = "shipment-" + UUID.randomUUID();
+        JsonNode shipped = responseJson(mvc.perform(post("/api/merchant/v1/orders/{orderId}/ship", orderId)
+                        .with(httpBasic(MERCHANT_USERNAME, MERCHANT_PASSWORD))
+                        .header("Idempotency-Key", shipmentKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"carrierName\":\"顺丰速运\",\"trackingNo\":\"SF10000001\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SHIPPED"))
+                .andExpect(jsonPath("$.shipment.status").value("SHIPPED"))
+                .andExpect(jsonPath("$.shipment.carrierName").value("顺丰速运"))
+                .andExpect(jsonPath("$.shipment.trackingNo").value("SF10000001"))
+                .andReturn());
+
+        JsonNode repeated = responseJson(mvc.perform(post("/api/merchant/v1/orders/{orderId}/ship", orderId)
+                        .with(httpBasic(MERCHANT_USERNAME, MERCHANT_PASSWORD))
+                        .header("Idempotency-Key", shipmentKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"carrierName\":\"顺丰速运\",\"trackingNo\":\"SF10000001\"}"))
+                .andExpect(status().isOk())
+                .andReturn());
+        assertThat(repeated.at("/shipment/id").asLong()).isEqualTo(shipped.at("/shipment/id").asLong());
+
+        String outsiderUsername = "fulfillment-outsider-" + UUID.randomUUID() + "@megagraph.local";
+        String outsiderPassword = "merchant456";
+        UserAccount outsider = users.save(new UserAccount(
+                outsiderUsername,
+                passwordEncoder.encode(outsiderPassword),
+                "其他履约商家"
+        ));
+        Merchant otherMerchant = merchants.save(new Merchant("其他履约店铺"));
+        memberships.save(new MerchantUser(otherMerchant.getId(), outsider.getId(), MerchantRole.OWNER));
+        mvc.perform(post("/api/merchant/v1/orders/{orderId}/ship", orderId)
+                        .with(httpBasic(outsiderUsername, outsiderPassword))
+                        .header("Idempotency-Key", "outsider-shipment-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"carrierName\":\"其他承运商\",\"trackingNo\":\"OTHER1000001\"}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("ORDER_NOT_FOUND"));
+        mvc.perform(post("/api/shop/v1/orders/{orderId}/confirm-receipt", orderId)
+                        .with(httpBasic(outsiderUsername, outsiderPassword)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("ORDER_NOT_FOUND"));
+
+        JsonNode completed = responseJson(mvc.perform(post("/api/shop/v1/orders/{orderId}/confirm-receipt", orderId)
+                        .with(shopper()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.shipment.status").value("DELIVERED"))
+                .andReturn());
+        assertThat(completed.at("/shipment/deliveredAt").isTextual()).isTrue();
+
+        mvc.perform(post("/api/shop/v1/orders/{orderId}/confirm-receipt", orderId)
+                        .with(shopper()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("COMPLETED"));
+
+        assertThat(outboxEvents.findByAggregateTypeAndAggregateIdOrderByCreatedAtAsc("ORDER", orderId))
+                .extracting("eventType")
+                .containsExactly("ORDER_CREATED", "ORDER_PAID", "ORDER_SHIPPED", "ORDER_COMPLETED");
+    }
+
+    @Test
     void failedPaymentReleasesReservedStockOnlyOnce() throws Exception {
         PublishedSku published = publishProduct("失败释放测试", "RELEASE-" + UUID.randomUUID(), 88.00, 4);
         mvc.perform(put("/api/shop/v1/cart/items/{skuId}", published.skuId())

@@ -89,6 +89,11 @@ public class CommerceController {
         return orders.cancel(account(authentication).getId(), orderId);
     }
 
+    @PostMapping("/orders/{orderId}/confirm-receipt")
+    OrderResponse confirmReceipt(Authentication authentication, @PathVariable Long orderId) {
+        return orders.confirmReceipt(account(authentication).getId(), orderId);
+    }
+
     private UserAccount account(Authentication authentication) {
         return currentUser.requireAccount(authentication);
     }

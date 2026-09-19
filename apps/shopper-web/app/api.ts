@@ -86,4 +86,9 @@ export const shopperApi = {
       method: 'POST',
     })
   },
+  confirmReceipt(apiBase: string, credentials: ShopperCredentials, orderId: number) {
+    return request<SalesOrder>(apiBase, `/api/shop/v1/orders/${orderId}/confirm-receipt`, credentials, {
+      method: 'POST',
+    })
+  },
 }

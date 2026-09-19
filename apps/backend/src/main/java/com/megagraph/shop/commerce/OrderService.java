@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.megagraph.shop.api.CreateOrderRequest;
 import com.megagraph.shop.api.OrderResponse;
+import com.megagraph.shop.api.ShipOrderRequest;
 import com.megagraph.shop.catalog.Product;
 import com.megagraph.shop.catalog.ProductSku;
 import com.megagraph.shop.catalog.ProductSkuRepository;
@@ -36,6 +37,7 @@ public class OrderService {
     private final StockReservationRepository reservations;
     private final PaymentOrderRepository payments;
     private final PaymentAttemptRepository paymentAttempts;
+    private final ShipmentRepository shipments;
     private final SellableSkuGuard sellableSkuGuard;
     private final PaymentGateway paymentGateway;
     private final OutboxEventRepository outbox;
@@ -52,6 +54,7 @@ public class OrderService {
             StockReservationRepository reservations,
             PaymentOrderRepository payments,
             PaymentAttemptRepository paymentAttempts,
+            ShipmentRepository shipments,
             SellableSkuGuard sellableSkuGuard,
             PaymentGateway paymentGateway,
             OutboxEventRepository outbox,
@@ -67,6 +70,7 @@ public class OrderService {
         this.reservations = reservations;
         this.payments = payments;
         this.paymentAttempts = paymentAttempts;
+        this.shipments = shipments;
         this.sellableSkuGuard = sellableSkuGuard;
         this.paymentGateway = paymentGateway;
         this.outbox = outbox;
@@ -100,6 +104,67 @@ public class OrderService {
         return orders.findByMerchantIdOrderByCreatedAtDesc(merchantId).stream()
                 .map(mapper::toResponse)
                 .toList();
+    }
+
+    @Transactional
+    public OrderResponse ship(
+            Long merchantId,
+            Long orderId,
+            String idempotencyKey,
+            ShipOrderRequest request
+    ) {
+        String normalizedKey = normalizeIdempotencyKey(idempotencyKey);
+        SalesOrder order = orders.findByIdForUpdate(orderId)
+                .filter(value -> value.getMerchantId().equals(merchantId))
+                .orElseThrow(() -> new NotFoundException("ORDER_NOT_FOUND", "订单不存在"));
+
+        Shipment existing = shipments.findByOrderId(orderId).orElse(null);
+        if (existing != null) {
+            if (existing.getIdempotencyKey().equals(normalizedKey)) {
+                return mapper.toResponse(order);
+            }
+            throw new ConflictException("ORDER_ALREADY_SHIPPED", "订单已经创建物流单");
+        }
+        shipments.findByMerchantIdAndIdempotencyKey(merchantId, normalizedKey)
+                .ifPresent(value -> {
+                    throw new ConflictException("SHIPMENT_IDEMPOTENCY_CONFLICT", "该幂等键已用于其他订单");
+                });
+
+        order.markShipped();
+        Shipment shipment = shipments.save(new Shipment(
+                orderId,
+                merchantId,
+                normalizedKey,
+                request.carrierName().trim(),
+                request.trackingNo().trim()
+        ));
+        orders.flush();
+        shipments.flush();
+        saveEvent(order, "ORDER_SHIPPED", Map.of(
+                "shipmentId", shipment.getId(),
+                "carrierName", shipment.getCarrierName(),
+                "trackingNo", shipment.getTrackingNo()
+        ));
+        return mapper.toResponse(order);
+    }
+
+    @Transactional
+    public OrderResponse confirmReceipt(Long userId, Long orderId) {
+        SalesOrder order = orders.findByIdForUpdate(orderId)
+                .filter(value -> value.getUserId().equals(userId))
+                .orElseThrow(() -> new NotFoundException("ORDER_NOT_FOUND", "订单不存在"));
+        if (order.getStatus() == OrderStatus.COMPLETED) {
+            return mapper.toResponse(order);
+        }
+        Shipment shipment = shipments.findByOrderIdForUpdate(orderId)
+                .orElseThrow(() -> new NotFoundException("SHIPMENT_NOT_FOUND", "物流单不存在"));
+
+        order.markCompleted();
+        shipment.markDelivered();
+        orders.flush();
+        shipments.flush();
+        saveEvent(order, "ORDER_COMPLETED", Map.of("shipmentId", shipment.getId()));
+        return mapper.toResponse(order);
     }
 
     @Transactional

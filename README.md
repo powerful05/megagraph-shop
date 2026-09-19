@@ -1,6 +1,6 @@
 # MegaGraph Shop
 
-MegaGraph Shop 已完成阶段 1 商品发布闭环，并打通阶段 2A 前后端交易纵切片：
+MegaGraph Shop 已完成阶段 1 商品发布闭环、阶段 2A 交易纵切片，并进入阶段 2B 订单履约纵切片：
 
 ```text
 商家登录 → 上传商品图片 → Mock AI 生成草稿 → 补齐类目/SKU/价格/库存
@@ -10,6 +10,8 @@ MegaGraph Shop 已完成阶段 1 商品发布闭环，并打通阶段 2A 前后�
 当前实现把 AI 生成器和媒体存储都放在接口后面：本地开发默认使用 Mock AI、H2 和本地文件存储；后续可以替换为真实多模态模型、MySQL 与 MinIO，而不改变商品发布规则。
 
 阶段 2A 同样不依赖外部密钥：本地使用 Mock 支付渠道，围绕购物车、订单、库存预占和支付状态建立可测试的交易内核。Nuxt 顾客端已接入购物车、结算、订单与 Mock 支付，Vue 商家端已提供订单台账和交易指标。范围和验收标准见 `docs/PHASE_2A.md`。
+
+阶段 2B 继续使用本地事实：商家可以为已支付订单填写承运商与物流单号，顾客可查看物流并确认收货。范围和验收标准见 `docs/PHASE_2B.md`。
 
 ## 工程结构
 
@@ -23,6 +25,7 @@ packages/
 docs/
   PHASE_1.md     阶段 1 范围、决策和验收标准
   PHASE_2A.md    阶段 2A 前后端交易纵切片
+  PHASE_2B.md    阶段 2B 订单履约纵切片
 ```
 
 ## 本地启动
@@ -61,6 +64,11 @@ pnpm dev:shopper
 - `POST /api/shop/v1/orders/{orderId}/mock-payment`：模拟支付结果，需要 `Idempotency-Key`。
 - `POST /api/shop/v1/orders/{orderId}/cancel`：取消待支付订单。
 - `GET /api/merchant/v1/orders`：查询当前商家的订单。
+
+## 阶段 2B API
+
+- `POST /api/merchant/v1/orders/{orderId}/ship`：商家为已支付订单创建物流单，需要 `Idempotency-Key`。
+- `POST /api/shop/v1/orders/{orderId}/confirm-receipt`：顾客确认收货并完成订单。
 
 ## 验证
 

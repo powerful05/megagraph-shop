@@ -16,6 +16,7 @@ const error = ref('')
 const categories = ref<Category[]>([])
 const products = ref<MerchantProduct[]>([])
 const orders = ref<SalesOrder[]>([])
+const shipmentDrafts = reactive<Record<number, { carrierName: string; trackingNo: string }>>({})
 const activeArea = ref<'products' | 'orders'>('products')
 const activeProduct = ref<MerchantProduct | null>(null)
 const selectedFile = ref<File | null>(null)
@@ -37,10 +38,12 @@ const canConfirm = computed(() => activeProduct.value?.draftStatus !== 'CONFIRME
 const canPublish = computed(() => activeProduct.value?.draftStatus === 'CONFIRMED'
   && activeProduct.value.publishStatus !== 'PUBLISHED')
 const canOffShelf = computed(() => activeProduct.value?.publishStatus === 'PUBLISHED')
-const pendingOrders = computed(() => orders.value.filter(order => order.status === 'PENDING_PAYMENT').length)
-const paidOrders = computed(() => orders.value.filter(order => order.status === 'PAID').length)
+const readyToShipOrders = computed(() => orders.value.filter(order => order.status === 'PAID').length)
+const inTransitOrders = computed(() => orders.value.filter(order => order.status === 'SHIPPED').length)
+const revenueStatuses: SalesOrder['status'][] = ['PAID', 'SHIPPED', 'COMPLETED']
+const paidOrders = computed(() => orders.value.filter(order => revenueStatuses.includes(order.status)).length)
 const paidRevenue = computed(() => orders.value
-  .filter(order => order.status === 'PAID')
+  .filter(order => revenueStatuses.includes(order.status))
   .reduce((total, order) => total + order.totalAmount, 0))
 
 async function execute(action: () => Promise<void>) {
@@ -66,7 +69,7 @@ async function login() {
     ])
     categories.value = categoryList
     products.value = productList
-    orders.value = orderList
+    setOrders(orderList)
     connected.value = true
     ElMessage.success('商家工作台已连接')
   })
@@ -122,8 +125,41 @@ async function refreshProducts() {
 
 async function refreshOrders() {
   await execute(async () => {
-    orders.value = await merchantApi.orders(credentials)
+    setOrders(await merchantApi.orders(credentials))
     ElMessage.success('订单状态已刷新')
+  })
+}
+
+function setOrders(nextOrders: SalesOrder[]) {
+  orders.value = nextOrders
+  nextOrders.forEach((order) => {
+    shipmentDrafts[order.id] ??= { carrierName: '顺丰速运', trackingNo: '' }
+  })
+}
+
+function shipmentDraft(orderId: number) {
+  return shipmentDrafts[orderId] ??= { carrierName: '顺丰速运', trackingNo: '' }
+}
+
+function replaceOrder(updated: SalesOrder) {
+  orders.value = orders.value.map(order => order.id === updated.id ? updated : order)
+}
+
+async function shipOrder(order: SalesOrder) {
+  const details = shipmentDraft(order.id)
+  if (!details.carrierName.trim() || !details.trackingNo.trim()) {
+    error.value = '请填写承运商和物流单号'
+    return
+  }
+  await execute(async () => {
+    const updated = await merchantApi.shipOrder(
+      credentials,
+      order.id,
+      crypto.randomUUID(),
+      details,
+    )
+    replaceOrder(updated)
+    ElMessage.success(`订单 ${order.orderNo} 已发货`)
   })
 }
 
@@ -150,6 +186,8 @@ function orderStatusLabel(status: SalesOrder['status']) {
   return {
     PENDING_PAYMENT: '等待支付',
     PAID: '支付完成',
+    SHIPPED: '运输中',
+    COMPLETED: '已完成',
     PAYMENT_FAILED: '支付失败',
     CANCELLED: '已取消',
     EXPIRED: '已超时',
@@ -353,9 +391,14 @@ onBeforeUnmount(() => {
             <p>当前商家全部交易记录</p>
           </article>
           <article class="glass-panel metric-card attention">
-            <span>PENDING PAYMENT</span>
-            <strong>{{ pendingOrders }}</strong>
-            <p>等待顾客完成 Mock 支付</p>
+            <span>READY TO SHIP</span>
+            <strong>{{ readyToShipOrders }}</strong>
+            <p>已支付、等待商家发货</p>
+          </article>
+          <article class="glass-panel metric-card transit">
+            <span>IN TRANSIT</span>
+            <strong>{{ inTransitOrders }}</strong>
+            <p>等待顾客确认收货</p>
           </article>
           <article class="glass-panel metric-card revenue">
             <span>PAID REVENUE</span>
@@ -411,6 +454,31 @@ onBeforeUnmount(() => {
                   <div><dt>地址</dt><dd>{{ order.shippingAddress }}</dd></div>
                 </dl>
               </div>
+
+              <div v-if="order.shipment" class="shipment-facts">
+                <div>
+                  <span>FULFILLMENT / {{ order.shipment.status }}</span>
+                  <strong>{{ order.shipment.carrierName }}</strong>
+                </div>
+                <div>
+                  <span>物流单号</span>
+                  <strong>{{ order.shipment.trackingNo }}</strong>
+                </div>
+                <small v-if="order.shipment.deliveredAt">签收时间 {{ formatDate(order.shipment.deliveredAt) }}</small>
+                <small v-else>发货时间 {{ formatDate(order.shipment.shippedAt) }}</small>
+              </div>
+
+              <form v-else-if="order.status === 'PAID'" class="shipment-form" @submit.prevent="shipOrder(order)">
+                <label>
+                  <span>承运商</span>
+                  <el-input v-model="shipmentDraft(order.id).carrierName" maxlength="80" />
+                </label>
+                <label>
+                  <span>物流单号</span>
+                  <el-input v-model="shipmentDraft(order.id).trackingNo" maxlength="80" placeholder="输入可追踪的单号" />
+                </label>
+                <el-button type="primary" native-type="submit" :loading="busy">确认发货</el-button>
+              </form>
 
               <footer>
                 <div class="reservation-facts">

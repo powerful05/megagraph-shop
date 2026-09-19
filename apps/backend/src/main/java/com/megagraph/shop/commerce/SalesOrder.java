@@ -84,6 +84,20 @@ public class SalesOrder {
         this.paidAt = Instant.now();
     }
 
+    public void markShipped() {
+        if (status != OrderStatus.PAID) {
+            throw new ConflictException("ORDER_NOT_READY_TO_SHIP", "只有已支付订单可以发货");
+        }
+        this.status = OrderStatus.SHIPPED;
+    }
+
+    public void markCompleted() {
+        if (status != OrderStatus.SHIPPED) {
+            throw new ConflictException("ORDER_NOT_IN_TRANSIT", "只有运输中的订单可以确认收货");
+        }
+        this.status = OrderStatus.COMPLETED;
+    }
+
     public void markPaymentFailed(String reason) {
         requirePending();
         this.status = OrderStatus.PAYMENT_FAILED;
