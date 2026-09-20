@@ -8,4 +8,6 @@ spring:
 app:
   dev-seed:
     enabled: true
-
+  payments:
+    mock:
+      callback-secret: local-only-megagraph-mock-callback-secret

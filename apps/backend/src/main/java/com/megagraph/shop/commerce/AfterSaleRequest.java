@@ -62,11 +62,41 @@ public class AfterSaleRequest {
     }
 
     public void markRefunded(String idempotencyKey, String note) {
-        requireRequested();
+        if (status != AfterSaleStatus.REFUND_PROCESSING) {
+            throw new ConflictException("AFTER_SALE_NOT_PROCESSING", "退款申请不在处理中");
+        }
         this.status = AfterSaleStatus.REFUNDED;
+        if (idempotencyKey != null) {
+            this.resolutionIdempotencyKey = idempotencyKey;
+        }
+        if (note != null) {
+            this.merchantNote = note;
+        }
+        this.resolvedAt = Instant.now();
+    }
+
+    public void startRefund(String idempotencyKey, String note) {
+        requireRequested();
+        this.status = AfterSaleStatus.REFUND_PROCESSING;
         this.resolutionIdempotencyKey = idempotencyKey;
         this.merchantNote = note;
-        this.resolvedAt = Instant.now();
+    }
+
+    public void markRefundFailed() {
+        if (status != AfterSaleStatus.REFUND_PROCESSING) {
+            throw new ConflictException("AFTER_SALE_NOT_PROCESSING", "退款申请不在处理中");
+        }
+        this.status = AfterSaleStatus.REFUND_FAILED;
+    }
+
+    public void retryRefund(String idempotencyKey, String note) {
+        if (status != AfterSaleStatus.REFUND_FAILED) {
+            throw new ConflictException("AFTER_SALE_NOT_RETRYABLE", "只有失败退款可以重试");
+        }
+        this.status = AfterSaleStatus.REFUND_PROCESSING;
+        this.resolutionIdempotencyKey = idempotencyKey;
+        this.merchantNote = note;
+        this.resolvedAt = null;
     }
 
     public void reject(String idempotencyKey, String note) {

@@ -13,6 +13,11 @@ import com.megagraph.shop.projection.OutboxEventRepository;
 import com.megagraph.shop.shared.ConflictException;
 import com.megagraph.shop.shared.NotFoundException;
 import com.megagraph.shop.shared.ValidationException;
+import com.megagraph.shop.payment.ChannelEventType;
+import com.megagraph.shop.payment.ChannelResourceType;
+import com.megagraph.shop.payment.CommerceOutboxWriter;
+import com.megagraph.shop.payment.PaymentChannelCommand;
+import com.megagraph.shop.payment.PaymentChannelCommandRepository;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
@@ -37,6 +42,7 @@ public class OrderService {
     private final StockReservationRepository reservations;
     private final PaymentOrderRepository payments;
     private final PaymentAttemptRepository paymentAttempts;
+    private final PaymentChannelCommandRepository channelCommands;
     private final ShipmentRepository shipments;
     private final AfterSaleRequestRepository afterSales;
     private final SellableSkuGuard sellableSkuGuard;
@@ -44,6 +50,7 @@ public class OrderService {
     private final OutboxEventRepository outbox;
     private final OrderMapper mapper;
     private final ObjectMapper objectMapper;
+    private final CommerceOutboxWriter commerceOutbox;
     private final Duration paymentWindow;
 
     public OrderService(
@@ -55,6 +62,7 @@ public class OrderService {
             StockReservationRepository reservations,
             PaymentOrderRepository payments,
             PaymentAttemptRepository paymentAttempts,
+            PaymentChannelCommandRepository channelCommands,
             ShipmentRepository shipments,
             AfterSaleRequestRepository afterSales,
             SellableSkuGuard sellableSkuGuard,
@@ -62,6 +70,7 @@ public class OrderService {
             OutboxEventRepository outbox,
             OrderMapper mapper,
             ObjectMapper objectMapper,
+            CommerceOutboxWriter commerceOutbox,
             @Value("${app.orders.payment-window:PT15M}") Duration paymentWindow
     ) {
         this.carts = carts;
@@ -72,6 +81,7 @@ public class OrderService {
         this.reservations = reservations;
         this.payments = payments;
         this.paymentAttempts = paymentAttempts;
+        this.channelCommands = channelCommands;
         this.shipments = shipments;
         this.afterSales = afterSales;
         this.sellableSkuGuard = sellableSkuGuard;
@@ -79,6 +89,7 @@ public class OrderService {
         this.outbox = outbox;
         this.mapper = mapper;
         this.objectMapper = objectMapper;
+        this.commerceOutbox = commerceOutbox;
         this.paymentWindow = paymentWindow;
     }
 
@@ -132,7 +143,11 @@ public class OrderService {
                 .ifPresent(value -> {
                     throw new ConflictException("SHIPMENT_IDEMPOTENCY_CONFLICT", "该幂等键已用于其他订单");
                 });
-        if (afterSales.existsByOrderIdAndStatus(orderId, AfterSaleStatus.REQUESTED)) {
+        if (afterSales.existsByOrderIdAndStatusIn(orderId, List.of(
+                AfterSaleStatus.REQUESTED,
+                AfterSaleStatus.REFUND_PROCESSING,
+                AfterSaleStatus.REFUND_FAILED
+        ))) {
             throw new ConflictException("ORDER_HAS_PENDING_AFTER_SALE", "订单存在待处理退款申请，不能发货");
         }
 
@@ -181,11 +196,11 @@ public class OrderService {
             MockPaymentResult result
     ) {
         String normalizedKey = normalizeIdempotencyKey(idempotencyKey);
+        PaymentOrder payment = payments.findByOrderIdForUpdate(orderId)
+                .orElseThrow(() -> new NotFoundException("PAYMENT_NOT_FOUND", "支付单不存在"));
         SalesOrder order = orders.findByIdForUpdate(orderId)
                 .filter(value -> value.getUserId().equals(userId))
                 .orElseThrow(() -> new NotFoundException("ORDER_NOT_FOUND", "订单不存在"));
-        PaymentOrder payment = payments.findByOrderIdForUpdate(orderId)
-                .orElseThrow(() -> new NotFoundException("PAYMENT_NOT_FOUND", "支付单不存在"));
 
         if (paymentAttempts.findByPaymentOrderIdAndIdempotencyKey(payment.getId(), normalizedKey).isPresent()) {
             return mapper.toResponse(order);
@@ -197,27 +212,51 @@ public class OrderService {
             throw new ConflictException("PAYMENT_ALREADY_FINISHED", "支付单已经进入终态");
         }
 
+        PaymentStatus oldStatus = payment.getStatus();
         paymentAttempts.save(new PaymentAttempt(payment.getId(), normalizedKey, result));
-        switch (result) {
-            case SUCCESS -> completePayment(order, payment);
-            case FAILURE -> failPayment(order, payment);
-            case CANCELLED -> cancelPayment(order, payment, "CUSTOMER_CANCELLED_PAYMENT");
-        }
-        orders.flush();
+        payment.markProcessing(null);
         payments.flush();
+        commerceOutbox.save("PAYMENT", payment.getId(), payment.getVersion(), "PAYMENT_PROCESSING", Map.of(
+                "paymentOrderId", payment.getId(),
+                "orderId", order.getId(),
+                "oldStatus", oldStatus.name(),
+                "newStatus", payment.getStatus().name(),
+                "provider", payment.getProvider()
+        ));
+        String providerEventId = "mock_evt_" + UUID.randomUUID().toString().replace("-", "");
+        PaymentChannelCommand command = channelCommands.saveAndFlush(new PaymentChannelCommand(
+                payment.getProvider(),
+                providerEventId,
+                paymentEventType(result),
+                ChannelResourceType.PAYMENT,
+                payment.getProviderPaymentId(),
+                payment.getId(),
+                null,
+                null,
+                payment.getAmount(),
+                payment.getCurrency()
+        ));
+        commerceOutbox.save("CHANNEL_COMMAND", command.getId(), 0L, "MOCK_PAYMENT_CALLBACK_REQUESTED", Map.of(
+                "paymentOrderId", payment.getId(),
+                "orderId", order.getId(),
+                "provider", payment.getProvider(),
+                "providerEventId", providerEventId,
+                "oldStatus", oldStatus.name(),
+                "newStatus", payment.getStatus().name()
+        ));
         return mapper.toResponse(order);
     }
 
     @Transactional
     public OrderResponse cancel(Long userId, Long orderId) {
+        PaymentOrder payment = payments.findByOrderIdForUpdate(orderId)
+                .orElseThrow(() -> new NotFoundException("PAYMENT_NOT_FOUND", "支付单不存在"));
         SalesOrder order = orders.findByIdForUpdate(orderId)
                 .filter(value -> value.getUserId().equals(userId))
                 .orElseThrow(() -> new NotFoundException("ORDER_NOT_FOUND", "订单不存在"));
         if (order.getStatus() == OrderStatus.CANCELLED) {
             return mapper.toResponse(order);
         }
-        PaymentOrder payment = payments.findByOrderIdForUpdate(orderId)
-                .orElseThrow(() -> new NotFoundException("PAYMENT_NOT_FOUND", "支付单不存在"));
         if (payment.getStatus() != PaymentStatus.PENDING) {
             throw new ConflictException("ORDER_CANNOT_CANCEL", "当前订单不能取消");
         }
@@ -234,18 +273,29 @@ public class OrderService {
                 Instant.now()
         );
         for (SalesOrder candidate : overdue) {
+            PaymentOrder payment = payments.findByOrderIdForUpdate(candidate.getId()).orElse(null);
+            if (payment == null || (payment.getStatus() != PaymentStatus.PENDING
+                    && payment.getStatus() != PaymentStatus.PROCESSING)) {
+                continue;
+            }
             SalesOrder order = orders.findByIdForUpdate(candidate.getId()).orElse(null);
             if (order == null || order.getStatus() != OrderStatus.PENDING_PAYMENT) {
                 continue;
             }
-            PaymentOrder payment = payments.findByOrderIdForUpdate(order.getId()).orElse(null);
-            if (payment == null || payment.getStatus() != PaymentStatus.PENDING) {
-                continue;
-            }
+            PaymentStatus oldPaymentStatus = payment.getStatus();
             payment.cancel();
             order.expire();
             releaseReservations(order.getId());
             orders.flush();
+            payments.flush();
+            commerceOutbox.save("PAYMENT", payment.getId(), payment.getVersion(), "PAYMENT_CANCELLED", Map.of(
+                    "paymentOrderId", payment.getId(),
+                    "orderId", order.getId(),
+                    "provider", payment.getProvider(),
+                    "oldStatus", oldPaymentStatus.name(),
+                    "newStatus", payment.getStatus().name(),
+                    "reason", "PAYMENT_TIMEOUT"
+            ));
             saveEvent(order, "ORDER_CANCELLED", Map.of("reason", "PAYMENT_TIMEOUT"));
         }
     }
@@ -336,27 +386,21 @@ public class OrderService {
         return mapper.toResponse(order);
     }
 
-    private void completePayment(SalesOrder order, PaymentOrder payment) {
-        payment.succeed();
-        order.markPaid();
-        reservations.findByOrderIdOrderByIdAsc(order.getId()).forEach(StockReservation::confirm);
-        orders.flush();
-        saveEvent(order, "ORDER_PAID", Map.of("providerPaymentId", payment.getProviderPaymentId()));
-    }
-
-    private void failPayment(SalesOrder order, PaymentOrder payment) {
-        payment.fail();
-        order.markPaymentFailed("MOCK_PAYMENT_FAILED");
-        releaseReservations(order.getId());
-        orders.flush();
-        saveEvent(order, "ORDER_CANCELLED", Map.of("reason", "PAYMENT_FAILED"));
-    }
-
     private void cancelPayment(SalesOrder order, PaymentOrder payment, String reason) {
+        PaymentStatus oldPaymentStatus = payment.getStatus();
         payment.cancel();
         order.cancel(reason);
         releaseReservations(order.getId());
         orders.flush();
+        payments.flush();
+        commerceOutbox.save("PAYMENT", payment.getId(), payment.getVersion(), "PAYMENT_CANCELLED", Map.of(
+                "paymentOrderId", payment.getId(),
+                "orderId", order.getId(),
+                "provider", payment.getProvider(),
+                "oldStatus", oldPaymentStatus.name(),
+                "newStatus", payment.getStatus().name(),
+                "reason", reason
+        ));
         saveEvent(order, "ORDER_CANCELLED", Map.of("reason", reason));
     }
 
@@ -390,6 +434,14 @@ public class OrderService {
         return (status == PaymentStatus.SUCCEEDED && result == MockPaymentResult.SUCCESS)
                 || (status == PaymentStatus.FAILED && result == MockPaymentResult.FAILURE)
                 || (status == PaymentStatus.CANCELLED && result == MockPaymentResult.CANCELLED);
+    }
+
+    private ChannelEventType paymentEventType(MockPaymentResult result) {
+        return switch (result) {
+            case SUCCESS -> ChannelEventType.PAYMENT_SUCCEEDED;
+            case FAILURE -> ChannelEventType.PAYMENT_FAILED;
+            case CANCELLED -> ChannelEventType.PAYMENT_CANCELLED;
+        };
     }
 
     private String normalizeIdempotencyKey(String value) {

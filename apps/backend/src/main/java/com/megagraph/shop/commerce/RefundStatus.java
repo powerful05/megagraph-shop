@@ -1,5 +1,8 @@
 package com.megagraph.shop.commerce;
 
 public enum RefundStatus {
-    SUCCEEDED
+    PENDING,
+    PROCESSING,
+    SUCCEEDED,
+    FAILED
 }

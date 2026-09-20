@@ -30,6 +30,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(requests -> requests
                         .requestMatchers(HttpMethod.GET, "/api/shop/v1/products", "/api/shop/v1/products/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/shop/v1/media/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/payment-callbacks/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated())
                 .httpBasic(Customizer.withDefaults())

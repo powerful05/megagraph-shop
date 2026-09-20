@@ -75,4 +75,15 @@ public class MerchantOrderController {
         MerchantActor actor = currentMerchant.requireActor(authentication, MerchantRole.OWNER);
         return afterSales.reject(actor.merchantId(), orderId, idempotencyKey, request);
     }
+
+    @PostMapping("/{orderId}/after-sales/refund-retry")
+    OrderResponse retryRefund(
+            Authentication authentication,
+            @PathVariable Long orderId,
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @Valid @RequestBody ResolveAfterSaleRequest request
+    ) {
+        MerchantActor actor = currentMerchant.requireActor(authentication, MerchantRole.OWNER);
+        return afterSales.retry(actor.merchantId(), orderId, idempotencyKey, request);
+    }
 }

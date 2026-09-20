@@ -10,6 +10,8 @@ public record RefundResponse(
         BigDecimal amount,
         String currency,
         String status,
-        Instant refundedAt
+        Instant refundedAt,
+        String failureCode,
+        String errorSummary
 ) {
 }

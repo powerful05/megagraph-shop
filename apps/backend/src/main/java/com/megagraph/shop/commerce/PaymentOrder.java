@@ -33,6 +33,8 @@ public class PaymentOrder {
     private PaymentStatus status;
 
     private Instant finishedAt;
+    private Long lastChannelEventId;
+    private Instant statusChangedAt;
 
     @Version
     private Long version;
@@ -58,21 +60,45 @@ public class PaymentOrder {
         this.status = PaymentStatus.PENDING;
         this.createdAt = Instant.now();
         this.updatedAt = this.createdAt;
+        this.statusChangedAt = this.createdAt;
     }
 
-    public void succeed() {
+    public boolean markProcessing(Long channelEventId) {
+        if (status == PaymentStatus.PROCESSING) {
+            return false;
+        }
+        if (status != PaymentStatus.PENDING) {
+            throw new IllegalStateException("Only pending payments can start processing");
+        }
+        this.status = PaymentStatus.PROCESSING;
+        this.lastChannelEventId = channelEventId;
+        this.statusChangedAt = Instant.now();
+        return true;
+    }
+
+    public void succeed(Long channelEventId) {
         this.status = PaymentStatus.SUCCEEDED;
         this.finishedAt = Instant.now();
+        this.statusChangedAt = this.finishedAt;
+        this.lastChannelEventId = channelEventId;
     }
 
-    public void fail() {
+    public void fail(Long channelEventId) {
         this.status = PaymentStatus.FAILED;
         this.finishedAt = Instant.now();
+        this.statusChangedAt = this.finishedAt;
+        this.lastChannelEventId = channelEventId;
+    }
+
+    public void cancel(Long channelEventId) {
+        this.status = PaymentStatus.CANCELLED;
+        this.finishedAt = Instant.now();
+        this.statusChangedAt = this.finishedAt;
+        this.lastChannelEventId = channelEventId;
     }
 
     public void cancel() {
-        this.status = PaymentStatus.CANCELLED;
-        this.finishedAt = Instant.now();
+        cancel(null);
     }
 
     public void refund() {
@@ -81,6 +107,7 @@ public class PaymentOrder {
         }
         this.status = PaymentStatus.REFUNDED;
         this.finishedAt = Instant.now();
+        this.statusChangedAt = this.finishedAt;
     }
 
     @PreUpdate
@@ -114,5 +141,9 @@ public class PaymentOrder {
 
     public PaymentStatus getStatus() {
         return status;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 }

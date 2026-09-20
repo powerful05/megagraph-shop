@@ -69,7 +69,9 @@ public class OrderMapper {
                                         refund.getAmount(),
                                         refund.getCurrency(),
                                         refund.getStatus().name(),
-                                        refund.getRefundedAt()
+                                        refund.getRefundedAt(),
+                                        refund.getFailureCode(),
+                                        refund.getErrorSummary()
                                 ))
                                 .orElse(null)
                 ))

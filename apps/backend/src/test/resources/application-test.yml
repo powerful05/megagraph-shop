@@ -13,4 +13,8 @@ app:
     enabled: true
   media:
     upload-dir: ${java.io.tmpdir}/megagraph-shop-tests
-
+  payments:
+    mock:
+      callback-secret: test-only-megagraph-mock-callback-secret
+      command-scan-ms: 3600000
+      command-initial-delay-ms: 3600000

@@ -77,21 +77,6 @@ public class CommerceController {
         return orders.getForUser(account(authentication).getId(), orderId);
     }
 
-    @PostMapping("/orders/{orderId}/mock-payment")
-    OrderResponse mockPayment(
-            Authentication authentication,
-            @PathVariable Long orderId,
-            @RequestHeader("Idempotency-Key") String idempotencyKey,
-            @Valid @RequestBody MockPaymentResultRequest request
-    ) {
-        return orders.applyMockPayment(
-                account(authentication).getId(),
-                orderId,
-                idempotencyKey,
-                request.result()
-        );
-    }
-
     @PostMapping("/orders/{orderId}/cancel")
     OrderResponse cancelOrder(Authentication authentication, @PathVariable Long orderId) {
         return orders.cancel(account(authentication).getId(), orderId);

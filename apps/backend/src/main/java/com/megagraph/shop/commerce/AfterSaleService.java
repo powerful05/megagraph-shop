@@ -5,18 +5,21 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.megagraph.shop.api.CreateAfterSaleRequest;
 import com.megagraph.shop.api.OrderResponse;
 import com.megagraph.shop.api.ResolveAfterSaleRequest;
-import com.megagraph.shop.catalog.ProductSku;
-import com.megagraph.shop.catalog.ProductSkuRepository;
 import com.megagraph.shop.projection.OutboxEvent;
 import com.megagraph.shop.projection.OutboxEventRepository;
+import com.megagraph.shop.payment.ChannelEventType;
+import com.megagraph.shop.payment.ChannelResourceType;
+import com.megagraph.shop.payment.CommerceOutboxWriter;
+import com.megagraph.shop.payment.PaymentChannelCommand;
+import com.megagraph.shop.payment.PaymentChannelCommandRepository;
+import com.megagraph.shop.payment.RefundAttempt;
+import com.megagraph.shop.payment.RefundAttemptRepository;
 import com.megagraph.shop.shared.ConflictException;
 import com.megagraph.shop.shared.NotFoundException;
 import com.megagraph.shop.shared.ValidationException;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,11 +28,11 @@ public class AfterSaleService {
 
     private final SalesOrderRepository orders;
     private final PaymentOrderRepository payments;
-    private final StockReservationRepository reservations;
-    private final ProductSkuRepository skus;
     private final AfterSaleRequestRepository afterSales;
     private final RefundOrderRepository refunds;
-    private final RefundGateway refundGateway;
+    private final RefundAttemptRepository refundAttempts;
+    private final PaymentChannelCommandRepository channelCommands;
+    private final CommerceOutboxWriter commerceOutbox;
     private final OutboxEventRepository outbox;
     private final OrderMapper mapper;
     private final ObjectMapper objectMapper;
@@ -37,22 +40,22 @@ public class AfterSaleService {
     public AfterSaleService(
             SalesOrderRepository orders,
             PaymentOrderRepository payments,
-            StockReservationRepository reservations,
-            ProductSkuRepository skus,
             AfterSaleRequestRepository afterSales,
             RefundOrderRepository refunds,
-            RefundGateway refundGateway,
+            RefundAttemptRepository refundAttempts,
+            PaymentChannelCommandRepository channelCommands,
+            CommerceOutboxWriter commerceOutbox,
             OutboxEventRepository outbox,
             OrderMapper mapper,
             ObjectMapper objectMapper
     ) {
         this.orders = orders;
         this.payments = payments;
-        this.reservations = reservations;
-        this.skus = skus;
         this.afterSales = afterSales;
         this.refunds = refunds;
-        this.refundGateway = refundGateway;
+        this.refundAttempts = refundAttempts;
+        this.channelCommands = channelCommands;
+        this.commerceOutbox = commerceOutbox;
         this.outbox = outbox;
         this.mapper = mapper;
         this.objectMapper = objectMapper;
@@ -106,10 +109,13 @@ public class AfterSaleService {
             ResolveAfterSaleRequest request
     ) {
         String normalizedKey = normalizeIdempotencyKey(idempotencyKey);
+        PaymentOrder payment = payments.findByOrderIdForUpdate(orderId)
+                .orElseThrow(() -> new NotFoundException("PAYMENT_NOT_FOUND", "支付单不存在"));
         SalesOrder order = requireMerchantOrderForUpdate(merchantId, orderId);
         AfterSaleRequest afterSale = requireAfterSaleForUpdate(merchantId, orderId);
         if (afterSale.getStatus() != AfterSaleStatus.REQUESTED) {
-            if (afterSale.getStatus() == AfterSaleStatus.REFUNDED
+            if ((afterSale.getStatus() == AfterSaleStatus.REFUND_PROCESSING
+                    || afterSale.getStatus() == AfterSaleStatus.REFUNDED)
                     && normalizedKey.equals(afterSale.getResolutionIdempotencyKey())) {
                 return mapper.toResponse(order);
             }
@@ -117,45 +123,125 @@ public class AfterSaleService {
         }
         ensureResolutionKeyAvailable(merchantId, afterSale.getId(), normalizedKey);
 
-        PaymentOrder payment = payments.findByOrderIdForUpdate(orderId)
-                .orElseThrow(() -> new NotFoundException("PAYMENT_NOT_FOUND", "支付单不存在"));
         if (order.getStatus() != OrderStatus.PAID || payment.getStatus() != PaymentStatus.SUCCEEDED) {
             throw new ConflictException("ORDER_NOT_REFUNDABLE", "订单当前不能退款");
         }
 
-        RefundResult result = refundGateway.refund(
-                payment.getProviderPaymentId(),
-                payment.getAmount(),
-                payment.getCurrency(),
-                normalizedKey
-        );
-        afterSale.markRefunded(normalizedKey, request.note().trim());
-        payment.refund();
-        order.markRefunded();
-        restockConfirmedReservations(orderId);
-        RefundOrder refund = refunds.save(new RefundOrder(
+        afterSale.startRefund(normalizedKey, request.note().trim());
+        RefundOrder refund = refunds.saveAndFlush(new RefundOrder(
                 afterSale.getId(),
                 orderId,
                 payment.getId(),
-                result.provider(),
-                result.providerRefundId(),
+                payment.getProvider(),
                 payment.getAmount(),
                 payment.getCurrency()
         ));
-
-        orders.flush();
-        payments.flush();
-        afterSales.flush();
-        refunds.flush();
-        saveOrderEvent(order, "ORDER_REFUNDED", Map.of(
-                "afterSaleId", afterSale.getId(),
-                "refundId", refund.getId(),
-                "amount", refund.getAmount(),
-                "currency", refund.getCurrency()
+        RefundAttempt attempt = refundAttempts.saveAndFlush(new RefundAttempt(
+                refund.getId(),
+                normalizedKey,
+                1
         ));
-        saveAfterSaleEvent(afterSale, "AFTER_SALE_REFUNDED", Map.of(
+        afterSales.flush();
+        String providerEventId = nextMockEventId();
+        PaymentChannelCommand command = channelCommands.saveAndFlush(new PaymentChannelCommand(
+                payment.getProvider(),
+                providerEventId,
+                ChannelEventType.REFUND_SUCCEEDED,
+                ChannelResourceType.REFUND,
+                null,
+                null,
+                refund.getId(),
+                attempt.getId(),
+                refund.getAmount(),
+                refund.getCurrency()
+        ));
+        commerceOutbox.save("REFUND", refund.getId(), refund.getVersion(), "REFUND_REQUESTED", Map.of(
                 "refundId", refund.getId(),
-                "providerRefundId", refund.getProviderRefundId()
+                "afterSaleId", afterSale.getId(),
+                "orderId", orderId,
+                "provider", payment.getProvider(),
+                "providerEventId", providerEventId,
+                "oldStatus", "NONE",
+                "newStatus", refund.getStatus().name()
+        ));
+        commerceOutbox.save("CHANNEL_COMMAND", command.getId(), 0L, "MOCK_REFUND_CALLBACK_REQUESTED", Map.of(
+                "refundId", refund.getId(),
+                "afterSaleId", afterSale.getId(),
+                "orderId", orderId,
+                "provider", payment.getProvider(),
+                "providerEventId", providerEventId,
+                "oldStatus", "NONE",
+                "newStatus", "PENDING"
+        ));
+        return mapper.toResponse(order);
+    }
+
+    @Transactional
+    public OrderResponse retry(
+            Long merchantId,
+            Long orderId,
+            String idempotencyKey,
+            ResolveAfterSaleRequest request
+    ) {
+        String normalizedKey = normalizeIdempotencyKey(idempotencyKey);
+        PaymentOrder payment = payments.findByOrderIdForUpdate(orderId)
+                .orElseThrow(() -> new NotFoundException("PAYMENT_NOT_FOUND", "支付单不存在"));
+        SalesOrder order = requireMerchantOrderForUpdate(merchantId, orderId);
+        AfterSaleRequest afterSale = requireAfterSaleForUpdate(merchantId, orderId);
+        RefundOrder refund = refunds.findByAfterSaleId(afterSale.getId())
+                .flatMap(value -> refunds.findByIdForUpdate(value.getId()))
+                .orElseThrow(() -> new NotFoundException("REFUND_NOT_FOUND", "退款单不存在"));
+        RefundAttempt duplicate = refundAttempts
+                .findByRefundOrderIdAndIdempotencyKey(refund.getId(), normalizedKey)
+                .orElse(null);
+        if (duplicate != null) {
+            return mapper.toResponse(order);
+        }
+        if (afterSale.getStatus() != AfterSaleStatus.REFUND_FAILED
+                || refund.getStatus() != RefundStatus.FAILED
+                || order.getStatus() != OrderStatus.PAID
+                || payment.getStatus() != PaymentStatus.SUCCEEDED) {
+            throw new ConflictException("REFUND_NOT_RETRYABLE", "当前退款不能重试");
+        }
+        ensureResolutionKeyAvailable(merchantId, afterSale.getId(), normalizedKey);
+        afterSale.retryRefund(normalizedKey, request.note().trim());
+        refund.retry();
+        int attemptNo = Math.toIntExact(refundAttempts.countByRefundOrderId(refund.getId()) + 1);
+        RefundAttempt attempt = refundAttempts.saveAndFlush(new RefundAttempt(
+                refund.getId(), normalizedKey, attemptNo
+        ));
+        refunds.flush();
+        afterSales.flush();
+        String providerEventId = nextMockEventId();
+        PaymentChannelCommand command = channelCommands.saveAndFlush(new PaymentChannelCommand(
+                refund.getProvider(),
+                providerEventId,
+                ChannelEventType.REFUND_SUCCEEDED,
+                ChannelResourceType.REFUND,
+                refund.getProviderRefundId(),
+                null,
+                refund.getId(),
+                attempt.getId(),
+                refund.getAmount(),
+                refund.getCurrency()
+        ));
+        commerceOutbox.save("REFUND", refund.getId(), refund.getVersion(), "REFUND_REQUESTED", Map.of(
+                "refundId", refund.getId(),
+                "afterSaleId", afterSale.getId(),
+                "orderId", orderId,
+                "provider", refund.getProvider(),
+                "providerEventId", providerEventId,
+                "oldStatus", RefundStatus.FAILED.name(),
+                "newStatus", refund.getStatus().name()
+        ));
+        commerceOutbox.save("CHANNEL_COMMAND", command.getId(), 0L, "MOCK_REFUND_CALLBACK_REQUESTED", Map.of(
+                "refundId", refund.getId(),
+                "afterSaleId", afterSale.getId(),
+                "orderId", orderId,
+                "provider", refund.getProvider(),
+                "providerEventId", providerEventId,
+                "oldStatus", "FAILED",
+                "newStatus", "PENDING"
         ));
         return mapper.toResponse(order);
     }
@@ -183,24 +269,6 @@ public class AfterSaleService {
         afterSales.flush();
         saveAfterSaleEvent(afterSale, "AFTER_SALE_REJECTED", Map.of("note", afterSale.getMerchantNote()));
         return mapper.toResponse(order);
-    }
-
-    private void restockConfirmedReservations(Long orderId) {
-        List<StockReservation> confirmed = reservations.findByOrderIdOrderByIdAsc(orderId).stream()
-                .filter(value -> value.getStatus() == ReservationStatus.CONFIRMED)
-                .toList();
-        List<Long> skuIds = confirmed.stream().map(StockReservation::getSkuId).distinct().sorted().toList();
-        Map<Long, ProductSku> lockedSkus = skus.findAllByIdForUpdate(skuIds).stream()
-                .collect(Collectors.toMap(ProductSku::getId, Function.identity()));
-        for (StockReservation reservation : confirmed) {
-            if (reservation.restock()) {
-                ProductSku sku = lockedSkus.get(reservation.getSkuId());
-                if (sku == null) {
-                    throw new IllegalStateException("Refunded SKU no longer exists");
-                }
-                sku.release(reservation.getQuantity());
-            }
-        }
     }
 
     private SalesOrder requireOwnedOrder(Long userId, Long orderId) {
@@ -233,6 +301,10 @@ public class AfterSaleService {
             throw new ValidationException("IDEMPOTENCY_KEY_INVALID", "Idempotency-Key 不能为空且不能超过 128 个字符");
         }
         return value.trim();
+    }
+
+    private String nextMockEventId() {
+        return "mock_evt_" + UUID.randomUUID().toString().replace("-", "");
     }
 
     private void saveOrderEvent(SalesOrder order, String eventType, Map<String, ?> details) {
