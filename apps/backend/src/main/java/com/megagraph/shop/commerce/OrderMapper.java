@@ -1,9 +1,11 @@
 package com.megagraph.shop.commerce;
 
+import com.megagraph.shop.api.AfterSaleResponse;
 import com.megagraph.shop.api.OrderItemResponse;
 import com.megagraph.shop.api.OrderResponse;
 import com.megagraph.shop.api.PaymentResponse;
 import com.megagraph.shop.api.ReservationResponse;
+import com.megagraph.shop.api.RefundResponse;
 import com.megagraph.shop.api.ShipmentResponse;
 import org.springframework.stereotype.Component;
 
@@ -14,17 +16,23 @@ public class OrderMapper {
     private final PaymentOrderRepository payments;
     private final StockReservationRepository reservations;
     private final ShipmentRepository shipments;
+    private final AfterSaleRequestRepository afterSales;
+    private final RefundOrderRepository refunds;
 
     public OrderMapper(
             SalesOrderItemRepository items,
             PaymentOrderRepository payments,
             StockReservationRepository reservations,
-            ShipmentRepository shipments
+            ShipmentRepository shipments,
+            AfterSaleRequestRepository afterSales,
+            RefundOrderRepository refunds
     ) {
         this.items = items;
         this.payments = payments;
         this.reservations = reservations;
         this.shipments = shipments;
+        this.afterSales = afterSales;
+        this.refunds = refunds;
     }
 
     public OrderResponse toResponse(SalesOrder order) {
@@ -45,6 +53,27 @@ public class OrderMapper {
                         value.getDeliveredAt()
                 ))
                 .orElse(null);
+        AfterSaleResponse afterSale = afterSales.findByOrderId(order.getId())
+                .map(value -> new AfterSaleResponse(
+                        value.getId(),
+                        value.getStatus().name(),
+                        value.getReason(),
+                        value.getMerchantNote(),
+                        value.getRequestedAt(),
+                        value.getResolvedAt(),
+                        refunds.findByAfterSaleId(value.getId())
+                                .map(refund -> new RefundResponse(
+                                        refund.getId(),
+                                        refund.getProvider(),
+                                        refund.getProviderRefundId(),
+                                        refund.getAmount(),
+                                        refund.getCurrency(),
+                                        refund.getStatus().name(),
+                                        refund.getRefundedAt()
+                                ))
+                                .orElse(null)
+                ))
+                .orElse(null);
         return new OrderResponse(
                 order.getId(),
                 order.getOrderNo(),
@@ -60,6 +89,7 @@ public class OrderMapper {
                 order.getCreatedAt(),
                 payment,
                 shipment,
+                afterSale,
                 items.findByOrderIdOrderByIdAsc(order.getId()).stream()
                         .map(value -> new OrderItemResponse(
                                 value.getProductId(),

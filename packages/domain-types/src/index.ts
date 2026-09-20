@@ -83,12 +83,14 @@ export type OrderStatus =
   | 'PAID'
   | 'SHIPPED'
   | 'COMPLETED'
+  | 'REFUNDED'
   | 'PAYMENT_FAILED'
   | 'CANCELLED'
   | 'EXPIRED'
-export type PaymentStatus = 'PENDING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED'
-export type ReservationStatus = 'RESERVED' | 'CONFIRMED' | 'RELEASED'
+export type PaymentStatus = 'PENDING' | 'SUCCEEDED' | 'REFUNDED' | 'FAILED' | 'CANCELLED'
+export type ReservationStatus = 'RESERVED' | 'CONFIRMED' | 'RESTOCKED' | 'RELEASED'
 export type ShipmentStatus = 'SHIPPED' | 'DELIVERED'
+export type AfterSaleStatus = 'REQUESTED' | 'REFUNDED' | 'REJECTED'
 export type MockPaymentResult = 'SUCCESS' | 'FAILURE' | 'CANCELLED'
 
 export interface OrderItem {
@@ -124,6 +126,26 @@ export interface ShipmentSummary {
   deliveredAt: string | null
 }
 
+export interface RefundSummary {
+  id: number
+  provider: string
+  providerRefundId: string
+  amount: number
+  currency: string
+  status: 'SUCCEEDED'
+  refundedAt: string
+}
+
+export interface AfterSaleSummary {
+  id: number
+  status: AfterSaleStatus
+  reason: string
+  merchantNote: string | null
+  requestedAt: string
+  resolvedAt: string | null
+  refund: RefundSummary | null
+}
+
 export interface SalesOrder {
   id: number
   orderNo: string
@@ -139,6 +161,7 @@ export interface SalesOrder {
   createdAt: string
   payment: PaymentSummary | null
   shipment: ShipmentSummary | null
+  afterSale: AfterSaleSummary | null
   items: OrderItem[]
   reservations: StockReservation[]
 }

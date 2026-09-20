@@ -37,10 +37,13 @@ const notice = ref('')
 const cart = ref<ShoppingCart>({ cartId: 0, currency: null, estimatedTotal: 0, items: [] })
 const orders = ref<SalesOrder[]>([])
 const selectedSkuByProduct = reactive<Record<number, number>>({})
+const refundReasons = reactive<Record<number, string>>({})
 
 const cartCount = computed(() => cart.value.items.reduce((total, item) => total + item.quantity, 0))
 const actionableOrderCount = computed(() => orders.value
-  .filter(order => order.status === 'PENDING_PAYMENT' || order.status === 'SHIPPED').length)
+  .filter(order => order.status === 'PENDING_PAYMENT'
+    || order.status === 'SHIPPED'
+    || order.afterSale?.status === 'REQUESTED').length)
 
 function imageUrl(path: string | null): string {
   return path ? `${apiBase}${path}` : ''
@@ -75,6 +78,7 @@ function orderStatusLabel(status: SalesOrder['status']): string {
     PAID: '待发货',
     SHIPPED: '运输中',
     COMPLETED: '已完成',
+    REFUNDED: '已退款',
     PAYMENT_FAILED: '支付失败',
     CANCELLED: '已取消',
     EXPIRED: '已超时',
@@ -198,6 +202,25 @@ async function confirmReceipt(order: SalesOrder) {
   })
 }
 
+async function requestRefund(order: SalesOrder) {
+  const reason = refundReasons[order.id]?.trim() ?? ''
+  if (!reason) {
+    errorMessage.value = '请填写退款原因'
+    return
+  }
+  await execute(`refund-${order.id}`, async () => {
+    const updated = await shopperApi.requestRefund(
+      apiBase,
+      credentials,
+      order.id,
+      crypto.randomUUID(),
+      reason,
+    )
+    replaceOrder(updated)
+    notice.value = '退款申请已提交，发货已暂停'
+  })
+}
+
 function replaceOrder(updated: SalesOrder) {
   orders.value = orders.value.map(order => order.id === updated.id ? updated : order)
 }
@@ -226,7 +249,7 @@ function replaceOrder(updated: SalesOrder) {
       <div class="hero-copy">
         <p class="eyebrow">AI-NATIVE PRODUCT DISCOVERY</p>
         <h1>商品不只被搜索。<br><em>它被理解。</em></h1>
-        <p class="lede">从商品事实出发，完成一次真实可验证的选择。现在，你可以从已发布商品走到结算、Mock 支付、物流和确认收货。</p>
+        <p class="lede">从商品事实出发，完成一次真实可验证的选择。现在，你可以从结算、Mock 支付走到履约，也能在发货前发起可追踪的退款。</p>
         <div class="hero-actions">
           <a class="primary-link" href="#collection">开始选购 <span>↘</span></a>
           <button type="button" @click="connected ? openPanel('orders') : (loginOpen = true)">
@@ -313,6 +336,7 @@ function replaceOrder(updated: SalesOrder) {
         <span>02 / SERVER-SIDE PRICING</span>
         <span>03 / RESERVED INVENTORY</span>
         <span>04 / TRACEABLE FULFILLMENT</span>
+        <span>05 / REVERSIBLE TRANSACTION</span>
       </div>
     </section>
 
@@ -435,6 +459,21 @@ function replaceOrder(updated: SalesOrder) {
                 <small v-if="order.shipment.deliveredAt">签收于 {{ formatDate(order.shipment.deliveredAt) }}</small>
                 <small v-else>发货于 {{ formatDate(order.shipment.shippedAt) }}</small>
               </div>
+              <div v-if="order.afterSale" :class="`customer-after-sale ${order.afterSale.status.toLowerCase()}`">
+                <header>
+                  <span>REFUND / {{ order.afterSale.status }}</span>
+                  <small>{{ formatDate(order.afterSale.requestedAt) }}</small>
+                </header>
+                <p>{{ order.afterSale.reason }}</p>
+                <div v-if="order.afterSale.merchantNote">
+                  <span>商家处理</span>
+                  <strong>{{ order.afterSale.merchantNote }}</strong>
+                </div>
+                <div v-if="order.afterSale.refund">
+                  <span>Mock 退款</span>
+                  <strong>{{ formatPrice(order.afterSale.refund.amount, order.afterSale.refund.currency) }} · {{ order.afterSale.refund.status }}</strong>
+                </div>
+              </div>
               <div class="order-total">
                 <span>订单合计</span>
                 <strong>{{ formatPrice(order.totalAmount, order.currency) }}</strong>
@@ -456,6 +495,25 @@ function replaceOrder(updated: SalesOrder) {
                   {{ busyAction === `receipt-${order.id}` ? '确认中…' : '确认收货' }}
                 </button>
               </div>
+              <form
+                v-else-if="order.status === 'PAID' && !order.afterSale"
+                class="refund-request"
+                @submit.prevent="requestRefund(order)"
+              >
+                <label>
+                  <span>REFUND BEFORE SHIPMENT</span>
+                  <textarea
+                    v-model="refundReasons[order.id]"
+                    maxlength="500"
+                    rows="2"
+                    placeholder="填写退款原因"
+                    required
+                  />
+                </label>
+                <button type="submit" :disabled="Boolean(busyAction)">
+                  {{ busyAction === `refund-${order.id}` ? '提交中…' : '申请退款' }}
+                </button>
+              </form>
             </article>
           </section>
         </aside>

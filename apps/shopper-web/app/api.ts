@@ -91,4 +91,17 @@ export const shopperApi = {
       method: 'POST',
     })
   },
+  requestRefund(
+    apiBase: string,
+    credentials: ShopperCredentials,
+    orderId: number,
+    idempotencyKey: string,
+    reason: string,
+  ) {
+    return request<SalesOrder>(apiBase, `/api/shop/v1/orders/${orderId}/after-sales`, credentials, {
+      method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey },
+      body: JSON.stringify({ reason }),
+    })
+  },
 }

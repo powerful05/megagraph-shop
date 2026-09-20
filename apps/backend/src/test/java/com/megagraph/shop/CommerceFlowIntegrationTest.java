@@ -225,6 +225,100 @@ class CommerceFlowIntegrationTest {
     }
 
     @Test
+    void approvedRefundRestocksInventoryExactlyOnce() throws Exception {
+        PublishedSku published = publishProduct("退款回库测试", "REFUND-" + UUID.randomUUID(), 159.00, 3);
+        mvc.perform(put("/api/shop/v1/cart/items/{skuId}", published.skuId())
+                        .with(shopper())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"quantity\":2}"))
+                .andExpect(status().isOk());
+        JsonNode created = createOrder("refund-order-" + UUID.randomUUID());
+        long orderId = created.required("id").asLong();
+        applyMockPayment(orderId, "refund-payment-" + UUID.randomUUID(), "SUCCESS");
+        mvc.perform(get("/api/shop/v1/products/{productId}", published.productId()))
+                .andExpect(jsonPath("$.availableStock").value(1));
+
+        String requestKey = "refund-request-" + UUID.randomUUID();
+        JsonNode requested = requestRefund(orderId, requestKey, "尺码不合适，尚未发货");
+        assertThat(requested.at("/afterSale/status").asText()).isEqualTo("REQUESTED");
+        JsonNode repeatedRequest = requestRefund(orderId, requestKey, "不应覆盖原因");
+        assertThat(repeatedRequest.at("/afterSale/id").asLong())
+                .isEqualTo(requested.at("/afterSale/id").asLong());
+        assertThat(repeatedRequest.at("/afterSale/reason").asText()).isEqualTo("尺码不合适，尚未发货");
+
+        mvc.perform(post("/api/merchant/v1/orders/{orderId}/ship", orderId)
+                        .with(httpBasic(MERCHANT_USERNAME, MERCHANT_PASSWORD))
+                        .header("Idempotency-Key", "blocked-shipment-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"carrierName\":\"顺丰速运\",\"trackingNo\":\"SF-REFUND-BLOCKED\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("ORDER_HAS_PENDING_AFTER_SALE"));
+
+        String approvalKey = "refund-approval-" + UUID.randomUUID();
+        JsonNode refunded = resolveRefund(orderId, "approve", approvalKey, "同意未发货退款");
+        assertThat(refunded.required("status").asText()).isEqualTo("REFUNDED");
+        assertThat(refunded.at("/payment/status").asText()).isEqualTo("REFUNDED");
+        assertThat(refunded.at("/reservations/0/status").asText()).isEqualTo("RESTOCKED");
+        assertThat(refunded.at("/afterSale/status").asText()).isEqualTo("REFUNDED");
+        assertThat(refunded.at("/afterSale/refund/status").asText()).isEqualTo("SUCCEEDED");
+        assertThat(refunded.at("/afterSale/refund/amount").decimalValue()).isEqualByComparingTo("318.00");
+
+        JsonNode repeatedApproval = resolveRefund(orderId, "approve", approvalKey, "重复调用");
+        assertThat(repeatedApproval.at("/afterSale/refund/id").asLong())
+                .isEqualTo(refunded.at("/afterSale/refund/id").asLong());
+        mvc.perform(get("/api/shop/v1/products/{productId}", published.productId()))
+                .andExpect(jsonPath("$.availableStock").value(3));
+
+        long afterSaleId = refunded.at("/afterSale/id").asLong();
+        assertThat(outboxEvents.findByAggregateTypeAndAggregateIdOrderByCreatedAtAsc("ORDER", orderId))
+                .extracting("eventType")
+                .containsExactly("ORDER_CREATED", "ORDER_PAID", "ORDER_REFUNDED");
+        assertThat(outboxEvents.findByAggregateTypeAndAggregateIdOrderByCreatedAtAsc("AFTER_SALE", afterSaleId))
+                .extracting("eventType")
+                .containsExactly("AFTER_SALE_REQUESTED", "AFTER_SALE_REFUNDED");
+    }
+
+    @Test
+    void rejectedRefundLeavesPaidOrderShippable() throws Exception {
+        PublishedSku published = publishProduct("退款驳回测试", "REJECT-" + UUID.randomUUID(), 129.00, 2);
+        mvc.perform(put("/api/shop/v1/cart/items/{skuId}", published.skuId())
+                        .with(shopper())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"quantity\":1}"))
+                .andExpect(status().isOk());
+        JsonNode created = createOrder("reject-order-" + UUID.randomUUID());
+        long orderId = created.required("id").asLong();
+        applyMockPayment(orderId, "reject-payment-" + UUID.randomUUID(), "SUCCESS");
+        JsonNode requested = requestRefund(
+                orderId,
+                "reject-request-" + UUID.randomUUID(),
+                "不再需要"
+        );
+        long afterSaleId = requested.at("/afterSale/id").asLong();
+
+        String rejectionKey = "refund-rejection-" + UUID.randomUUID();
+        JsonNode rejected = resolveRefund(orderId, "reject", rejectionKey, "商品已进入出库处理");
+        assertThat(rejected.required("status").asText()).isEqualTo("PAID");
+        assertThat(rejected.at("/payment/status").asText()).isEqualTo("SUCCEEDED");
+        assertThat(rejected.at("/reservations/0/status").asText()).isEqualTo("CONFIRMED");
+        assertThat(rejected.at("/afterSale/status").asText()).isEqualTo("REJECTED");
+        assertThat(rejected.at("/afterSale/refund").isNull()).isTrue();
+
+        mvc.perform(post("/api/merchant/v1/orders/{orderId}/ship", orderId)
+                        .with(httpBasic(MERCHANT_USERNAME, MERCHANT_PASSWORD))
+                        .header("Idempotency-Key", "shipment-after-rejection-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"carrierName\":\"顺丰速运\",\"trackingNo\":\"SF-AFTER-REJECTION\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SHIPPED"));
+        mvc.perform(get("/api/shop/v1/products/{productId}", published.productId()))
+                .andExpect(jsonPath("$.availableStock").value(1));
+        assertThat(outboxEvents.findByAggregateTypeAndAggregateIdOrderByCreatedAtAsc("AFTER_SALE", afterSaleId))
+                .extracting("eventType")
+                .containsExactly("AFTER_SALE_REQUESTED", "AFTER_SALE_REJECTED");
+    }
+
+    @Test
     void failedPaymentReleasesReservedStockOnlyOnce() throws Exception {
         PublishedSku published = publishProduct("失败释放测试", "RELEASE-" + UUID.randomUUID(), 88.00, 4);
         mvc.perform(put("/api/shop/v1/cart/items/{skuId}", published.skuId())
@@ -306,6 +400,35 @@ class CommerceFlowIntegrationTest {
                         .header("Idempotency-Key", idempotencyKey)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"result\":\"" + result + "\"}"))
+                .andExpect(status().isOk())
+                .andReturn());
+    }
+
+    private JsonNode requestRefund(long orderId, String idempotencyKey, String reason) throws Exception {
+        return responseJson(mvc.perform(post("/api/shop/v1/orders/{orderId}/after-sales", orderId)
+                        .with(shopper())
+                        .header("Idempotency-Key", idempotencyKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"" + reason + "\"}"))
+                .andExpect(status().isOk())
+                .andReturn());
+    }
+
+    private JsonNode resolveRefund(
+            long orderId,
+            String action,
+            String idempotencyKey,
+            String note
+    ) throws Exception {
+        return responseJson(mvc.perform(post(
+                                "/api/merchant/v1/orders/{orderId}/after-sales/{action}",
+                                orderId,
+                                action
+                        )
+                        .with(httpBasic(MERCHANT_USERNAME, MERCHANT_PASSWORD))
+                        .header("Idempotency-Key", idempotencyKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"note\":\"" + note + "\"}"))
                 .andExpect(status().isOk())
                 .andReturn());
     }

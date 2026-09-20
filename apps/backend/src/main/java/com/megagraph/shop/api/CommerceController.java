@@ -1,5 +1,6 @@
 package com.megagraph.shop.api;
 
+import com.megagraph.shop.commerce.AfterSaleService;
 import com.megagraph.shop.commerce.CartService;
 import com.megagraph.shop.commerce.OrderService;
 import com.megagraph.shop.identity.UserAccount;
@@ -24,11 +25,18 @@ public class CommerceController {
     private final CurrentUser currentUser;
     private final CartService carts;
     private final OrderService orders;
+    private final AfterSaleService afterSales;
 
-    public CommerceController(CurrentUser currentUser, CartService carts, OrderService orders) {
+    public CommerceController(
+            CurrentUser currentUser,
+            CartService carts,
+            OrderService orders,
+            AfterSaleService afterSales
+    ) {
         this.currentUser = currentUser;
         this.carts = carts;
         this.orders = orders;
+        this.afterSales = afterSales;
     }
 
     @GetMapping("/cart")
@@ -92,6 +100,16 @@ public class CommerceController {
     @PostMapping("/orders/{orderId}/confirm-receipt")
     OrderResponse confirmReceipt(Authentication authentication, @PathVariable Long orderId) {
         return orders.confirmReceipt(account(authentication).getId(), orderId);
+    }
+
+    @PostMapping("/orders/{orderId}/after-sales")
+    OrderResponse requestAfterSale(
+            Authentication authentication,
+            @PathVariable Long orderId,
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @Valid @RequestBody CreateAfterSaleRequest request
+    ) {
+        return afterSales.request(account(authentication).getId(), orderId, idempotencyKey, request);
     }
 
     private UserAccount account(Authentication authentication) {

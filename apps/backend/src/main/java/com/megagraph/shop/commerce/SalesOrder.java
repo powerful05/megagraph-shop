@@ -98,6 +98,13 @@ public class SalesOrder {
         this.status = OrderStatus.COMPLETED;
     }
 
+    public void markRefunded() {
+        if (status != OrderStatus.PAID) {
+            throw new ConflictException("ORDER_NOT_REFUNDABLE", "只有已支付且未发货的订单可以退款");
+        }
+        this.status = OrderStatus.REFUNDED;
+    }
+
     public void markPaymentFailed(String reason) {
         requirePending();
         this.status = OrderStatus.PAYMENT_FAILED;

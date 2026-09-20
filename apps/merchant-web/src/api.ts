@@ -66,6 +66,19 @@ export const merchantApi = {
       body: JSON.stringify(details),
     })
   },
+  resolveAfterSale(
+    credentials: Credentials,
+    orderId: number,
+    action: 'approve' | 'reject',
+    idempotencyKey: string,
+    note: string,
+  ) {
+    return request<SalesOrder>(`/api/merchant/v1/orders/${orderId}/after-sales/${action}`, credentials, {
+      method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey },
+      body: JSON.stringify({ note }),
+    })
+  },
   upload(credentials: Credentials, image: File) {
     const data = new FormData()
     data.append('image', image)

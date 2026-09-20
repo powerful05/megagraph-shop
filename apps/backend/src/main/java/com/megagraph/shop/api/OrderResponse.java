@@ -19,6 +19,7 @@ public record OrderResponse(
         Instant createdAt,
         PaymentResponse payment,
         ShipmentResponse shipment,
+        AfterSaleResponse afterSale,
         List<OrderItemResponse> items,
         List<ReservationResponse> reservations
 ) {

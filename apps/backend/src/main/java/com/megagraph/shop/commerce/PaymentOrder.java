@@ -75,6 +75,14 @@ public class PaymentOrder {
         this.finishedAt = Instant.now();
     }
 
+    public void refund() {
+        if (status != PaymentStatus.SUCCEEDED) {
+            throw new IllegalStateException("Only succeeded payments can be refunded");
+        }
+        this.status = PaymentStatus.REFUNDED;
+        this.finishedAt = Instant.now();
+    }
+
     @PreUpdate
     void touch() {
         this.updatedAt = Instant.now();

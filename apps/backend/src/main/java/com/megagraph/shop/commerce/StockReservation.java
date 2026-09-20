@@ -58,6 +58,17 @@ public class StockReservation {
         return true;
     }
 
+    public boolean restock() {
+        if (status == ReservationStatus.RESTOCKED) {
+            return false;
+        }
+        if (status != ReservationStatus.CONFIRMED) {
+            throw new IllegalStateException("Only confirmed reservations can be restocked");
+        }
+        this.status = ReservationStatus.RESTOCKED;
+        return true;
+    }
+
     @PreUpdate
     void touch() {
         this.updatedAt = Instant.now();

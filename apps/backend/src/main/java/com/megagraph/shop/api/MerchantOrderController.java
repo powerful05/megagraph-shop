@@ -1,5 +1,6 @@
 package com.megagraph.shop.api;
 
+import com.megagraph.shop.commerce.AfterSaleService;
 import com.megagraph.shop.commerce.OrderService;
 import com.megagraph.shop.identity.MerchantRole;
 import com.megagraph.shop.security.CurrentMerchant;
@@ -21,10 +22,16 @@ public class MerchantOrderController {
 
     private final CurrentMerchant currentMerchant;
     private final OrderService orders;
+    private final AfterSaleService afterSales;
 
-    public MerchantOrderController(CurrentMerchant currentMerchant, OrderService orders) {
+    public MerchantOrderController(
+            CurrentMerchant currentMerchant,
+            OrderService orders,
+            AfterSaleService afterSales
+    ) {
         this.currentMerchant = currentMerchant;
         this.orders = orders;
+        this.afterSales = afterSales;
     }
 
     @GetMapping
@@ -45,5 +52,27 @@ public class MerchantOrderController {
                 MerchantRole.EDITOR
         );
         return orders.ship(actor.merchantId(), orderId, idempotencyKey, request);
+    }
+
+    @PostMapping("/{orderId}/after-sales/approve")
+    OrderResponse approveAfterSale(
+            Authentication authentication,
+            @PathVariable Long orderId,
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @Valid @RequestBody ResolveAfterSaleRequest request
+    ) {
+        MerchantActor actor = currentMerchant.requireActor(authentication, MerchantRole.OWNER);
+        return afterSales.approve(actor.merchantId(), orderId, idempotencyKey, request);
+    }
+
+    @PostMapping("/{orderId}/after-sales/reject")
+    OrderResponse rejectAfterSale(
+            Authentication authentication,
+            @PathVariable Long orderId,
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @Valid @RequestBody ResolveAfterSaleRequest request
+    ) {
+        MerchantActor actor = currentMerchant.requireActor(authentication, MerchantRole.OWNER);
+        return afterSales.reject(actor.merchantId(), orderId, idempotencyKey, request);
     }
 }

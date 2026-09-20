@@ -38,6 +38,7 @@ public class OrderService {
     private final PaymentOrderRepository payments;
     private final PaymentAttemptRepository paymentAttempts;
     private final ShipmentRepository shipments;
+    private final AfterSaleRequestRepository afterSales;
     private final SellableSkuGuard sellableSkuGuard;
     private final PaymentGateway paymentGateway;
     private final OutboxEventRepository outbox;
@@ -55,6 +56,7 @@ public class OrderService {
             PaymentOrderRepository payments,
             PaymentAttemptRepository paymentAttempts,
             ShipmentRepository shipments,
+            AfterSaleRequestRepository afterSales,
             SellableSkuGuard sellableSkuGuard,
             PaymentGateway paymentGateway,
             OutboxEventRepository outbox,
@@ -71,6 +73,7 @@ public class OrderService {
         this.payments = payments;
         this.paymentAttempts = paymentAttempts;
         this.shipments = shipments;
+        this.afterSales = afterSales;
         this.sellableSkuGuard = sellableSkuGuard;
         this.paymentGateway = paymentGateway;
         this.outbox = outbox;
@@ -129,6 +132,9 @@ public class OrderService {
                 .ifPresent(value -> {
                     throw new ConflictException("SHIPMENT_IDEMPOTENCY_CONFLICT", "该幂等键已用于其他订单");
                 });
+        if (afterSales.existsByOrderIdAndStatus(orderId, AfterSaleStatus.REQUESTED)) {
+            throw new ConflictException("ORDER_HAS_PENDING_AFTER_SALE", "订单存在待处理退款申请，不能发货");
+        }
 
         order.markShipped();
         Shipment shipment = shipments.save(new Shipment(

@@ -1,6 +1,6 @@
 # MegaGraph Shop
 
-MegaGraph Shop 已完成阶段 1 商品发布闭环、阶段 2A 交易纵切片，并进入阶段 2B 订单履约纵切片：
+MegaGraph Shop 已完成阶段 1 商品发布、阶段 2A 交易、阶段 2B 履约，并进入阶段 2C 未发货退款纵切片：
 
 ```text
 商家登录 → 上传商品图片 → Mock AI 生成草稿 → 补齐类目/SKU/价格/库存
@@ -12,6 +12,8 @@ MegaGraph Shop 已完成阶段 1 商品发布闭环、阶段 2A 交易纵切片�
 阶段 2A 同样不依赖外部密钥：本地使用 Mock 支付渠道，围绕购物车、订单、库存预占和支付状态建立可测试的交易内核。Nuxt 顾客端已接入购物车、结算、订单与 Mock 支付，Vue 商家端已提供订单台账和交易指标。范围和验收标准见 `docs/PHASE_2A.md`。
 
 阶段 2B 继续使用本地事实：商家可以为已支付订单填写承运商与物流单号，顾客可查看物流并确认收货。范围和验收标准见 `docs/PHASE_2B.md`。
+
+阶段 2C 使用接口化的 Mock 退款通道：顾客可为已支付未发货订单申请退款，商家审核后退款并回补库存，或驳回后继续履约。范围和验收标准见 `docs/PHASE_2C.md`。
 
 ## 工程结构
 
@@ -26,6 +28,7 @@ docs/
   PHASE_1.md     阶段 1 范围、决策和验收标准
   PHASE_2A.md    阶段 2A 前后端交易纵切片
   PHASE_2B.md    阶段 2B 订单履约纵切片
+  PHASE_2C.md    阶段 2C 未发货退款纵切片
 ```
 
 ## 本地启动
@@ -69,6 +72,12 @@ pnpm dev:shopper
 
 - `POST /api/merchant/v1/orders/{orderId}/ship`：商家为已支付订单创建物流单，需要 `Idempotency-Key`。
 - `POST /api/shop/v1/orders/{orderId}/confirm-receipt`：顾客确认收货并完成订单。
+
+## 阶段 2C API
+
+- `POST /api/shop/v1/orders/{orderId}/after-sales`：顾客为已支付未发货订单申请退款，需要 `Idempotency-Key`。
+- `POST /api/merchant/v1/orders/{orderId}/after-sales/approve`：商家批准并执行 Mock 退款，需要 `Idempotency-Key`。
+- `POST /api/merchant/v1/orders/{orderId}/after-sales/reject`：商家驳回退款申请，需要 `Idempotency-Key`。
 
 ## 验证
 

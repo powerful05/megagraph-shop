@@ -17,6 +17,7 @@ const categories = ref<Category[]>([])
 const products = ref<MerchantProduct[]>([])
 const orders = ref<SalesOrder[]>([])
 const shipmentDrafts = reactive<Record<number, { carrierName: string; trackingNo: string }>>({})
+const afterSaleNotes = reactive<Record<number, string>>({})
 const activeArea = ref<'products' | 'orders'>('products')
 const activeProduct = ref<MerchantProduct | null>(null)
 const selectedFile = ref<File | null>(null)
@@ -40,6 +41,8 @@ const canPublish = computed(() => activeProduct.value?.draftStatus === 'CONFIRME
 const canOffShelf = computed(() => activeProduct.value?.publishStatus === 'PUBLISHED')
 const readyToShipOrders = computed(() => orders.value.filter(order => order.status === 'PAID').length)
 const inTransitOrders = computed(() => orders.value.filter(order => order.status === 'SHIPPED').length)
+const refundReviewOrders = computed(() => orders.value
+  .filter(order => order.afterSale?.status === 'REQUESTED').length)
 const revenueStatuses: SalesOrder['status'][] = ['PAID', 'SHIPPED', 'COMPLETED']
 const paidOrders = computed(() => orders.value.filter(order => revenueStatuses.includes(order.status)).length)
 const paidRevenue = computed(() => orders.value
@@ -134,6 +137,7 @@ function setOrders(nextOrders: SalesOrder[]) {
   orders.value = nextOrders
   nextOrders.forEach((order) => {
     shipmentDrafts[order.id] ??= { carrierName: '顺丰速运', trackingNo: '' }
+    afterSaleNotes[order.id] ??= ''
   })
 }
 
@@ -163,6 +167,25 @@ async function shipOrder(order: SalesOrder) {
   })
 }
 
+async function resolveAfterSale(order: SalesOrder, action: 'approve' | 'reject') {
+  const note = afterSaleNotes[order.id]?.trim() ?? ''
+  if (!note) {
+    error.value = '请填写退款处理说明'
+    return
+  }
+  await execute(async () => {
+    const updated = await merchantApi.resolveAfterSale(
+      credentials,
+      order.id,
+      action,
+      crypto.randomUUID(),
+      note,
+    )
+    replaceOrder(updated)
+    ElMessage.success(action === 'approve' ? '退款已完成，库存已回补' : '退款申请已驳回')
+  })
+}
+
 function formatPrice(price: number, currency = 'CNY') {
   return new Intl.NumberFormat('zh-CN', {
     style: 'currency',
@@ -188,6 +211,7 @@ function orderStatusLabel(status: SalesOrder['status']) {
     PAID: '支付完成',
     SHIPPED: '运输中',
     COMPLETED: '已完成',
+    REFUNDED: '已退款',
     PAYMENT_FAILED: '支付失败',
     CANCELLED: '已取消',
     EXPIRED: '已超时',
@@ -400,6 +424,11 @@ onBeforeUnmount(() => {
             <strong>{{ inTransitOrders }}</strong>
             <p>等待顾客确认收货</p>
           </article>
+          <article class="glass-panel metric-card refund">
+            <span>REFUND REVIEW</span>
+            <strong>{{ refundReviewOrders }}</strong>
+            <p>等待审核的未发货退款</p>
+          </article>
           <article class="glass-panel metric-card revenue">
             <span>PAID REVENUE</span>
             <strong>{{ formatPrice(paidRevenue) }}</strong>
@@ -468,7 +497,39 @@ onBeforeUnmount(() => {
                 <small v-else>发货时间 {{ formatDate(order.shipment.shippedAt) }}</small>
               </div>
 
-              <form v-else-if="order.status === 'PAID'" class="shipment-form" @submit.prevent="shipOrder(order)">
+              <div v-if="order.afterSale" :class="`after-sale-card ${order.afterSale.status.toLowerCase()}`">
+                <header>
+                  <div>
+                    <span>AFTER SALE / {{ order.afterSale.status }}</span>
+                    <strong>顾客退款申请</strong>
+                  </div>
+                  <small>{{ formatDate(order.afterSale.requestedAt) }}</small>
+                </header>
+                <p>{{ order.afterSale.reason }}</p>
+                <form v-if="order.afterSale.status === 'REQUESTED'" @submit.prevent>
+                  <el-input
+                    v-model="afterSaleNotes[order.id]"
+                    maxlength="500"
+                    placeholder="填写审核说明"
+                  />
+                  <el-button type="primary" :loading="busy" @click="resolveAfterSale(order, 'approve')">批准并 Mock 退款</el-button>
+                  <el-button :loading="busy" @click="resolveAfterSale(order, 'reject')">驳回申请</el-button>
+                </form>
+                <div v-else class="after-sale-result">
+                  <span>处理说明</span>
+                  <strong>{{ order.afterSale.merchantNote }}</strong>
+                  <template v-if="order.afterSale.refund">
+                    <span>退款结果</span>
+                    <strong>{{ formatPrice(order.afterSale.refund.amount, order.afterSale.refund.currency) }} · {{ order.afterSale.refund.status }}</strong>
+                  </template>
+                </div>
+              </div>
+
+              <form
+                v-if="order.status === 'PAID' && order.afterSale?.status !== 'REQUESTED'"
+                class="shipment-form"
+                @submit.prevent="shipOrder(order)"
+              >
                 <label>
                   <span>承运商</span>
                   <el-input v-model="shipmentDraft(order.id).carrierName" maxlength="80" />
