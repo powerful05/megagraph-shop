@@ -158,6 +158,17 @@ Mock 异步任务必须是可恢复的耐久化命令，不能只用请求线程
 - `packages/domain-types/` 中的 `PaymentStatus`、`RefundSummary`、`AfterSaleStatus` 与后端枚举必须同步更新，不在两个前端分别复制状态字面量。
 - 页面不做支付或退款终态的乐观更新。只可以乐观显示“请求已提交”，终态必须来自后续查询响应。
 
+### Lead 冻结的集成细则
+
+以下细则用于防止前后端和 QA 在实现时分别猜测契约：
+
+- Mock 回调签名头为 `X-Mock-Signature`，值为使用 `HmacSHA256` 对原始 body 计算的小写十六进制结果。测试密钥只由 `local` / `test` 配置提供；本阶段不把该签名格式宣称为生产协议。
+- 首次或同摘要重放且已持久化的回调返回 `200`；已验签但需人工核查的事件仍返回 `200`，响应体为 `{ provider, eventId, processingStatus, duplicate }`。未知 provider 返回 `404`，签名缺失或无效返回 `401`，报文无法解析返回 `400`，报文超限返回 `413`，同事件 ID 不同摘要返回 `409`。
+- 稳定错误码为 `CALLBACK_PROVIDER_UNKNOWN`、`CALLBACK_SIGNATURE_MISSING`、`CALLBACK_SIGNATURE_INVALID`、`CALLBACK_PAYLOAD_INVALID`、`CALLBACK_PAYLOAD_TOO_LARGE`、`EVENT_ID_PAYLOAD_MISMATCH`、`EVENT_RESOURCE_NOT_FOUND`、`EVENT_RESOURCE_MISMATCH`、`EVENT_AMOUNT_MISMATCH`、`EVENT_CURRENCY_MISMATCH`、`EVENT_STATE_CONFLICT` 和 `LATE_PAYMENT_SUCCESS`。
+- OWNER 退款重试路径固定为 `POST /api/merchant/v1/orders/{orderId}/after-sales/refund-retry`，必须提供新的 `Idempotency-Key`，请求体沿用处理售后时的备注字段，响应仍为 `OrderResponse`。
+- 业务 Outbox 事件名固定为 `PAYMENT_PROCESSING`、`PAYMENT_SUCCEEDED`、`PAYMENT_FAILED`、`PAYMENT_CANCELLED`、`ORDER_PAID`、`ORDER_PAYMENT_FAILED`、`ORDER_CANCELLED`、`REFUND_REQUESTED`、`REFUND_PROCESSING`、`REFUND_SUCCEEDED`、`REFUND_FAILED`、`AFTER_SALE_REFUNDED`、`ORDER_REFUNDED`、`PAYMENT_RECONCILIATION_REQUIRED` 和 `REFUND_RECONCILIATION_REQUIRED`。耐久化 Mock 命令使用 `MOCK_PAYMENT_CALLBACK_REQUESTED` 与 `MOCK_REFUND_CALLBACK_REQUESTED`，不得与业务事件复用同名语义。
+- Outbox 原子性故障注入只通过测试替身、可控仓库异常或测试 profile 完成，不得为故障注入新增生产 HTTP 端点。
+
 ## 顾客端和商家端的异步刷新
 
 本阶段默认使用有界轮询，不引入 SSE 或 WebSocket：
