@@ -125,6 +125,11 @@ h2 { margin: 0; font-size: clamp(44px, 7vw, 92px); font-weight: 480; letter-spac
 .checkout-note { margin-top: 10px; padding: 18px; border: 1px solid #cfcac0; background: rgba(255,255,255,.32); }
 .checkout-note span { color: #6754ed; font-size: 9px; font-weight: 800; letter-spacing: .14em; }
 .checkout-note p { margin: 8px 0 0; color: #77746c; font-size: 12px; line-height: 1.6; }
+.orders-refresh-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; padding: 12px 14px; border: 1px solid #d0ccc2; background: rgba(255,255,255,.25); }
+.orders-refresh-bar > div { display: grid; gap: 4px; }
+.orders-refresh-bar span { color: #5f5c55; font-size: 10px; font-weight: 800; letter-spacing: .08em; }
+.orders-refresh-bar small { color: #8a4b43; font-size: 10px; }
+.orders-refresh-bar button { padding: 7px 10px; border: 1px solid #aaa69c; background: transparent; cursor: pointer; }
 .order-card { margin-bottom: 18px; padding: 22px; border: 1px solid #d0ccc2; background: rgba(255,255,255,.24); }
 .order-card header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
 .order-card header div { display: grid; gap: 5px; }
@@ -140,6 +145,9 @@ h2 { margin: 0; font-size: clamp(44px, 7vw, 92px); font-weight: 480; letter-spac
 .order-items p { display: flex; justify-content: space-between; gap: 16px; margin: 7px 0; color: #625f58; font-size: 12px; }
 .order-facts { display: flex; flex-wrap: wrap; gap: 8px; }
 .order-facts span { padding: 6px 8px; border: 1px solid #d4d0c6; color: #77746c; font-size: 9px; letter-spacing: .08em; }
+.reconciliation-card { margin-top: 14px; padding: 14px; border: 1px solid #d79a8d; color: #66352f; background: rgba(239,215,212,.5); }
+.reconciliation-card strong { font-size: 12px; }
+.reconciliation-card p { margin: 6px 0 0; font-size: 11px; line-height: 1.55; }
 .tracking-card { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; padding: 14px; border: 1px solid #bdced8; background: rgba(220,239,250,.42); }
 .tracking-card > div { display: grid; gap: 5px; }
 .tracking-card span { color: #6d8491; font-size: 9px; letter-spacing: .09em; }
@@ -148,6 +156,8 @@ h2 { margin: 0; font-size: clamp(44px, 7vw, 92px); font-weight: 480; letter-spac
 .customer-after-sale { margin-top: 14px; padding: 14px; border: 1px solid #dac796; background: rgba(244,231,184,.35); }
 .customer-after-sale.refunded { border-color: #aad7c6; background: rgba(200,244,226,.35); }
 .customer-after-sale.rejected { border-color: #dfbbb6; background: rgba(239,215,212,.38); }
+.customer-after-sale.refund_processing { border-color: #b9aedf; background: rgba(227,220,246,.38); }
+.customer-after-sale.refund_failed { border-color: #dfbbb6; background: rgba(239,215,212,.5); }
 .customer-after-sale > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .customer-after-sale header span, .customer-after-sale div span { color: #7a6941; font-size: 9px; font-weight: 800; letter-spacing: .1em; }
 .customer-after-sale header small { color: #817e76; }
@@ -155,6 +165,7 @@ h2 { margin: 0; font-size: clamp(44px, 7vw, 92px); font-weight: 480; letter-spac
 .customer-after-sale > div { display: grid; grid-template-columns: 90px 1fr; gap: 12px; padding-top: 9px; border-top: 1px solid rgba(100,90,70,.16); }
 .customer-after-sale > div + div { margin-top: 9px; }
 .customer-after-sale div strong { color: #3d3a34; font-size: 11px; }
+.customer-after-sale .failure-summary strong { color: #793b34; }
 .order-total { margin-top: 18px; }
 .order-total strong { font-size: 22px; }
 .payment-simulator { margin-top: 20px; padding: 14px; color: #e9e6de; background: #171714; }
@@ -162,6 +173,10 @@ h2 { margin: 0; font-size: clamp(44px, 7vw, 92px); font-weight: 480; letter-spac
 .payment-simulator div { display: flex; flex-wrap: wrap; gap: 7px; }
 .payment-simulator button { padding: 8px 10px; border: 1px solid #474741; color: #e9e6de; background: transparent; cursor: pointer; }
 .payment-simulator button:first-child { border-color: #9dfbd6; color: #9dfbd6; }
+.payment-simulator small { display: block; margin-top: 10px; color: #8f8c85; font-size: 10px; line-height: 1.5; }
+.processing-card { margin-top: 20px; padding: 14px; border: 1px solid #a99de0; color: #31245e; background: rgba(227,220,246,.7); }
+.processing-card strong { font-size: 12px; }
+.processing-card p { margin: 6px 0 0; font-size: 11px; line-height: 1.55; }
 .receipt-action { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 20px; padding: 14px; color: #e9e6de; background: #171714; }
 .receipt-action span { color: #9dfbd6; font-size: 9px; font-weight: 800; letter-spacing: .12em; }
 .receipt-action p { margin: 6px 0 0; color: #aaa79f; font-size: 11px; line-height: 1.5; }

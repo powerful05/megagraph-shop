@@ -98,6 +98,9 @@ h2 { margin: 0; font-size: 24px; letter-spacing: -.03em; }
 .ledger-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
 .ledger-header h2 { font-size: 34px; }
 .ledger-header p:last-child { margin: 10px 0 0; color: #8f8f98; }
+.merchant-polling-bar { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: -6px 0 20px; padding: 11px 14px; border: 1px solid #34343b; border-radius: 12px; background: rgba(255,255,255,.025); }
+.merchant-polling-bar span { color: #aaaab3; font-size: 11px; }
+.merchant-polling-bar small { color: #ffadad; font-size: 10px; }
 .orders-empty { display: grid; min-height: 430px; place-items: center; align-content: center; text-align: center; }
 .orders-empty > span { color: #33333a; font: 110px/.8 Georgia, serif; }
 .orders-empty h3 { margin: 24px 0 6px; font-size: 22px; }
@@ -105,6 +108,9 @@ h2 { margin: 0; font-size: 24px; letter-spacing: -.03em; }
 .order-list { display: grid; gap: 14px; }
 .merchant-order-card { border: 1px solid #34343b; border-radius: 18px; background: rgba(8,8,11,.46); }
 .merchant-order-card > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding: 20px 22px; border-bottom: 1px solid #2e2e34; }
+.merchant-reconciliation { display: grid; gap: 5px; margin: 18px 22px 0; padding: 13px 15px; border: 1px solid rgba(255,115,115,.38); border-radius: 12px; color: #ffb8b8; background: rgba(255,115,115,.07); }
+.merchant-reconciliation strong { font-size: 12px; }
+.merchant-reconciliation span { color: #ba9292; font-size: 11px; line-height: 1.5; }
 .order-identity { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; }
 .order-identity > span { grid-row: span 2; align-self: center; color: #585861; font: 27px/1 Georgia, serif; }
 .order-identity > strong { font-size: 13px; letter-spacing: .04em; }
@@ -137,14 +143,21 @@ h2 { margin: 0; font-size: 24px; letter-spacing: -.03em; }
 .after-sale-card { margin: 0 22px 20px; padding: 18px; border: 1px solid rgba(255,184,91,.3); border-radius: 14px; background: rgba(255,184,91,.05); }
 .after-sale-card.refunded { border-color: rgba(113,239,189,.3); background: rgba(113,239,189,.05); }
 .after-sale-card.rejected { border-color: rgba(255,115,115,.28); background: rgba(255,115,115,.04); }
+.after-sale-card.refund_processing { border-color: rgba(194,176,255,.34); background: rgba(111,86,255,.08); }
+.after-sale-card.refund_failed { border-color: rgba(255,115,115,.36); background: rgba(255,115,115,.07); }
 .after-sale-card > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
 .after-sale-card > header > div { display: grid; gap: 5px; }
 .after-sale-card > header span, .after-sale-result span { color: #9d895f; font-size: 9px; letter-spacing: .11em; }
 .after-sale-card > header small { color: #766f64; }
 .after-sale-card > p { margin: 14px 0; color: #d7d2c9; font-size: 13px; line-height: 1.6; }
 .after-sale-card form { display: grid; grid-template-columns: minmax(220px, 1fr) auto auto; gap: 9px; }
+.owner-only-note { color: #a6a0b6 !important; font-size: 11px !important; }
 .after-sale-result { display: grid; grid-template-columns: 90px 1fr; gap: 8px 16px; padding-top: 12px; border-top: 1px solid #34343b; }
 .after-sale-result strong { color: #d7d2c9; font-size: 12px; }
+.after-sale-result .refund-failure-copy { color: #ffadad; }
+.refund-processing-note { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(194,176,255,.2); color: #bfb3e6; font-size: 11px; line-height: 1.55; }
+.refund-retry-row { display: grid; grid-template-columns: minmax(220px, 1fr) auto; gap: 10px; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,115,115,.2); }
+.refund-retry-row > span { color: #c29595; font-size: 11px; }
 .merchant-order-card > footer { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; padding: 16px 22px 20px; border-top: 1px solid #2e2e34; }
 .reservation-facts { display: flex; flex-wrap: wrap; gap: 6px; }
 .reservation-facts span { padding: 6px 8px; border: 1px solid #34343b; color: #85858e; font-size: 9px; }
@@ -163,7 +176,7 @@ h2 { margin: 0; font-size: 24px; letter-spacing: -.03em; }
   .order-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .merchant-order-body { grid-template-columns: 1fr; }
   .delivery-facts { padding: 16px 0 0; border-top: 1px solid #303037; border-left: 0; }
-  .shipment-facts, .shipment-form, .after-sale-card form { grid-template-columns: 1fr; }
+  .shipment-facts, .shipment-form, .after-sale-card form, .refund-retry-row { grid-template-columns: 1fr; }
   .shipment-facts small { text-align: left; }
 }
 

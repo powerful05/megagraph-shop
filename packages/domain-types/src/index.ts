@@ -87,10 +87,22 @@ export type OrderStatus =
   | 'PAYMENT_FAILED'
   | 'CANCELLED'
   | 'EXPIRED'
-export type PaymentStatus = 'PENDING' | 'SUCCEEDED' | 'REFUNDED' | 'FAILED' | 'CANCELLED'
 export type ReservationStatus = 'RESERVED' | 'CONFIRMED' | 'RESTOCKED' | 'RELEASED'
 export type ShipmentStatus = 'SHIPPED' | 'DELIVERED'
-export type AfterSaleStatus = 'REQUESTED' | 'REFUNDED' | 'REJECTED'
+export type PaymentStatus =
+  | 'PENDING'
+  | 'PROCESSING'
+  | 'SUCCEEDED'
+  | 'REFUNDED'
+  | 'FAILED'
+  | 'CANCELLED'
+export type RefundStatus = 'PENDING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED'
+export type AfterSaleStatus =
+  | 'REQUESTED'
+  | 'REFUND_PROCESSING'
+  | 'REFUND_FAILED'
+  | 'REFUNDED'
+  | 'REJECTED'
 export type MockPaymentResult = 'SUCCESS' | 'FAILURE' | 'CANCELLED'
 
 export interface OrderItem {
@@ -109,6 +121,8 @@ export interface PaymentSummary {
   provider: string
   providerPaymentId: string
   status: PaymentStatus
+  reconciliationRequired?: boolean
+  reconciliationReason?: string | null
 }
 
 export interface StockReservation {
@@ -129,11 +143,13 @@ export interface ShipmentSummary {
 export interface RefundSummary {
   id: number
   provider: string
-  providerRefundId: string
+  providerRefundId: string | null
   amount: number
   currency: string
-  status: 'SUCCEEDED'
-  refundedAt: string
+  status: RefundStatus
+  refundedAt: string | null
+  failureCode?: string | null
+  failureMessage?: string | null
 }
 
 export interface AfterSaleSummary {
@@ -174,4 +190,41 @@ export interface IngestionJob {
   createdAt: string
   finishedAt: string | null
   steps: Array<{ type: string; status: string; attempts: number }>
+}
+
+export function isPaymentInProgress(status: PaymentStatus | null | undefined): boolean {
+  return status === 'PENDING' || status === 'PROCESSING'
+}
+
+export function isRefundInProgress(status: RefundStatus | null | undefined): boolean {
+  return status === 'PENDING' || status === 'PROCESSING'
+}
+
+export function isAfterSaleBlockingShipment(status: AfterSaleStatus | null | undefined): boolean {
+  return status != null && status !== 'REJECTED'
+}
+
+export function needsShopperOrderPolling(
+  order: Pick<SalesOrder, 'payment' | 'afterSale'>,
+): boolean {
+  return isPaymentInProgress(order.payment?.status)
+    || order.afterSale?.status === 'REFUND_PROCESSING'
+    || isRefundInProgress(order.afterSale?.refund?.status)
+}
+
+export function needsMerchantOrderPolling(
+  order: Pick<SalesOrder, 'afterSale'>,
+): boolean {
+  return order.afterSale?.status === 'REFUND_PROCESSING'
+    || isRefundInProgress(order.afterSale?.refund?.status)
+}
+
+export const ORDER_POLL_INTERVAL_MS = 2_000
+export const ORDER_POLL_TIMEOUT_MS = 30_000
+
+export function nextOrderPollingDelay(startedAt: number, now: number): number | null {
+  const elapsed = Math.max(0, now - startedAt)
+  const remaining = ORDER_POLL_TIMEOUT_MS - elapsed
+  if (remaining <= 0) return null
+  return Math.min(ORDER_POLL_INTERVAL_MS, remaining)
 }

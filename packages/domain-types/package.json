@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "scripts": {
+    "test": "node --test --experimental-strip-types src/order-state.test.ts"
+  },
   "exports": "./src/index.ts"
 }
-

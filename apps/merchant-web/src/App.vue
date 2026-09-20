@@ -1,7 +1,12 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { Category, MerchantProduct, SalesOrder } from '@megagraph/domain-types'
+import {
+  isAfterSaleBlockingShipment,
+  needsMerchantOrderPolling,
+  nextOrderPollingDelay,
+} from '@megagraph/domain-types'
 import { merchantApi, type Credentials } from './api'
 
 const isDevelopment = import.meta.env.DEV
@@ -12,7 +17,10 @@ const credentials = reactive<Credentials>({
 const connected = ref(false)
 const merchantRole = ref('')
 const busy = ref(false)
+const ordersRefreshBusy = ref(false)
 const error = ref('')
+const pollingMessage = ref('')
+const pollingTimedOut = ref(false)
 const categories = ref<Category[]>([])
 const products = ref<MerchantProduct[]>([])
 const orders = ref<SalesOrder[]>([])
@@ -23,6 +31,11 @@ const activeProduct = ref<MerchantProduct | null>(null)
 const selectedFile = ref<File | null>(null)
 const localPreviewUrl = ref('')
 const storedPreviewUrl = ref('')
+
+let pollTimer: ReturnType<typeof setTimeout> | null = null
+let pollStartedAt: number | null = null
+let ordersRequest: Promise<SalesOrder[]> | null = null
+let orderMutationVersion = 0
 
 const form = reactive({
   title: '',
@@ -39,10 +52,13 @@ const canConfirm = computed(() => activeProduct.value?.draftStatus !== 'CONFIRME
 const canPublish = computed(() => activeProduct.value?.draftStatus === 'CONFIRMED'
   && activeProduct.value.publishStatus !== 'PUBLISHED')
 const canOffShelf = computed(() => activeProduct.value?.publishStatus === 'PUBLISHED')
-const readyToShipOrders = computed(() => orders.value.filter(order => order.status === 'PAID').length)
+const readyToShipOrders = computed(() => orders.value.filter(canShipOrder).length)
 const inTransitOrders = computed(() => orders.value.filter(order => order.status === 'SHIPPED').length)
 const refundReviewOrders = computed(() => orders.value
-  .filter(order => order.afterSale?.status === 'REQUESTED').length)
+  .filter(order => order.afterSale?.status === 'REQUESTED'
+    || order.afterSale?.status === 'REFUND_PROCESSING'
+    || order.afterSale?.status === 'REFUND_FAILED').length)
+const hasPollingOrders = computed(() => orders.value.some(needsMerchantOrderPolling))
 const revenueStatuses: SalesOrder['status'][] = ['PAID', 'SHIPPED', 'COMPLETED']
 const paidOrders = computed(() => orders.value.filter(order => revenueStatuses.includes(order.status)).length)
 const paidRevenue = computed(() => orders.value
@@ -75,6 +91,7 @@ async function login() {
     setOrders(orderList)
     connected.value = true
     ElMessage.success('商家工作台已连接')
+    schedulePolling(true)
   })
 }
 
@@ -126,14 +143,8 @@ async function refreshProducts() {
   products.value = await merchantApi.products(credentials)
 }
 
-async function refreshOrders() {
-  await execute(async () => {
-    setOrders(await merchantApi.orders(credentials))
-    ElMessage.success('订单状态已刷新')
-  })
-}
-
 function setOrders(nextOrders: SalesOrder[]) {
+  orderMutationVersion += 1
   orders.value = nextOrders
   nextOrders.forEach((order) => {
     shipmentDrafts[order.id] ??= { carrierName: '顺丰速运', trackingNo: '' }
@@ -146,10 +157,23 @@ function shipmentDraft(orderId: number) {
 }
 
 function replaceOrder(updated: SalesOrder) {
+  orderMutationVersion += 1
   orders.value = orders.value.map(order => order.id === updated.id ? updated : order)
 }
 
+function canShipOrder(order: SalesOrder): boolean {
+  return order.status === 'PAID' && !isAfterSaleBlockingShipment(order.afterSale?.status)
+}
+
+function canRetryRefund(order: SalesOrder): boolean {
+  return merchantRole.value === 'OWNER' && order.afterSale?.status === 'REFUND_FAILED'
+}
+
 async function shipOrder(order: SalesOrder) {
+  if (!canShipOrder(order)) {
+    error.value = '当前订单存在退款流程，不能发货'
+    return
+  }
   const details = shipmentDraft(order.id)
   if (!details.carrierName.trim() || !details.trackingNo.trim()) {
     error.value = '请填写承运商和物流单号'
@@ -182,7 +206,35 @@ async function resolveAfterSale(order: SalesOrder, action: 'approve' | 'reject')
       note,
     )
     replaceOrder(updated)
-    ElMessage.success(action === 'approve' ? '退款已完成，库存已回补' : '退款申请已驳回')
+    ElMessage.success(action === 'approve'
+      ? (needsMerchantOrderPolling(updated)
+          ? '退款请求已提交，正在等待渠道结果'
+          : `后端退款状态：${refundStatusLabel(updated)}`)
+      : '退款申请已驳回')
+    schedulePolling(true)
+  })
+}
+
+async function retryRefund(order: SalesOrder) {
+  if (!canRetryRefund(order)) {
+    error.value = '只有 OWNER 可以重试失败退款'
+    return
+  }
+  const note = afterSaleNotes[order.id]?.trim()
+    || order.afterSale?.merchantNote?.trim()
+    || 'OWNER 显式重试失败退款'
+  await execute(async () => {
+    const updated = await merchantApi.retryRefund(
+      credentials,
+      order.id,
+      crypto.randomUUID(),
+      note,
+    )
+    replaceOrder(updated)
+    ElMessage.success(needsMerchantOrderPolling(updated)
+      ? '退款重试已提交，正在等待渠道结果'
+      : `后端退款状态：${refundStatusLabel(updated)}`)
+    schedulePolling(true)
   })
 }
 
@@ -215,6 +267,41 @@ function orderStatusLabel(status: SalesOrder['status']) {
     PAYMENT_FAILED: '支付失败',
     CANCELLED: '已取消',
     EXPIRED: '已超时',
+  }[status]
+}
+
+function paymentStatusLabel(order: SalesOrder): string {
+  if (order.payment?.reconciliationRequired) return '需人工核查'
+  return {
+    PENDING: '等待支付',
+    PROCESSING: '支付处理中',
+    SUCCEEDED: '支付成功',
+    REFUNDED: '已退款',
+    FAILED: '支付失败',
+    CANCELLED: '支付已取消',
+  }[order.payment?.status ?? 'PENDING']
+}
+
+function afterSaleStatusLabel(order: SalesOrder): string {
+  const status = order.afterSale?.status
+  if (!status) return '—'
+  return {
+    REQUESTED: '等待审核',
+    REFUND_PROCESSING: '退款处理中',
+    REFUND_FAILED: '退款失败',
+    REFUNDED: '退款成功',
+    REJECTED: '已驳回',
+  }[status]
+}
+
+function refundStatusLabel(order: SalesOrder): string {
+  const status = order.afterSale?.refund?.status
+  if (!status) return '—'
+  return {
+    PENDING: '等待渠道受理',
+    PROCESSING: '渠道处理中',
+    SUCCEEDED: '退款成功',
+    FAILED: '退款失败',
   }[status]
 }
 
@@ -258,7 +345,100 @@ async function offShelfProduct() {
   })
 }
 
+async function refreshOrders(options: { background?: boolean; resetPolling?: boolean } = {}) {
+  if (!connected.value) return
+  if (ordersRequest) {
+    try {
+      await ordersRequest
+    } catch (reason) {
+      if (!options.background) throw reason
+    }
+    if (options.resetPolling) schedulePolling(true)
+    return
+  }
+
+  const versionAtStart = orderMutationVersion
+  if (!options.background) ordersRefreshBusy.value = true
+  ordersRequest = merchantApi.orders(credentials)
+  try {
+    const nextOrders = await ordersRequest
+    if (versionAtStart === orderMutationVersion) setOrders(nextOrders)
+    pollingMessage.value = ''
+  } catch (reason) {
+    const message = reason instanceof Error ? reason.message : '订单状态刷新失败'
+    if (options.background) pollingMessage.value = `自动刷新失败：${message}`
+    else throw reason
+  } finally {
+    ordersRequest = null
+    if (!options.background) ordersRefreshBusy.value = false
+  }
+
+  if (options.resetPolling) schedulePolling(true)
+}
+
+async function manualRefreshOrders() {
+  await execute(async () => {
+    await refreshOrders({ resetPolling: true })
+    ElMessage.success('订单状态已刷新')
+  })
+}
+
+function clearPollTimer() {
+  if (pollTimer) clearTimeout(pollTimer)
+  pollTimer = null
+}
+
+function schedulePolling(resetWindow = false) {
+  clearPollTimer()
+  if (!connected.value || !hasPollingOrders.value) {
+    pollStartedAt = null
+    pollingTimedOut.value = false
+    return
+  }
+  if (document.visibilityState !== 'visible') return
+
+  if (resetWindow || pollStartedAt == null) {
+    pollStartedAt = Date.now()
+    pollingTimedOut.value = false
+  }
+  const delay = nextOrderPollingDelay(pollStartedAt, Date.now())
+  if (delay == null) {
+    pollingTimedOut.value = true
+    return
+  }
+  pollTimer = setTimeout(runPollingCycle, delay)
+}
+
+async function runPollingCycle() {
+  pollTimer = null
+  await refreshOrders({ background: true })
+  schedulePolling(false)
+}
+
+async function recoverOrderState() {
+  if (!connected.value) return
+  await refreshOrders({ background: true })
+  schedulePolling(true)
+}
+
+function handleVisibilityChange() {
+  if (document.visibilityState === 'visible') void recoverOrderState()
+  else clearPollTimer()
+}
+
+function handleOnline() {
+  void recoverOrderState()
+}
+
+onMounted(() => {
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+  window.addEventListener('online', handleOnline)
+})
+
 onBeforeUnmount(() => {
+  clearPollTimer()
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+  window.removeEventListener('online', handleOnline)
   if (localPreviewUrl.value) URL.revokeObjectURL(localPreviewUrl.value)
   if (storedPreviewUrl.value) URL.revokeObjectURL(storedPreviewUrl.value)
 })
@@ -298,7 +478,11 @@ onBeforeUnmount(() => {
         <button type="button" :class="{ active: activeArea === 'products' }" @click="activeArea = 'products'">
           商品入库 <span>{{ products.length }}</span>
         </button>
-        <button type="button" :class="{ active: activeArea === 'orders' }" @click="activeArea = 'orders'">
+        <button
+          type="button"
+          :class="{ active: activeArea === 'orders' }"
+          @click="activeArea = 'orders'; recoverOrderState()"
+        >
           交易订单 <span>{{ orders.length }}</span>
         </button>
       </nav>
@@ -443,8 +627,15 @@ onBeforeUnmount(() => {
               <h2>订单事实台账</h2>
               <p>订单金额、支付状态与库存预占均来自后端事实库。</p>
             </div>
-            <el-button :loading="busy" @click="refreshOrders">刷新订单</el-button>
+            <el-button :loading="ordersRefreshBusy || busy" @click="manualRefreshOrders">刷新订单</el-button>
           </header>
+
+          <div class="merchant-polling-bar">
+            <span v-if="hasPollingOrders && !pollingTimedOut">正在每 2 秒同步退款状态</span>
+            <span v-else-if="pollingTimedOut">退款仍在处理，自动刷新已暂停，请手动刷新</span>
+            <span v-else>订单状态来自后端事实库</span>
+            <small v-if="pollingMessage">{{ pollingMessage }}</small>
+          </div>
 
           <div v-if="orders.length === 0" class="orders-empty">
             <span>00</span>
@@ -462,9 +653,14 @@ onBeforeUnmount(() => {
                 </div>
                 <div class="order-statuses">
                   <span :class="`order-status ${order.status.toLowerCase()}`">{{ orderStatusLabel(order.status) }}</span>
-                  <span class="payment-status">PAYMENT / {{ order.payment?.status ?? '—' }}</span>
+                  <span class="payment-status">PAYMENT / {{ paymentStatusLabel(order) }}</span>
                 </div>
               </header>
+
+              <div v-if="order.payment?.reconciliationRequired" class="merchant-reconciliation">
+                <strong>支付状态需要人工核查</strong>
+                <span>{{ order.payment.reconciliationReason || '渠道事件与订单当前终态冲突，系统未自动覆盖业务事实。' }}</span>
+              </div>
 
               <div class="merchant-order-body">
                 <div class="ordered-products">
@@ -500,13 +696,13 @@ onBeforeUnmount(() => {
               <div v-if="order.afterSale" :class="`after-sale-card ${order.afterSale.status.toLowerCase()}`">
                 <header>
                   <div>
-                    <span>AFTER SALE / {{ order.afterSale.status }}</span>
+                    <span>AFTER SALE / {{ afterSaleStatusLabel(order) }}</span>
                     <strong>顾客退款申请</strong>
                   </div>
                   <small>{{ formatDate(order.afterSale.requestedAt) }}</small>
                 </header>
                 <p>{{ order.afterSale.reason }}</p>
-                <form v-if="order.afterSale.status === 'REQUESTED'" @submit.prevent>
+                <form v-if="order.afterSale.status === 'REQUESTED' && merchantRole === 'OWNER'" @submit.prevent>
                   <el-input
                     v-model="afterSaleNotes[order.id]"
                     maxlength="500"
@@ -515,18 +711,45 @@ onBeforeUnmount(() => {
                   <el-button type="primary" :loading="busy" @click="resolveAfterSale(order, 'approve')">批准并 Mock 退款</el-button>
                   <el-button :loading="busy" @click="resolveAfterSale(order, 'reject')">驳回申请</el-button>
                 </form>
+                <p v-else-if="order.afterSale.status === 'REQUESTED'" class="owner-only-note">
+                  只有 OWNER 可以批准或驳回退款申请。
+                </p>
                 <div v-else class="after-sale-result">
                   <span>处理说明</span>
                   <strong>{{ order.afterSale.merchantNote }}</strong>
                   <template v-if="order.afterSale.refund">
-                    <span>退款结果</span>
-                    <strong>{{ formatPrice(order.afterSale.refund.amount, order.afterSale.refund.currency) }} · {{ order.afterSale.refund.status }}</strong>
+                    <span>退款状态</span>
+                    <strong>{{ formatPrice(order.afterSale.refund.amount, order.afterSale.refund.currency) }} · {{ refundStatusLabel(order) }}</strong>
                   </template>
+                  <template v-if="order.afterSale.status === 'REFUND_FAILED'">
+                    <span>失败摘要</span>
+                    <strong class="refund-failure-copy">{{ order.afterSale.refund?.failureMessage || order.afterSale.refund?.failureCode || '退款未完成，需要 OWNER 重试或人工处理。' }}</strong>
+                  </template>
+                </div>
+                <div v-if="order.afterSale.status === 'REFUND_PROCESSING'" class="refund-processing-note">
+                  渠道正在处理退款。订单仍保持已支付，库存不会提前回补，发货已锁定。
+                </div>
+                <div v-else-if="order.afterSale.status === 'REFUND_FAILED'" class="refund-retry-row">
+                  <el-input
+                    v-if="merchantRole === 'OWNER'"
+                    v-model="afterSaleNotes[order.id]"
+                    maxlength="500"
+                    placeholder="可补充本次重试说明"
+                  />
+                  <el-button
+                    v-if="canRetryRefund(order)"
+                    type="primary"
+                    :loading="busy"
+                    @click="retryRefund(order)"
+                  >
+                    显式重试退款
+                  </el-button>
+                  <span v-else>只有 OWNER 可以重试失败退款。</span>
                 </div>
               </div>
 
               <form
-                v-if="order.status === 'PAID' && order.afterSale?.status !== 'REQUESTED'"
+                v-if="canShipOrder(order)"
                 class="shipment-form"
                 @submit.prevent="shipOrder(order)"
               >
