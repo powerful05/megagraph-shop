@@ -16,6 +16,30 @@
 - `packages/domain-types/`：前端共享契约；不得复制同名但语义不同的类型。
 - `docs/`：阶段范围、默认决策和验收标准。
 
+## 多窗口协作
+
+- 每个 Worker 必须在自己的独立 worktree 和独立分支中工作；不得在共享目录或其他窗口的 worktree 中直接修改。
+- Backend Worker 只能修改 `apps/backend/`。
+- Frontend Worker 只能修改 `apps/shopper-web/`、`apps/merchant-web/` 和 `packages/domain-types/`。
+- Lead 负责 `docs/`、前后端契约审批、cherry-pick 和集成；未经 Lead 确认，Worker 不得自行改变跨端 API 或数据库契约。
+- QA 默认只做检查、验收和报告，不修改受 Git 跟踪的业务代码；如需修改，必须由 Lead 明确重新分配目录所有权。
+- Worker 不得自行 merge、rebase、cherry-pick、切换分支或清理 worktree；这些集成操作由 Lead 执行。
+- 一个窗口已获得的目录所有权，其他窗口不得同时占用或绕过边界修改；需要跨目录时先交给 Lead 重新分工。
+- 除非用户或 Lead 明确要求，任何窗口都不得启动子 Agent。
+- 只有集成窗口可以启动占用 `8080`、`3000` 或 `5173` 端口的完整服务；Worker 可运行不占用这些端口的构建、类型检查和测试。
+- Worker 交接时必须按以下字段完整报告；无变化或无风险时填写 `None`，不得省略字段：
+
+```text
+STATUS:
+BRANCH:
+COMMIT:
+CHANGED_FILES:
+API_OR_SCHEMA_CHANGES:
+TESTS:
+KNOWN_RISKS:
+INTEGRATION_NOTES:
+```
+
 ## 改动规则
 
 - 修改数据库结构时只能新增 Flyway 迁移，不能重写已经提交的迁移。
