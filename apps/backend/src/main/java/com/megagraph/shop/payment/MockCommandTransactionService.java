@@ -29,13 +29,17 @@ public class MockCommandTransactionService {
     @Transactional
     public MockCommandSnapshot claimNext() {
         Instant now = Instant.now();
-        commands.findFirstByStatusAndClaimedAtBeforeOrderByClaimedAtAscIdAsc(
+        PaymentChannelCommand command = commands.findFirstByStatusAndClaimedAtBeforeOrderByClaimedAtAscIdAsc(
                         ChannelCommandStatus.PROCESSING,
                         now.minus(Duration.ofSeconds(30))
                 )
-                .ifPresent(value -> value.recover(now));
-        PaymentChannelCommand command = commands
-                .findFirstByStatusAndNextAttemptAtLessThanEqualOrderByCreatedAtAscIdAsc(
+                .orElse(null);
+        if (command != null) {
+            command.reclaim(now);
+            commands.flush();
+            return snapshot(command);
+        }
+        command = commands.findFirstByStatusAndNextAttemptAtLessThanEqualOrderByCreatedAtAscIdAsc(
                         ChannelCommandStatus.PENDING,
                         now
                 )
@@ -43,7 +47,7 @@ public class MockCommandTransactionService {
         if (command == null) {
             return null;
         }
-        command.claim();
+        command.claim(now);
         commands.flush();
         return snapshot(command);
     }

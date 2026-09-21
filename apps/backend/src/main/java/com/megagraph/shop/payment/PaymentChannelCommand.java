@@ -80,10 +80,10 @@ public class PaymentChannelCommand {
         this.updatedAt = this.nextAttemptAt;
     }
 
-    public void claim() {
+    public void claim(Instant now) {
         this.status = ChannelCommandStatus.PROCESSING;
         this.attemptCount += 1;
-        this.claimedAt = Instant.now();
+        this.claimedAt = now;
     }
 
     public void complete() {
@@ -100,13 +100,12 @@ public class PaymentChannelCommand {
         this.claimedAt = null;
     }
 
-    public void recover(Instant now) {
+    public void reclaim(Instant now) {
         if (status != ChannelCommandStatus.PROCESSING) {
-            return;
+            throw new IllegalStateException("Only processing commands can be reclaimed");
         }
-        status = ChannelCommandStatus.PENDING;
-        nextAttemptAt = now;
-        claimedAt = null;
+        attemptCount += 1;
+        claimedAt = now;
     }
 
     public void bindProviderResourceId(String value) {

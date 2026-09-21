@@ -134,16 +134,26 @@ class CommerceFlowIntegrationTest {
 
         jdbcTemplate.update("""
                 UPDATE payment_channel_command
-                SET status = 'PROCESSING', claimed_at = DATEADD('MINUTE', -1, CURRENT_TIMESTAMP)
+                SET status = 'PROCESSING', attempt_count = 1,
+                    claimed_at = DATEADD('MINUTE', -1, CURRENT_TIMESTAMP)
                 WHERE payment_order_id = (SELECT id FROM payment_order WHERE order_id = ?)
                 """, orderId);
 
-        mockCommands.processAvailable(10);
+        assertThat(mockCommands.processAvailable(10)).isEqualTo(1);
         mvc.perform(get("/api/shop/v1/orders/{orderId}", orderId).with(shopper()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("PAID"))
                 .andExpect(jsonPath("$.payment.status").value("SUCCEEDED"))
                 .andExpect(jsonPath("$.reservations[0].status").value("CONFIRMED"));
+        assertThat(jdbcTemplate.queryForObject(
+                """
+                SELECT CONCAT(status, ':', attempt_count)
+                FROM payment_channel_command
+                WHERE payment_order_id = (SELECT id FROM payment_order WHERE order_id = ?)
+                """,
+                String.class,
+                orderId
+        )).isEqualTo("COMPLETED:2");
     }
 
     @Test
