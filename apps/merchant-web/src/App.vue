@@ -1,19 +1,22 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import type { Category, MerchantProduct, SalesOrder } from '@megagraph/domain-types'
+import type { AuthMe, Category, MerchantProduct, SalesOrder } from '@megagraph/domain-types'
 import {
   isAfterSaleBlockingShipment,
   needsMerchantOrderPolling,
   nextOrderPollingDelay,
 } from '@megagraph/domain-types'
-import { merchantApi, type Credentials } from './api'
+import { cancelMerchantRequests, merchantApi, type Credentials } from './api'
 
 const isDevelopment = import.meta.env.DEV
 const credentials = reactive<Credentials>({
   username: isDevelopment ? 'merchant@megagraph.local' : '',
   password: isDevelopment ? 'merchant123' : '',
+  merchantId: 0,
 })
+const identity = ref<AuthMe | null>(null)
+let merchantGeneration = 0
 const connected = ref(false)
 const merchantRole = ref('')
 const busy = ref(false)
@@ -48,10 +51,14 @@ const form = reactive({
 })
 
 const leafCategories = computed(() => categories.value.filter((category) => category.level > 1))
-const canConfirm = computed(() => activeProduct.value?.draftStatus !== 'CONFIRMED')
-const canPublish = computed(() => activeProduct.value?.draftStatus === 'CONFIRMED'
+const canEdit = computed(() => merchantRole.value === 'OWNER' || merchantRole.value === 'EDITOR')
+const canConfirm = computed(() => ['OWNER', 'EDITOR', 'PUBLISHER'].includes(merchantRole.value)
+  && activeProduct.value?.draftStatus !== 'CONFIRMED')
+const canPublish = computed(() => ['OWNER', 'PUBLISHER'].includes(merchantRole.value)
+  && activeProduct.value?.draftStatus === 'CONFIRMED'
   && activeProduct.value.publishStatus !== 'PUBLISHED')
-const canOffShelf = computed(() => activeProduct.value?.publishStatus === 'PUBLISHED')
+const canOffShelf = computed(() => ['OWNER', 'PUBLISHER'].includes(merchantRole.value)
+  && activeProduct.value?.publishStatus === 'PUBLISHED')
 const readyToShipOrders = computed(() => orders.value.filter(canShipOrder).length)
 const inTransitOrders = computed(() => orders.value.filter(order => order.status === 'SHIPPED').length)
 const refundReviewOrders = computed(() => orders.value
@@ -71,7 +78,9 @@ async function execute(action: () => Promise<void>) {
   try {
     await action()
   } catch (reason) {
-    error.value = reason instanceof Error ? reason.message : '操作失败'
+    if (!(reason instanceof DOMException && reason.name === 'AbortError')) {
+      error.value = reason instanceof Error ? reason.message : '操作失败'
+    }
   } finally {
     busy.value = false
   }
@@ -79,19 +88,71 @@ async function execute(action: () => Promise<void>) {
 
 async function login() {
   await execute(async () => {
+    const me = await merchantApi.login(credentials)
+    credentials.password = ''
+    identity.value = me
+    const first = me.memberships[0]
+    if (!first) throw new Error('当前账号未加入活跃商家')
+    if (me.memberships.length === 1) {
+      credentials.merchantId = first.merchantId
+      await loadMerchant()
+      ElMessage.success('商家工作台已连接')
+    }
+  })
+}
+
+async function loadMerchant() {
+    const generation = ++merchantGeneration
     const me = await merchantApi.me(credentials)
-    merchantRole.value = me.role
     const [categoryList, productList, orderList] = await Promise.all([
       merchantApi.categories(credentials),
       merchantApi.products(credentials),
       merchantApi.orders(credentials),
     ])
+    if (generation !== merchantGeneration) return
+    merchantRole.value = me.role
     categories.value = categoryList
     products.value = productList
     setOrders(orderList)
     connected.value = true
-    ElMessage.success('商家工作台已连接')
     schedulePolling(true)
+}
+
+async function switchMerchant(event: Event) {
+  const target = event.target as HTMLSelectElement
+  const selected = Number(target.value)
+  if (!identity.value?.memberships.some(item => item.merchantId === selected)) return
+  merchantGeneration += 1
+  cancelMerchantRequests()
+  clearPollTimer()
+  orderMutationVersion += 1
+  ordersRequest = null
+  credentials.merchantId = selected
+  categories.value = []
+  products.value = []
+  orders.value = []
+  activeProduct.value = null
+  if (storedPreviewUrl.value) URL.revokeObjectURL(storedPreviewUrl.value)
+  storedPreviewUrl.value = ''
+  await execute(loadMerchant)
+}
+
+async function logout() {
+  await execute(async () => {
+    await merchantApi.logout(credentials)
+    merchantGeneration += 1
+    cancelMerchantRequests()
+    clearPollTimer()
+    orderMutationVersion += 1
+    ordersRequest = null
+    connected.value = false
+    identity.value = null
+    credentials.merchantId = 0
+    credentials.password = ''
+    categories.value = []
+    products.value = []
+    orders.value = []
+    activeProduct.value = null
   })
 }
 
@@ -117,6 +178,7 @@ async function upload() {
 }
 
 async function setActiveProduct(product: MerchantProduct) {
+  const generation = merchantGeneration
   activeProduct.value = product
   const sku = product.skus[0]
   form.title = product.title ?? ''
@@ -132,7 +194,9 @@ async function setActiveProduct(product: MerchantProduct) {
   const image = product.images[0]
   if (image) {
     try {
-      storedPreviewUrl.value = await merchantApi.imageUrl(credentials, image.url)
+      const previewUrl = await merchantApi.imageUrl(credentials, image.url)
+      if (generation === merchantGeneration) storedPreviewUrl.value = previewUrl
+      else URL.revokeObjectURL(previewUrl)
     } catch {
       // 编辑能力不依赖预览成功。
     }
@@ -140,7 +204,9 @@ async function setActiveProduct(product: MerchantProduct) {
 }
 
 async function refreshProducts() {
-  products.value = await merchantApi.products(credentials)
+  const generation = merchantGeneration
+  const nextProducts = await merchantApi.products(credentials)
+  if (generation === merchantGeneration) products.value = nextProducts
 }
 
 function setOrders(nextOrders: SalesOrder[]) {
@@ -162,7 +228,7 @@ function replaceOrder(updated: SalesOrder) {
 }
 
 function canShipOrder(order: SalesOrder): boolean {
-  return order.status === 'PAID' && !isAfterSaleBlockingShipment(order.afterSale?.status)
+  return canEdit.value && order.status === 'PAID' && !isAfterSaleBlockingShipment(order.afterSale?.status)
 }
 
 function canRetryRefund(order: SalesOrder): boolean {
@@ -358,11 +424,12 @@ async function refreshOrders(options: { background?: boolean; resetPolling?: boo
   }
 
   const versionAtStart = orderMutationVersion
+  const generation = merchantGeneration
   if (!options.background) ordersRefreshBusy.value = true
   ordersRequest = merchantApi.orders(credentials)
   try {
     const nextOrders = await ordersRequest
-    if (versionAtStart === orderMutationVersion) setOrders(nextOrders)
+    if (generation === merchantGeneration && versionAtStart === orderMutationVersion) setOrders(nextOrders)
     pollingMessage.value = ''
   } catch (reason) {
     const message = reason instanceof Error ? reason.message : '订单状态刷新失败'
@@ -431,11 +498,32 @@ function handleOnline() {
 }
 
 onMounted(() => {
+  merchantApi.onSessionExpired(() => {
+    if (!connected.value && !identity.value) return
+    merchantGeneration += 1
+    cancelMerchantRequests()
+    clearPollTimer()
+    connected.value = false
+    identity.value = null
+    products.value = []
+    orders.value = []
+    activeProduct.value = null
+    error.value = '会话已过期，请重新登录'
+  })
   document.addEventListener('visibilitychange', handleVisibilityChange)
   window.addEventListener('online', handleOnline)
+  void merchantApi.authMe().then(async me => {
+    identity.value = me
+    const first = me.memberships[0]
+    if (first && me.memberships.length === 1) {
+      credentials.merchantId = first.merchantId
+      await loadMerchant()
+    }
+  }).catch(() => {})
 })
 
 onBeforeUnmount(() => {
+  merchantApi.onSessionExpired(null)
   clearPollTimer()
   document.removeEventListener('visibilitychange', handleVisibilityChange)
   window.removeEventListener('online', handleOnline)
@@ -453,16 +541,34 @@ onBeforeUnmount(() => {
       </div>
       <div v-if="connected" class="session-pill">
         <span class="signal" /> 已连接 · {{ merchantRole }}
+        <label v-if="identity && identity.memberships.length > 1">
+          商家
+          <select :value="credentials.merchantId" @change="switchMerchant">
+            <option v-for="membership in identity.memberships" :key="membership.merchantId" :value="membership.merchantId">
+              {{ membership.merchantName }}
+            </option>
+          </select>
+        </label>
+        <button type="button" @click="logout">退出</button>
       </div>
     </header>
 
     <section v-if="!connected" class="login-panel glass-panel">
       <div>
         <p class="step">阶段 1 / 商家身份</p>
-        <h2>进入商品入库工作台</h2>
-        <p class="muted">{{ isDevelopment ? '本地开发账号已填入。' : '请输入你的商家账号。' }}</p>
+        <h2>{{ identity && identity.memberships.length > 1 ? '选择当前商家' : '进入商品入库工作台' }}</h2>
+        <p class="muted">{{ identity && identity.memberships.length > 1 ? '这个账号属于多个商家，请先明确选择要操作的商家。' : isDevelopment ? '本地开发账号已填入，请使用正式会话登录。' : '请输入由平台受控开通的商家账号。' }}</p>
       </div>
-      <el-form label-position="top" @submit.prevent="login">
+      <label v-if="identity && identity.memberships.length > 1">
+        当前商家
+        <select :value="credentials.merchantId" @change="switchMerchant">
+          <option :value="0" disabled>请选择</option>
+          <option v-for="membership in identity.memberships" :key="membership.merchantId" :value="membership.merchantId">
+            {{ membership.merchantName }} · {{ membership.role }}
+          </option>
+        </select>
+      </label>
+      <el-form v-else label-position="top" @submit.prevent="login">
         <el-form-item label="账号">
           <el-input v-model="credentials.username" autocomplete="username" />
         </el-form-item>
@@ -498,14 +604,14 @@ onBeforeUnmount(() => {
           </div>
 
           <label class="dropzone">
-            <input type="file" accept="image/jpeg,image/png,image/webp" @change="selectFile" />
+            <input type="file" :disabled="!canEdit" accept="image/jpeg,image/png,image/webp" @change="selectFile" />
             <img v-if="localPreviewUrl" :src="localPreviewUrl" alt="待上传商品预览" />
             <div v-else>
               <strong>选择一张商品图</strong>
               <span>JPEG / PNG / WebP · 最大 10MB</span>
             </div>
           </label>
-          <el-button type="primary" class="full-button" :loading="busy" @click="upload">生成 AI 草稿</el-button>
+          <el-button type="primary" class="full-button" :disabled="!canEdit" :loading="busy" @click="upload">生成 AI 草稿</el-button>
 
           <div class="product-list">
             <button
@@ -580,7 +686,7 @@ onBeforeUnmount(() => {
                 </div>
 
                 <div class="action-row">
-                  <el-button :loading="busy" @click="saveDraft">保存草稿</el-button>
+                  <el-button :disabled="!canEdit" :loading="busy" @click="saveDraft">保存草稿</el-button>
                   <el-button :disabled="!canConfirm" :loading="busy" @click="confirmDraft">确认当前版本</el-button>
                   <el-button type="primary" :disabled="!canPublish" :loading="busy" @click="publishProduct">发布商品</el-button>
                   <el-button type="danger" plain :disabled="!canOffShelf" :loading="busy" @click="offShelfProduct">下架</el-button>

@@ -1,17 +1,18 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import type {
   MockPaymentResult,
   PublicProduct,
   PublicSku,
   SalesOrder,
+  ShopCapabilities,
   ShoppingCart,
 } from '@megagraph/domain-types'
 import {
   needsShopperOrderPolling,
   nextOrderPollingDelay,
 } from '@megagraph/domain-types'
-import { shopperApi, type ShopperCredentials } from './api'
+import { cancelShopperRequests, shopperApi, type ShopperCredentials } from './api'
 
 type CommercePanel = 'cart' | 'checkout' | 'orders'
 
@@ -22,11 +23,20 @@ const { data: products, pending, error: catalogError, refresh } = await useFetch
   `${apiBase}/api/shop/v1/products`,
   { default: () => [] },
 )
+const { data: capabilities } = await useFetch<ShopCapabilities>(`${apiBase}/api/shop/v1/capabilities`, {
+  default: () => ({ mockPaymentAvailable: false }),
+})
+const mockPaymentAvailable = computed(() => capabilities.value?.mockPaymentAvailable === true)
 
 const credentials = reactive<ShopperCredentials>({
   username: isDevelopment ? 'shopper@megagraph.local' : '',
   password: isDevelopment ? 'shopper123' : '',
 })
+const inviteCode = ref('')
+const displayName = ref('')
+const registering = ref(false)
+const chatDraft = ref('')
+const chatNotice = ref('')
 const checkout = reactive({
   recipientName: isDevelopment ? '示例顾客' : '',
   recipientPhone: isDevelopment ? '13800138000' : '',
@@ -34,6 +44,10 @@ const checkout = reactive({
 })
 const connected = ref(false)
 const loginOpen = ref(false)
+const reduceMotion = ref(false)
+const loginDialog = ref<HTMLElement | null>(null)
+const commerceDialog = ref<HTMLElement | null>(null)
+let dialogTrigger: HTMLElement | null = null
 const activePanel = ref<CommercePanel | null>(null)
 const busyAction = ref('')
 const ordersRefreshBusy = ref(false)
@@ -152,7 +166,9 @@ async function execute(action: string, task: () => Promise<void>) {
   try {
     await task()
   } catch (reason) {
-    errorMessage.value = reason instanceof Error ? reason.message : '操作失败，请稍后重试'
+    if (!(reason instanceof DOMException && reason.name === 'AbortError')) {
+      errorMessage.value = reason instanceof Error ? reason.message : '操作失败，请稍后重试'
+    }
   } finally {
     busyAction.value = ''
   }
@@ -160,6 +176,14 @@ async function execute(action: string, task: () => Promise<void>) {
 
 async function connectShopper() {
   await execute('login', async () => {
+    await shopperApi.login(apiBase, credentials)
+    credentials.password = ''
+    await loadPrivateState()
+    notice.value = '顾客会话已建立'
+  })
+}
+
+async function loadPrivateState() {
     const [nextCart, nextOrders] = await Promise.all([
       shopperApi.cart(apiBase, credentials),
       shopperApi.orders(apiBase, credentials),
@@ -169,9 +193,37 @@ async function connectShopper() {
     connected.value = true
     loginOpen.value = false
     activePanel.value = nextCart.items.length > 0 ? 'cart' : null
-    notice.value = '顾客账户已连接'
     schedulePolling(true)
+}
+
+async function registerShopper() {
+  await execute('register', async () => {
+    await shopperApi.register(apiBase, { ...credentials, inviteCode: inviteCode.value, displayName: displayName.value })
+    inviteCode.value = ''
+    registering.value = false
+    notice.value = '账号已创建，请登录'
   })
+}
+
+async function logoutShopper() {
+  await execute('logout', async () => {
+    await shopperApi.logout(apiBase)
+    cancelShopperRequests()
+    clearPollTimer()
+    orderMutationVersion += 1
+    ordersRequest = null
+    connected.value = false
+    cart.value = { cartId: 0, currency: null, estimatedTotal: 0, items: [] }
+    orders.value = []
+    activePanel.value = null
+    credentials.password = ''
+    notice.value = '已退出登录'
+  })
+}
+
+function submitChat() {
+  if (!chatDraft.value.trim()) return
+  chatNotice.value = '对话导购仍在开发中。这里不会生成模拟 AI 回答；你可以先浏览下方已公开商品。'
 }
 
 function openPanel(panel: CommercePanel) {
@@ -416,12 +468,63 @@ function handleOnline() {
   void recoverOrderState()
 }
 
+watch([loginOpen, () => activePanel.value !== null], async ([login, commerce], [wasLogin, wasCommerce]) => {
+  if (login || commerce) {
+    if (!wasLogin && !wasCommerce) dialogTrigger = document.activeElement as HTMLElement | null
+    await nextTick()
+    const dialog = login ? loginDialog.value : commerceDialog.value
+    const first = dialog?.querySelector<HTMLElement>(login ? 'input' : 'button')
+    const focusTarget = first ?? dialog
+    focusTarget?.focus()
+  } else {
+    dialogTrigger?.focus()
+    dialogTrigger = null
+  }
+})
+
+function handleDialogKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    if (loginOpen.value) loginOpen.value = false
+    else activePanel.value = null
+    return
+  }
+  if (event.key !== 'Tab') return
+  const dialog = event.currentTarget as HTMLElement
+  const controls = [...dialog.querySelectorAll<HTMLElement>(
+    'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href]',
+  )].filter(element => element.getClientRects().length > 0)
+  const first = controls[0]
+  const last = controls.at(-1)
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault()
+    last?.focus()
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault()
+    first?.focus()
+  }
+}
+
 onMounted(() => {
+  shopperApi.onSessionExpired(() => {
+    if (!connected.value) return
+    cancelShopperRequests()
+    clearPollTimer()
+    orderMutationVersion += 1
+    ordersRequest = null
+    connected.value = false
+    activePanel.value = null
+    orders.value = []
+    cart.value = { cartId: 0, currency: null, estimatedTotal: 0, items: [] }
+    notice.value = '会话已过期，请重新登录'
+  })
   document.addEventListener('visibilitychange', handleVisibilityChange)
   window.addEventListener('online', handleOnline)
+  void shopperApi.me(apiBase).then(() => loadPrivateState()).catch(() => {})
 })
 
 onBeforeUnmount(() => {
+  shopperApi.onSessionExpired(null)
   clearPollTimer()
   document.removeEventListener('visibilitychange', handleVisibilityChange)
   window.removeEventListener('online', handleOnline)
@@ -429,7 +532,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main>
+  <main :class="{ 'reduce-motion': reduceMotion }">
     <nav class="nav-shell">
       <a class="brand" href="#top" aria-label="MegaGraph Shop 首页">
         <span class="brand-mark" />
@@ -449,13 +552,26 @@ onBeforeUnmount(() => {
 
     <section id="top" class="hero">
       <div class="hero-copy">
-        <p class="eyebrow">AI-NATIVE PRODUCT DISCOVERY</p>
-        <h1>商品不只被搜索。<br><em>它被理解。</em></h1>
-        <p class="lede">从商品事实出发，完成一次真实可验证的选择。现在，你可以从结算、Mock 支付走到履约，也能在发货前发起可追踪的退款。</p>
+        <p class="eyebrow">MEGAGRAPH / AI SUPERMARKET</p>
+        <h1>说出你想要的<br><em>穿搭感觉。</em></h1>
+        <p class="lede">一个入口，发现不同商家的女装基础款。AI 对话导购仍在开发中；现在可以先浏览已公开的商品。</p>
+        <form class="conversation-entry" @submit.prevent="submitChat">
+          <label for="style-prompt">描述你的需求</label>
+          <div class="conversation-input">
+            <input id="style-prompt" v-model="chatDraft" placeholder="例如：想找适合通勤的简约基础款" autocomplete="off" />
+            <button type="submit" aria-label="了解对话导购进度">↗</button>
+          </div>
+          <p v-if="chatNotice" class="conversation-notice" role="status">{{ chatNotice }}</p>
+          <p v-else class="conversation-hint">示例：周末咖啡馆穿搭 · 春秋通勤基础款 · 低饱和色系</p>
+        </form>
         <div class="hero-actions">
           <a class="primary-link" href="#collection">开始选购 <span>↘</span></a>
           <button type="button" @click="connected ? openPanel('orders') : (loginOpen = true)">
             {{ connected ? '查看我的订单' : '连接顾客账户' }}
+          </button>
+          <button v-if="connected" type="button" @click="logoutShopper">退出</button>
+          <button type="button" :aria-pressed="reduceMotion" @click="reduceMotion = !reduceMotion">
+            {{ reduceMotion ? '恢复动态效果' : '减少动态效果' }}
           </button>
         </div>
       </div>
@@ -544,25 +660,30 @@ onBeforeUnmount(() => {
 
     <Transition name="fade">
       <div v-if="loginOpen" class="modal-layer" @click.self="loginOpen = false">
-        <section class="login-card" role="dialog" aria-modal="true" aria-labelledby="shopper-login-title">
+        <section ref="loginDialog" class="login-card" role="dialog" aria-modal="true" aria-labelledby="shopper-login-title" tabindex="-1" @keydown="handleDialogKeydown">
           <button class="close-button" type="button" aria-label="关闭" @click="loginOpen = false">×</button>
           <p class="eyebrow">SHOPPER SESSION</p>
-          <h2 id="shopper-login-title">连接你的购物会话</h2>
-          <p>本地 Basic Auth 只用于验证阶段 2A–2B 交易与履约闭环，后续会替换为正式登录会话。</p>
-          <form @submit.prevent="connectShopper">
-            <label>账号<input v-model="credentials.username" autocomplete="username" /></label>
-            <label>密码<input v-model="credentials.password" type="password" autocomplete="current-password" /></label>
-            <button type="submit" :disabled="busyAction === 'login'">
-              {{ busyAction === 'login' ? '连接中…' : '连接并读取购物袋' }}
+          <h2 id="shopper-login-title">{{ registering ? '邀请注册' : '登录购物会话' }}</h2>
+          <p>{{ registering ? '首批试用采用受控邀请。邮箱形式账号目前不代表邮箱已验证。' : '登录后可恢复你的购物袋与订单状态。' }}</p>
+          <form @submit.prevent="registering ? registerShopper() : connectShopper()">
+            <label v-if="registering">邀请码<input v-model="inviteCode" autocomplete="off" required /></label>
+            <label v-if="registering">显示名称<input v-model="displayName" autocomplete="name" required /></label>
+            <label>账号<input v-model="credentials.username" type="email" autocomplete="username" required /></label>
+            <label>密码<input v-model="credentials.password" type="password" :autocomplete="registering ? 'new-password' : 'current-password'" required /></label>
+            <button type="submit" :disabled="busyAction === 'login' || busyAction === 'register'">
+              {{ registering ? '创建账号' : '登录并读取购物袋' }}
             </button>
           </form>
+          <button class="auth-switch" type="button" @click="registering = !registering">
+            {{ registering ? '已有账号？返回登录' : '收到邀请码？创建账号' }}
+          </button>
         </section>
       </div>
     </Transition>
 
     <Transition name="drawer">
       <div v-if="activePanel" class="drawer-layer" @click.self="activePanel = null">
-        <aside class="commerce-drawer">
+        <aside ref="commerceDialog" class="commerce-drawer" role="dialog" aria-modal="true" aria-label="购物与订单" tabindex="-1" @keydown="handleDialogKeydown">
           <header class="drawer-header">
             <div>
               <p class="eyebrow">TRANSACTION DESK</p>
@@ -580,7 +701,7 @@ onBeforeUnmount(() => {
             <div v-if="cart.items.length === 0" class="drawer-empty">
               <span>EMPTY / 00</span>
               <h3>购物袋还是空的</h3>
-              <p>从当前可售商品中选择一件，系统会在结算时重新验证价格与库存。</p>
+              <p>从当前可售商品中选择一件。当前购物袋仍限同一商家，跨商家拆单会在 3A 开放。</p>
             </div>
             <template v-else>
               <article v-for="item in cart.items" :key="item.skuId" class="cart-line">
@@ -600,7 +721,9 @@ onBeforeUnmount(() => {
               <footer class="cart-summary">
                 <div><span>预计合计</span><strong>{{ formatPrice(cart.estimatedTotal, cart.currency ?? 'CNY') }}</strong></div>
                 <p>提交订单时，后端会重新读取价格和库存；这里的金额不是交易事实。</p>
-                <button type="button" @click="activePanel = 'checkout'">进入结算 <span>→</span></button>
+                <p>当前仍是单商家购物袋；跨商家组合与拆单尚未开放。</p>
+              <button v-if="mockPaymentAvailable" type="button" @click="activePanel = 'checkout'">进入结算 <span>→</span></button>
+              <p v-else>当前环境只开放选品与购物袋；订单提交和 Mock 支付暂未开放。</p>
               </footer>
             </template>
           </section>
@@ -617,9 +740,9 @@ onBeforeUnmount(() => {
               <label>收货地址<textarea v-model="checkout.shippingAddress" required maxlength="500" rows="4" /></label>
               <div class="checkout-note">
                 <span>MOCK PAYMENT</span>
-                <p>此阶段不会调用真实支付渠道。订单创建后库存会被预占，你可以模拟成功、失败或取消。</p>
+                <p>此阶段不会调用真实支付渠道。仅在本地 Mock 环境可以创建订单并模拟支付结果。</p>
               </div>
-              <button type="submit" :disabled="busyAction === 'checkout' || cart.items.length === 0">
+              <button type="submit" :disabled="!mockPaymentAvailable || busyAction === 'checkout' || cart.items.length === 0">
                 {{ busyAction === 'checkout' ? '正在锁定库存…' : '创建订单并预占库存' }}
               </button>
             </form>
@@ -700,7 +823,7 @@ onBeforeUnmount(() => {
                 <strong>{{ formatPrice(order.totalAmount, order.currency) }}</strong>
               </div>
               <div
-                v-if="order.status === 'PENDING_PAYMENT' && !paymentIsAwaitingResult(order)"
+                v-if="mockPaymentAvailable && order.status === 'PENDING_PAYMENT' && !paymentIsAwaitingResult(order)"
                 class="payment-simulator"
               >
                 <p>开发支付回调模拟器</p>

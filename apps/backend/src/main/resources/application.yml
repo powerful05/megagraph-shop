@@ -17,15 +17,27 @@ spring:
           time_zone: UTC
   flyway:
     enabled: true
+  session:
+    store-type: jdbc
+    timeout: 8h
+    jdbc:
+      initialize-schema: never
 
 server:
   port: 8080
   error:
     include-message: never
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        same-site: lax
+        secure: ${APP_SESSION_COOKIE_SECURE:true}
 
 app:
-  cors:
-    allowed-origins: http://localhost:5173,http://localhost:3000
+  security:
+    legacy-basic-enabled: false
+    legacy-merchant-context-enabled: false
   media:
     upload-dir: ./var/uploads
     max-bytes: 10485760

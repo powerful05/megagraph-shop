@@ -1,4 +1,8 @@
 spring:
+  servlet:
+    session:
+      cookie:
+        secure: false
   datasource:
     url: jdbc:h2:mem:megagraph-test;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE;DB_CLOSE_DELAY=-1
     username: sa
@@ -9,6 +13,11 @@ spring:
       ddl-auto: validate
 
 app:
+  security:
+    legacy-basic-enabled: true
+    legacy-merchant-context-enabled: true
+    csrf-enabled: false
+    login-rate-limit-enabled: false
   dev-seed:
     enabled: true
   media:

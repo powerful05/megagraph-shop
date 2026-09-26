@@ -1,3 +1,19 @@
+export interface MerchantMembership {
+  merchantId: number
+  merchantName: string
+  role: 'OWNER' | 'EDITOR' | 'PUBLISHER' | 'VIEWER'
+}
+
+export interface AuthMe {
+  userId: number
+  displayName: string
+  memberships: MerchantMembership[]
+}
+
+export interface ShopCapabilities {
+  mockPaymentAvailable: boolean
+}
+
 export interface Category {
   id: number
   parentId: number | null

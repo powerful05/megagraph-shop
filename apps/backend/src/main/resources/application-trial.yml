@@ -1,0 +1,20 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+server:
+  servlet:
+    session:
+      cookie:
+        secure: true
+
+app:
+  dev-seed:
+    enabled: false
+  security:
+    legacy-basic-enabled: false
+    legacy-merchant-context-enabled: false
+    csrf-enabled: true

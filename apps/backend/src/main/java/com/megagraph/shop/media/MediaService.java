@@ -43,6 +43,7 @@ public class MediaService {
         ProductImage image = images.findById(imageId)
                 .orElseThrow(() -> new NotFoundException("MEDIA_NOT_FOUND", "图片不存在"));
         Product product = products.findById(image.getProductId())
+                .filter(value -> value.getMerchantId().equals(image.getMerchantId()))
                 .filter(publicCatalog::isEligible)
                 .orElseThrow(() -> new NotFoundException("MEDIA_NOT_FOUND", "图片不存在"));
         if (product.getPublishStatus() != com.megagraph.shop.catalog.PublishStatus.PUBLISHED) {
@@ -55,4 +56,3 @@ public class MediaService {
         return new MediaPayload(storage.load(image.getStorageKey()), image.getContentType());
     }
 }
-

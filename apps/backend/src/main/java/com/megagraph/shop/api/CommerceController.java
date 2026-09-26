@@ -5,9 +5,13 @@ import com.megagraph.shop.commerce.CartService;
 import com.megagraph.shop.commerce.OrderService;
 import com.megagraph.shop.identity.UserAccount;
 import com.megagraph.shop.security.CurrentUser;
+import com.megagraph.shop.shared.DomainException;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.security.core.Authentication;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,17 +30,20 @@ public class CommerceController {
     private final CartService carts;
     private final OrderService orders;
     private final AfterSaleService afterSales;
+    private final Environment environment;
 
     public CommerceController(
             CurrentUser currentUser,
             CartService carts,
             OrderService orders,
-            AfterSaleService afterSales
+            AfterSaleService afterSales,
+            Environment environment
     ) {
         this.currentUser = currentUser;
         this.carts = carts;
         this.orders = orders;
         this.afterSales = afterSales;
+        this.environment = environment;
     }
 
     @GetMapping("/cart")
@@ -64,6 +71,9 @@ public class CommerceController {
             @RequestHeader("Idempotency-Key") String idempotencyKey,
             @Valid @RequestBody CreateOrderRequest request
     ) {
+        if (!environment.acceptsProfiles(Profiles.of("local", "test"))) {
+            throw new DomainException(HttpStatus.SERVICE_UNAVAILABLE, "CHECKOUT_UNAVAILABLE", "当前环境尚未开放结算");
+        }
         return orders.create(account(authentication).getId(), idempotencyKey, request);
     }
 

@@ -4,6 +4,8 @@ import com.megagraph.shop.catalog.PublicCatalogService;
 import com.megagraph.shop.media.MediaPayload;
 import com.megagraph.shop.media.MediaService;
 import java.util.List;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -19,10 +21,20 @@ public class ShopController {
 
     private final PublicCatalogService catalog;
     private final MediaService mediaService;
+    private final Environment environment;
 
-    public ShopController(PublicCatalogService catalog, MediaService mediaService) {
+    public ShopController(PublicCatalogService catalog, MediaService mediaService, Environment environment) {
         this.catalog = catalog;
         this.mediaService = mediaService;
+        this.environment = environment;
+    }
+
+    public record ShopCapabilities(boolean mockPaymentAvailable) {
+    }
+
+    @GetMapping("/capabilities")
+    ShopCapabilities capabilities() {
+        return new ShopCapabilities(environment.acceptsProfiles(Profiles.of("local", "test")));
     }
 
     @GetMapping("/products")
@@ -44,4 +56,3 @@ public class ShopController {
                 .body(media.resource());
     }
 }
-

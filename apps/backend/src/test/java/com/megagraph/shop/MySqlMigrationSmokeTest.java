@@ -45,9 +45,14 @@ class MySqlMigrationSmokeTest {
             assertUniqueConstraint(connection, "payment_order", "uk_payment_provider_id");
             assertUniqueConstraint(connection, "refund_order", "uk_refund_provider_id");
             assertUniqueConstraint(connection, "refund_attempt", "uk_refund_attempt_idempotency");
+            assertUniqueConstraint(connection, "trial_invite", "uk_trial_invite_code_hash");
+            assertUniqueConstraint(connection, "app_user", "uk_app_user_username_normalized");
+            assertUniqueConstraint(connection, "SPRING_SESSION", "SPRING_SESSION_IX1");
             insertInbox(connection, "mysql-smoke-event");
             assertThatThrownBy(() -> insertInbox(connection, "mysql-smoke-event"))
                     .isInstanceOf(SQLException.class);
+            insertInvite(connection);
+            assertThatThrownBy(() -> insertInvite(connection)).isInstanceOf(SQLException.class);
         }
     }
 
@@ -119,6 +124,16 @@ class MySqlMigrationSmokeTest {
             statement.setTimestamp(10, now);
             statement.setTimestamp(11, now);
             statement.setString(12, "RECEIVED");
+            statement.executeUpdate();
+        }
+    }
+
+    private void insertInvite(Connection connection) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("""
+                INSERT INTO trial_invite (code_hash, expires_at) VALUES (?, ?)
+                """)) {
+            statement.setString(1, "a".repeat(64));
+            statement.setTimestamp(2, Timestamp.from(Instant.now().plusSeconds(3600)));
             statement.executeUpdate();
         }
     }

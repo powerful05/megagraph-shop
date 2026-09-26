@@ -1,6 +1,6 @@
 # 阶段 2E 契约：身份、MySQL 与统一对话入口基础
 
-状态：**契约已冻结，尚未开始实现**。上位基线为 [SYSTEM_ARCHITECTURE.md](SYSTEM_ARCHITECTURE.md) 第 8、13、20–21 节；阶段 2D 的支付与退款边界继续由 [PHASE_2D.md](PHASE_2D.md) 约束。本文只冻结 2E 的范围、跨端契约和退出条件，不表示真实用户试用已经可以开放。
+状态：**契约已冻结，实现与验收完成**，证据见 [PHASE_2E_ACCEPTANCE.md](PHASE_2E_ACCEPTANCE.md)。上位基线为 [SYSTEM_ARCHITECTURE.md](SYSTEM_ARCHITECTURE.md) 第 8、13、20–21 节；阶段 2D 的支付与退款边界继续由 [PHASE_2D.md](PHASE_2D.md) 约束。本文冻结 2E 的范围、跨端契约和退出条件；代码落地不表示真实用户试用已经可以开放。
 
 ## 结论与影响
 
@@ -74,6 +74,7 @@
 - Session 表属于认证状态，不是商品/交易事实；商品、SKU、价格、库存、订单、支付与退款仍以 MySQL 业务表为唯一事实。认证变更若产生 Outbox 事件，事件与业务状态变更同事务提交；Session 创建/续期本身不要求新增业务 Outbox。
 - 2E 的正式运行必须显式选择 MySQL，缺少该配置不得悄悄回退到当前默认 `local` H2；`APP_DEV_SEED_ENABLED=false`。不能以 `local,mysql` 加测试账号的组合充当可试用部署。迁移验证同时覆盖空 schema 和带有 `V1`–`V5` 测试数据的升级 schema；不清理已有业务数据来制造成功结果。
 - 2D 的 Mock 支付只在 `local/test` 可用。2E 不为真实用户开放支付；3A 必须另行设计受控试用环境中的 Mock 支付启用与试用库存/真实履约隔离，不能简单打开本地 profile 或真实渠道。
+- 现有页面会无条件显示 2D Mock 支付操作，而非本地环境没有对应入口。2E 增加匿名只读 `GET /api/shop/v1/capabilities`，响应固定为 `{mockPaymentAvailable: boolean}`，其值由服务端实际启用的 Mock profile 决定；顾客端仅在 `true` 时展示 Mock 结算与支付操作。非 Mock 环境的 `POST /api/shop/v1/orders` 同时返回 `503 CHECKOUT_UNAVAILABLE`，不能只靠隐藏按钮阻止库存预占。该能力声明不是支付事实，也不能由客户端参数开启 Mock。
 
 ## 统一对话入口与视觉契约
 

@@ -49,6 +49,9 @@ public class PublicCatalogService {
     }
 
     public boolean isEligible(Product product) {
+        if (product.getDeletedAt() != null || product.getPublishStatus() != PublishStatus.PUBLISHED) {
+            return false;
+        }
         boolean activeMerchant = merchants.findById(product.getMerchantId())
                 .map(merchant -> merchant.getStatus() == MerchantStatus.ACTIVE)
                 .orElse(false);

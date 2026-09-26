@@ -1,6 +1,7 @@
 package com.megagraph.shop.identity;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.Column;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
@@ -18,6 +19,8 @@ public class UserAccount {
     private Long id;
 
     private String username;
+    @Column(length = 120)
+    private String usernameNormalized;
     private String passwordHash;
     private String displayName;
 
@@ -32,6 +35,7 @@ public class UserAccount {
 
     public UserAccount(String username, String passwordHash, String displayName) {
         this.username = username;
+        this.usernameNormalized = username.trim().toLowerCase(java.util.Locale.ROOT);
         this.passwordHash = passwordHash;
         this.displayName = displayName;
         this.status = UserStatus.ACTIVE;
@@ -59,4 +63,3 @@ public class UserAccount {
         return status;
     }
 }
-

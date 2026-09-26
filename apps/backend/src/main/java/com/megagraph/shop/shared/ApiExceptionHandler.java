@@ -3,6 +3,7 @@ package com.megagraph.shop.shared;
 import jakarta.persistence.OptimisticLockException;
 import java.time.Instant;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -44,8 +45,15 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     ResponseEntity<ApiError> handleDataIntegrity(DataIntegrityViolationException exception) {
+        for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
+            String detail = cause.getMessage();
+            if (detail != null && detail.toLowerCase(Locale.ROOT)
+                    .contains("uk_app_user_username_normalized")) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(ApiError.of("USERNAME_ALREADY_EXISTS", "账号已存在"));
+            }
+        }
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ApiError.of("DATA_CONFLICT", "数据与现有记录冲突，请检查 SKU 编码或重试"));
     }
 }
-

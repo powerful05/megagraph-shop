@@ -2,7 +2,9 @@ package com.megagraph.shop.security;
 
 import com.megagraph.shop.identity.UserAccount;
 import com.megagraph.shop.identity.UserAccountRepository;
-import com.megagraph.shop.shared.ForbiddenException;
+import com.megagraph.shop.identity.UserStatus;
+import com.megagraph.shop.shared.DomainException;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
@@ -17,9 +19,13 @@ public class CurrentUser {
 
     public UserAccount requireAccount(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
-            throw new ForbiddenException("AUTHENTICATION_REQUIRED", "请先登录");
+            throw new DomainException(HttpStatus.UNAUTHORIZED, "AUTHENTICATION_REQUIRED", "请先登录");
         }
-        return users.findByUsernameIgnoreCase(authentication.getName())
-                .orElseThrow(() -> new ForbiddenException("ACCOUNT_NOT_FOUND", "登录账号不存在"));
+        UserAccount account = users.findByUsernameIgnoreCase(authentication.getName())
+                .orElseThrow(() -> new DomainException(HttpStatus.UNAUTHORIZED, "AUTHENTICATION_REQUIRED", "请重新登录"));
+        if (account.getStatus() != UserStatus.ACTIVE) {
+            throw new DomainException(HttpStatus.UNAUTHORIZED, "AUTHENTICATION_REQUIRED", "请重新登录");
+        }
+        return account;
     }
 }
