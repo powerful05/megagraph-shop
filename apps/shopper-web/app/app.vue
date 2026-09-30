@@ -35,8 +35,7 @@ const credentials = reactive<ShopperCredentials>({
 const inviteCode = ref('')
 const displayName = ref('')
 const registering = ref(false)
-const chatDraft = ref('')
-const chatNotice = ref('')
+const catalogOpen = ref(false)
 const checkout = reactive({
   recipientName: isDevelopment ? '示例顾客' : '',
   recipientPhone: isDevelopment ? '13800138000' : '',
@@ -44,7 +43,6 @@ const checkout = reactive({
 })
 const connected = ref(false)
 const loginOpen = ref(false)
-const reduceMotion = ref(false)
 const loginDialog = ref<HTMLElement | null>(null)
 const commerceDialog = ref<HTMLElement | null>(null)
 let dialogTrigger: HTMLElement | null = null
@@ -219,11 +217,6 @@ async function logoutShopper() {
     credentials.password = ''
     notice.value = '已退出登录'
   })
-}
-
-function submitChat() {
-  if (!chatDraft.value.trim()) return
-  chatNotice.value = '对话导购仍在开发中。这里不会生成模拟 AI 回答；你可以先浏览下方已公开商品。'
 }
 
 function openPanel(panel: CommercePanel) {
@@ -532,58 +525,31 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main :class="{ 'reduce-motion': reduceMotion }">
-    <nav class="nav-shell">
+  <main>
+    <nav class="nav-shell agent-nav">
       <a class="brand" href="#top" aria-label="MegaGraph Shop 首页">
         <span class="brand-mark" />
         MEGAGRAPH
       </a>
       <div class="nav-links">
-        <a href="#collection">新品</a>
-        <a href="#principle">原则</a>
+        <button type="button" :aria-pressed="catalogOpen" @click="catalogOpen = !catalogOpen">
+          {{ catalogOpen ? '返回对话' : '真实商品目录' }}
+        </button>
         <button type="button" @click="openPanel('orders')">
           订单<span v-if="actionableOrderCount">{{ actionableOrderCount }}</span>
         </button>
         <button class="cart-trigger" type="button" @click="openPanel('cart')">
           购物袋<span>{{ cartCount }}</span>
         </button>
+        <button class="account-trigger" type="button" @click="connected ? logoutShopper() : (loginOpen = true)">
+          {{ connected ? '退出' : '登录' }}
+        </button>
       </div>
     </nav>
 
-    <section id="top" class="hero">
-      <div class="hero-copy">
-        <p class="eyebrow">MEGAGRAPH / AI SUPERMARKET</p>
-        <h1>说出你想要的<br><em>穿搭感觉。</em></h1>
-        <p class="lede">一个入口，发现不同商家的女装基础款。AI 对话导购仍在开发中；现在可以先浏览已公开的商品。</p>
-        <form class="conversation-entry" @submit.prevent="submitChat">
-          <label for="style-prompt">描述你的需求</label>
-          <div class="conversation-input">
-            <input id="style-prompt" v-model="chatDraft" placeholder="例如：想找适合通勤的简约基础款" autocomplete="off" />
-            <button type="submit" aria-label="了解对话导购进度">↗</button>
-          </div>
-          <p v-if="chatNotice" class="conversation-notice" role="status">{{ chatNotice }}</p>
-          <p v-else class="conversation-hint">示例：周末咖啡馆穿搭 · 春秋通勤基础款 · 低饱和色系</p>
-        </form>
-        <div class="hero-actions">
-          <a class="primary-link" href="#collection">开始选购 <span>↘</span></a>
-          <button type="button" @click="connected ? openPanel('orders') : (loginOpen = true)">
-            {{ connected ? '查看我的订单' : '连接顾客账户' }}
-          </button>
-          <button v-if="connected" type="button" @click="logoutShopper">退出</button>
-          <button type="button" :aria-pressed="reduceMotion" @click="reduceMotion = !reduceMotion">
-            {{ reduceMotion ? '恢复动态效果' : '减少动态效果' }}
-          </button>
-        </div>
-      </div>
-      <div class="hero-object" aria-hidden="true">
-        <div class="orb orb-a" />
-        <div class="orb orb-b" />
-        <div class="wireframe" />
-        <span class="object-label">COMMERCE OBJECT / 002</span>
-      </div>
-    </section>
+    <AgentExperience v-show="!catalogOpen" id="top" />
 
-    <section id="collection" class="collection-section">
+    <section v-if="catalogOpen" id="collection" class="collection-section live-catalog">
       <header class="section-header">
         <div>
           <p class="eyebrow">LIVE CATALOG</p>
@@ -643,18 +609,6 @@ onBeforeUnmount(() => {
             </button>
           </div>
         </article>
-      </div>
-    </section>
-
-    <section id="principle" class="principle-section">
-      <p class="eyebrow">SYSTEM PRINCIPLE</p>
-      <p class="manifesto">AI 可以组织语言，<br>但价格、库存与订单状态<br><em>只相信交易事实。</em></p>
-      <div class="principle-grid">
-        <span>01 / VERIFIED CATALOG</span>
-        <span>02 / SERVER-SIDE PRICING</span>
-        <span>03 / RESERVED INVENTORY</span>
-        <span>04 / TRACEABLE FULFILLMENT</span>
-        <span>05 / REVERSIBLE TRANSACTION</span>
       </div>
     </section>
 
