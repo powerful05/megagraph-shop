@@ -1,0 +1,12 @@
+spring:
+  ai:
+    model:
+      chat: openai
+    openai:
+      api-key: ${GUIDE_MODEL_API_KEY}
+      base-url: ${GUIDE_MODEL_BASE_URL:https://api.openai.com}
+      chat:
+        options:
+          model: ${GUIDE_MODEL_NAME}
+    retry:
+      max-attempts: 2

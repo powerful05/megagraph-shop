@@ -1,6 +1,15 @@
 spring:
   application:
     name: megagraph-shop-backend
+  ai:
+    model:
+      chat: none
+      embedding: none
+      image: none
+      moderation: none
+      audio:
+        speech: none
+        transcription: none
   profiles:
     default: local
   servlet:
