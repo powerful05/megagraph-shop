@@ -55,10 +55,12 @@ public class SecurityConfig {
             SecurityContextRepository contextRepository,
             ObjectMapper mapper,
             @Value("${app.security.legacy-basic-enabled:false}") boolean legacyBasic,
-            @Value("${app.security.csrf-enabled:true}") boolean csrfEnabled
+            @Value("${app.security.csrf-enabled:true}") boolean csrfEnabled,
+            Environment environment
     ) throws Exception {
         http.securityContext(context -> context.securityContextRepository(contextRepository))
-                .authorizeHttpRequests(requests -> requests
+                .authorizeHttpRequests(requests -> {
+                    requests
                         .requestMatchers(HttpMethod.GET, "/api/auth/v1/csrf").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/v1/login", "/api/auth/v1/register").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/shop/v1/products", "/api/shop/v1/products/**")
@@ -66,8 +68,12 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/shop/v1/capabilities").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/shop/v1/media/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/payment-callbacks/**").permitAll()
-                        .requestMatchers("/error").permitAll()
-                        .anyRequest().authenticated())
+                        .requestMatchers("/error").permitAll();
+                    if (environment.acceptsProfiles(Profiles.of("local"))) {
+                        requests.requestMatchers(HttpMethod.POST, "/api/shop/v1/guide/messages").permitAll();
+                    }
+                    requests.anyRequest().authenticated();
+                })
                 .exceptionHandling(errors -> errors
                         .authenticationEntryPoint((request, response, exception) -> writeError(
                                 mapper, response, 401, "AUTHENTICATION_REQUIRED", "请先登录"))

@@ -1,4 +1,4 @@
-import type { AuthMe, MockPaymentResult, SalesOrder, ShoppingCart } from '@megagraph/domain-types'
+import type { AuthMe, GuideMessage, GuideReply, MockPaymentResult, SalesOrder, ShoppingCart } from '@megagraph/domain-types'
 
 export interface ShopperCredentials {
   username: string
@@ -43,7 +43,7 @@ async function request<T>(
   _credentials: ShopperCredentials,
   init: RequestInit = {},
 ): Promise<T> {
-  const signal = path.startsWith('/api/shop/v1/') ? shopperRequests.signal : init.signal
+  const signal = init.signal ?? (path.startsWith('/api/shop/v1/') ? shopperRequests.signal : undefined)
   const headers = new Headers(init.headers)
   if (init.method && !['GET', 'HEAD'].includes(init.method.toUpperCase())) {
     headers.set('X-CSRF-TOKEN', await ensureCsrf(apiBase))
@@ -66,6 +66,11 @@ async function request<T>(
 }
 
 export const shopperApi = {
+  guide(apiBase: string, messages: GuideMessage[], signal: AbortSignal): Promise<GuideReply> {
+    return request<GuideReply>(apiBase, '/api/shop/v1/guide/messages', { username: '', password: '' }, {
+      method: 'POST', body: JSON.stringify({ messages }), signal,
+    })
+  },
   onSessionExpired(handler: (() => void) | null) {
     onSessionExpired = handler
   },

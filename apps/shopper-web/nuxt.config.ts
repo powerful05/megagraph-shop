@@ -15,9 +15,9 @@ export default defineNuxtConfig({
   app: {
     head: {
       htmlAttrs: { lang: 'zh-CN' },
-      title: 'MegaGraph Shop — AI 超市对话演示',
+      title: 'MegaGraph Shop — AI 超市',
       meta: [
-        { name: 'description', content: '从自然语言开始体验 AI 超市对话流程。当前为演示界面，未接入真实 AI 推荐。' },
+        { name: 'description', content: '从自然语言开始，与 MegaGraph AI 超市一起寻找适合的商品。' },
       ],
     },
   },

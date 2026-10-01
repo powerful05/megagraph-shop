@@ -1,0 +1,36 @@
+# 真实模型对话预览
+
+2026-10-01：在 3A 顾客端页面演示和 Spring AI 内部导购基础上，接入 DeepSeek 多轮对话预览。此预览不表示 3A 跨商家交易或 3B 推荐质量验收已完成。
+
+## 本地启动
+
+密钥只保存在被 Git 忽略的仓库根目录 `.env.local`，权限为 `600`。配置项为 `GUIDE_MODEL_API_KEY`、`GUIDE_MODEL_BASE_URL`、`GUIDE_MODEL_NAME` 和可选的 `GUIDE_MODEL_DISABLE_THINKING`。DeepSeek 预览使用 `https://api.deepseek.com` 和 `deepseek-flash`，关闭思考输出；页面只显示最终回复。
+
+```bash
+bash apps/backend/scripts/run-guide-local.sh
+NUXT_API_UPSTREAM=http://127.0.0.1:8081 pnpm --filter @megagraph/shopper-web dev --port 3001
+```
+
+脚本仅绑定本机 `127.0.0.1:8081`，使用 `local,guide` profile；本地 H2 数据不构成真实 MySQL 验收。默认不启用 `guide`，构建和自动化测试不需要真实密钥。密钥不进入前端配置、命令行参数、日志或提交。
+
+## 对话契约
+
+`POST /api/shop/v1/guide/messages` 接收 `messages`，每条包含 `role`（`user` 或 `assistant`）和 `content`。消息须从用户开始、交替排列，并以用户消息结束；最多 19 条，单条最多 2000 字符，总计最多 12000 字符。前端保留最近的完整消息对以控制上下文大小。
+
+响应为 `answer`、`products` 和 `demoProductIds`。`products` 使用既有公开商品契约；返回前再次核对可售资格。`demoProductIds` 只能是 `blue-shirt`、`ivory-knit`、`gray-cardigan`，与前端生成素材一一对应，不能下单。模型不能生成图片 URL、商品 ID、价格或库存事实。
+
+能力接口增加 `guideAvailable`、`demoCatalogAvailable`、`guideModelName`。只有显式启用 `guide` 的环境才开放对话控制器；本地预览允许带 CSRF 令牌的匿名对话，其他环境沿用登录要求。最多同时处理两次模型请求；上游错误只返回稳定的 `GUIDE_MODEL_FAILED` 提示。
+
+## 当前范围与剩余工作
+
+真实模型负责理解自由描述、追问、结合本次候选组织回答和选图。没有候选也会调用模型解释或继续追问。只有 `local` 且公开商品目录为空时，才提供明确标注的服饰演示图；它们不写入商品库，没有交易事实。
+
+页面支持多轮上下文、本次会话历史、新对话、请求处理状态、失败重试、图片详情与手机布局。模型请求经服务端发出；会话列表只保存在当前页面。真实商品目录、购物袋和订单仍使用既有业务接口。
+
+3A 仍需真实商家供给、商品属性/尺码依据、跨商家购物车与独立子订单；3B 仍需推荐证据、固定评测集、召回策略、超时与成本治理及真实商品端到端验收。数字商品权益和服务预约事实模型尚未实现。
+
+## 验证记录
+
+已使用配置的真实 DeepSeek key 完成最小调用和浏览器多轮对话：自由描述见客户穿搭，追问咖啡馆/裤装/不喜欢蓝色后，模型将参考图收窄为米白针织上衣。线上摄影课程与点评服务请求收到选购思路，没有误选服饰图；一次模型回复失败后通过页面重试恢复。桌面和手机布局保留底部输入框。
+
+根目录 `pnpm verify` 通过，后端 46 项测试中 3 项 MySQL 专项测试跳过，0 失败；本次没有把 H2 结果作为 MySQL 验收。密钥已检查未进入受跟踪源码和前端构建产物，本地配置权限为 `600`。公开目录回查、消息角色/长度校验、非本地登录/CSRF 和模型错误脱敏有自动化测试覆盖。

@@ -1,5 +1,14 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
+import type { GuideMessage, PublicProduct } from '@megagraph/domain-types'
+import { shopperApi } from '../api'
+
+const props = defineProps<{
+  modelAvailable: boolean
+  demoCatalogAvailable: boolean
+  modelName: string
+}>()
+const apiBase = useRuntimeConfig().public.apiBase
 
 type DemoProduct = {
   id: string
@@ -7,6 +16,8 @@ type DemoProduct = {
   note: string
   image: string
   source: string
+  live?: boolean
+  price?: string
 }
 
 type Message = {
@@ -14,6 +25,10 @@ type Message = {
   role: 'user' | 'assistant'
   text: string
   showProducts?: boolean
+  demoIds?: string[]
+  liveProducts?: PublicProduct[]
+  modelReply?: boolean
+  error?: boolean
 }
 
 type Conversation = {
@@ -49,6 +64,7 @@ const demoProducts: DemoProduct[] = [
 let nextId = 1
 let responseTimer: ReturnType<typeof setTimeout> | null = null
 let progressTimer: ReturnType<typeof setTimeout> | null = null
+let requestController: AbortController | null = null
 const conversations = ref<Conversation[]>([{ id: nextId++, title: '新对话', messages: [] }])
 const activeId = ref(1)
 const draft = ref('')
@@ -119,6 +135,10 @@ function submit() {
   conversation.messages.push({ id: nextId++, role: 'user', text: query })
   if (conversation.title === '新对话') conversation.title = query.length > 24 ? `${query.slice(0, 24)}…` : query
   draft.value = ''
+  if (props.modelAvailable) {
+    void sendModelReply(conversation)
+    return
+  }
   pendingId.value = conversation.id
   progress.value = '正在阅读你的描述…'
   nextTick(scrollToEnd)
@@ -132,6 +152,69 @@ function submit() {
     responseTimer = null
     nextTick(scrollToEnd)
   }, 1300)
+}
+
+function visibleDemoProducts(message: Message) {
+  return message.demoIds ? demoProducts.filter(product => message.demoIds!.includes(product.id)) : demoProducts
+}
+
+function livePreview(product: PublicProduct): DemoProduct {
+  return {
+    id: String(product.id), name: product.title, note: product.subtitle ?? '',
+    image: product.mainImageUrl ? `${apiBase}${product.mainImageUrl}` : '',
+    source: '已发布商品', live: true, price: formatPrice(product),
+  }
+}
+
+function formatPrice(product: PublicProduct) {
+  return new Intl.NumberFormat('zh-CN', { style: 'currency', currency: product.currency }).format(product.priceFrom)
+}
+
+async function sendModelReply(conversation: Conversation) {
+  pendingId.value = conversation.id
+  progress.value = '正在理解需求并核对候选商品…'
+  requestController = new AbortController()
+  const timeout = setTimeout(() => requestController?.abort(), 75000)
+  const completedTurns: Message[] = []
+  for (let index = 0; index < conversation.messages.length; index++) {
+    const message = conversation.messages[index]!
+    if (message.role !== 'user') continue
+    const reply = conversation.messages[index + 1]
+    if (index === conversation.messages.length - 1) completedTurns.push(message)
+    else if (reply?.role === 'assistant' && !reply.error) completedTurns.push(message, reply)
+  }
+  const history: GuideMessage[] = completedTurns.slice(-19)
+    .map(message => ({ role: message.role, content: message.text }))
+  while (history.reduce((sum, message) => sum + message.content.length, 0) > 12000 && history.length > 1) {
+    history.splice(0, 2)
+  }
+  await nextTick(scrollToEnd)
+  try {
+    const reply = await shopperApi.guide(apiBase, history, requestController.signal)
+    conversation.messages.push({
+      id: nextId++, role: 'assistant', text: reply.answer, modelReply: true,
+      showProducts: reply.demoProductIds.length > 0, demoIds: reply.demoProductIds,
+      liveProducts: reply.products,
+    })
+  } catch (error) {
+    conversation.messages.push({
+      id: nextId++, role: 'assistant', error: true,
+      text: error instanceof DOMException && error.name === 'AbortError'
+        ? '等待回复超时，请重试。' : error instanceof Error ? error.message : '模型暂时无法回复，请重试。',
+    })
+  } finally {
+    clearTimeout(timeout)
+    requestController = null
+    pendingId.value = null
+    nextTick(scrollToEnd)
+  }
+}
+
+function retryReply() {
+  const conversation = activeConversation.value
+  if (pendingId.value !== null || !conversation.messages.at(-1)?.error) return
+  conversation.messages.pop()
+  void sendModelReply(conversation)
 }
 
 function handleComposerKeydown(event: KeyboardEvent) {
@@ -163,11 +246,12 @@ function handlePreviewKeydown(event: KeyboardEvent) {
 onBeforeUnmount(() => {
   if (progressTimer) clearTimeout(progressTimer)
   if (responseTimer) clearTimeout(responseTimer)
+  requestController?.abort()
 })
 </script>
 
 <template>
-  <section class="agent-app" aria-label="AI 超市演示对话">
+  <section class="agent-app" aria-label="AI 超市对话">
     <div v-if="sidebarOpen" class="sidebar-scrim" @click="sidebarOpen = false" />
     <aside class="agent-sidebar" :class="{ 'is-open': sidebarOpen }" aria-label="对话历史">
       <button class="new-chat" type="button" @click="startConversation"><span aria-hidden="true">＋</span> 新对话</button>
@@ -185,21 +269,21 @@ onBeforeUnmount(() => {
           <span class="history-title">{{ conversation.title }}</span>
         </button>
       </div>
-      <div class="sidebar-foot">对话仅保存在当前页面，不会提交给真实模型。</div>
+      <div class="sidebar-foot">{{ modelAvailable ? '本次对话会发送给模型，对话列表保存在当前页面。' : '对话仅保存在当前页面，不会提交给真实模型。' }}</div>
     </aside>
 
     <div class="agent-main">
       <div class="conversation-topline">
         <button class="mobile-history" type="button" aria-label="打开对话历史" @click="sidebarOpen = true">☰</button>
-        <span>AI 超市 <small>演示模式</small></span>
-        <span class="not-connected">未接入实时模型</span>
+        <span>AI 超市 <small>{{ modelAvailable ? '真实对话' : '演示模式' }}</small></span>
+        <span class="not-connected">{{ modelAvailable ? modelName : '未接入实时模型' }}</span>
       </div>
 
       <div ref="messageList" class="message-scroll" role="log" aria-live="polite" aria-relevant="additions">
         <div v-if="!hasMessages" class="empty-conversation">
           <div class="agent-symbol" aria-hidden="true"><span>✳</span></div>
           <h1>你在找什么？</h1>
-          <p>用自己的话描述想法。这里先演示对话和商品图片的呈现。</p>
+          <p>{{ modelAvailable ? '想解决什么、喜欢什么，或者还没想清楚，都可以从这里聊起。' : '用自己的话描述想法。这里先演示对话和商品图片的呈现。' }}</p>
         </div>
         <div v-else class="message-stack">
           <template v-for="message in activeConversation.messages" :key="message.id">
@@ -209,24 +293,35 @@ onBeforeUnmount(() => {
             <article v-else class="assistant-row">
               <div class="assistant-avatar" aria-hidden="true">✳</div>
               <div class="assistant-content">
-                <div class="assistant-name">MegaGraph <span>演示回复</span></div>
+                <div class="assistant-name">MegaGraph <span>{{ message.error ? '回复失败' : message.modelReply ? modelName : '演示回复' }}</span></div>
                 <p>{{ message.text }}</p>
+                <button v-if="message.error && message === activeConversation.messages.at(-1)" class="retry-reply" type="button" :disabled="pendingId !== null" @click="retryReply">重试</button>
                 <div v-if="message.showProducts" class="demo-results">
                   <div class="results-heading"><strong>图片示例</strong><span>生成素材 · 非真实商家上架商品</span></div>
                   <div class="demo-grid">
-                    <button v-for="product in demoProducts" :key="product.id" type="button" class="demo-product" @click="openPreview(product)">
+                    <button v-for="product in visibleDemoProducts(message)" :key="product.id" type="button" class="demo-product" @click="openPreview(product)">
                       <img :src="product.image" :alt="`${product.name}，AI 生成的演示商品图`" />
                       <span class="demo-product-meta"><small>{{ product.source }} · 生成示例</small><strong>{{ product.name }}</strong><span>{{ product.note }}</span></span>
                     </button>
                   </div>
                   <p class="results-footnote">图片仅用于界面演示，不提供价格、库存和购买入口。</p>
                 </div>
+                <div v-if="message.liveProducts?.length" class="demo-results">
+                  <div class="results-heading"><strong>在售商品</strong><span>返回时已核对可售状态</span></div>
+                  <div class="demo-grid">
+                    <button v-for="product in message.liveProducts" :key="product.id" type="button" class="demo-product" @click="openPreview(livePreview(product))">
+                      <img v-if="product.mainImageUrl" :src="`${apiBase}${product.mainImageUrl}`" :alt="product.title" />
+                      <div v-else class="missing-image">暂无商品图</div>
+                      <span class="demo-product-meta"><small>已发布商品</small><strong>{{ product.title }}</strong><span>{{ formatPrice(product) }} 起</span></span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </article>
           </template>
           <div v-if="pendingId === activeId" class="assistant-row thinking-row" role="status">
             <div class="assistant-avatar" aria-hidden="true">✳</div>
-            <div class="assistant-content"><div class="assistant-name">MegaGraph <span>演示处理中</span></div><p><span class="thinking-dot" />{{ progress }}</p></div>
+            <div class="assistant-content"><div class="assistant-name">MegaGraph <span>{{ modelAvailable ? '正在回复' : '演示处理中' }}</span></div><p><span class="thinking-dot" />{{ progress }}</p></div>
           </div>
         </div>
       </div>
@@ -245,19 +340,20 @@ onBeforeUnmount(() => {
             @keydown="handleComposerKeydown"
           />
           <div class="composer-actions">
-            <span>演示对话 · Enter 发送，Shift + Enter 换行</span>
+            <span>{{ modelAvailable ? '与 AI 超市对话' : '演示对话' }}</span>
             <button type="submit" aria-label="发送消息" title="发送消息" :disabled="!draft.trim() || pendingId !== null">↑</button>
           </div>
         </form>
-        <p class="composer-disclaimer">演示回复不代表真实 AI 推荐；交易信息以商家发布和后端数据为准。</p>
+        <p class="composer-disclaimer">{{ modelAvailable ? (demoCatalogAvailable ? '当前包含生成的演示图；商品交易信息以商家发布为准。' : 'AI 建议仅供选购参考，商品交易信息以商家发布为准。') : '演示回复不代表真实 AI 推荐；交易信息以商家发布和后端数据为准。' }}</p>
       </div>
     </div>
 
     <div v-if="previewProduct" class="preview-layer" @click.self="closePreview">
       <section class="preview-dialog" role="dialog" aria-modal="true" :aria-label="`${previewProduct.name}演示图片`" tabindex="-1" @keydown="handlePreviewKeydown">
         <button ref="previewClose" class="preview-close" type="button" aria-label="关闭图片详情" title="关闭" @click="closePreview">×</button>
-        <img :src="previewProduct.image" :alt="`${previewProduct.name}，AI 生成的演示商品图`" />
-        <div><small>{{ previewProduct.source }} · AI 生成图片</small><h2>{{ previewProduct.name }}</h2><p>{{ previewProduct.note }}</p><p>此图不是商家上传的商品，也无法确认材质、规格、价格或库存。</p></div>
+        <img v-if="previewProduct.image" :src="previewProduct.image" :alt="previewProduct.name" />
+        <div v-else class="missing-image">暂无商品图</div>
+        <div><small>{{ previewProduct.source }}{{ previewProduct.live ? '' : ' · AI 生成图片' }}</small><h2>{{ previewProduct.name }}</h2><p>{{ previewProduct.note }}</p><p v-if="previewProduct.live">{{ previewProduct.price }} 起，请在真实商品目录中核对规格和当前库存。</p><p v-else>此图不是商家上传的商品，也无法确认材质、规格、价格或库存。</p></div>
       </section>
     </div>
   </section>
@@ -294,6 +390,8 @@ onBeforeUnmount(() => {
 .assistant-name { height: 29px; display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; }
 .assistant-name span { color: #89938b; font-size: 10px; font-weight: 400; }
 .assistant-content > p { max-width: 730px; margin: 9px 0 0; color: #454d47; font-size: 14px; line-height: 1.75; white-space: pre-wrap; overflow-wrap: anywhere; }
+.retry-reply { margin-top: 12px; padding: 6px 12px; border: 1px solid #d8ded9; border-radius: 4px; background: #fff; cursor: pointer; font-size: 12px; }
+.missing-image { display: grid; width: 100%; aspect-ratio: 4 / 4.1; place-items: center; color: #7b877e; background: #eef1ec; font-size: 12px; }
 .thinking-row .assistant-content > p { color: #85928a; }
 .thinking-dot { display: inline-block; width: 7px; height: 7px; margin-right: 9px; border-radius: 50%; background: #45a671; animation: pulse 1s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: .3; } }

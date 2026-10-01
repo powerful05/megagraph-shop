@@ -547,7 +547,13 @@ onBeforeUnmount(() => {
       </div>
     </nav>
 
-    <AgentExperience v-show="!catalogOpen" id="top" />
+    <AgentExperience
+      v-show="!catalogOpen"
+      id="top"
+      :model-available="capabilities?.guideAvailable === true"
+      :demo-catalog-available="capabilities?.demoCatalogAvailable === true"
+      :model-name="capabilities?.guideModelName ?? ''"
+    />
 
     <section v-if="catalogOpen" id="collection" class="collection-section live-catalog">
       <header class="section-header">

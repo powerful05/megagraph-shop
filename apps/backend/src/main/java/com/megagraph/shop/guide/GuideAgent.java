@@ -3,12 +3,14 @@ package com.megagraph.shop.guide;
 import com.megagraph.shop.api.PublicProductResponse;
 import com.megagraph.shop.catalog.PublicCatalogService;
 import com.megagraph.shop.shared.NotFoundException;
+import com.megagraph.shop.shared.DomainException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import org.springframework.stereotype.Service;
+import org.springframework.http.HttpStatus;
 
 @Service
 public class GuideAgent {
@@ -67,5 +69,68 @@ public class GuideAgent {
                 ? "我找到了与你描述相关的在售商品。"
                 : interpretation + " 我找到了以下在售商品。";
         return new GuideResult(answer, List.copyOf(products));
+    }
+
+    public GuideChatResult chat(List<GuideModel.Turn> messages, boolean allowDemoProducts) {
+        if (messages == null || messages.isEmpty() || messages.size() > 19
+                || messages.stream().mapToInt(turn -> turn.content().length()).sum() > 12000) {
+            throw new DomainException(HttpStatus.BAD_REQUEST, "GUIDE_HISTORY_INVALID", "对话过长，请开始新对话");
+        }
+        for (int index = 0; index < messages.size(); index++) {
+            String expected = index % 2 == 0 ? "user" : "assistant";
+            if (!expected.equals(messages.get(index).role())) {
+                throw new DomainException(HttpStatus.BAD_REQUEST, "GUIDE_HISTORY_INVALID", "对话消息顺序无效");
+            }
+        }
+        if (!"user".equals(messages.getLast().role())) {
+            throw new DomainException(HttpStatus.BAD_REQUEST, "GUIDE_HISTORY_INVALID", "请提交新的用户消息");
+        }
+        GuideModel guideModel = model.orElseThrow(() -> new DomainException(
+                HttpStatus.SERVICE_UNAVAILABLE, "GUIDE_UNAVAILABLE", "对话模型暂未启用"));
+        List<PublicProductResponse> available = catalog.list().stream().limit(CANDIDATE_LIMIT).toList();
+        List<GuideModel.Candidate> candidates = new ArrayList<>(available.stream()
+                .map(product -> new GuideModel.Candidate(product.id(), product.title(), product.subtitle(),
+                        product.priceFrom().toPlainString(), product.currency(),
+                        product.skus().stream().map(sku -> sku.name()).toList())).toList());
+        boolean useDemo = allowDemoProducts && available.isEmpty();
+        if (useDemo) {
+            candidates.add(new GuideModel.Candidate(-101L, "演示图 A：浅蓝衬衫",
+                    "视觉风格清爽利落，其他属性未知；不是在售商品", "", "", List.of()));
+            candidates.add(new GuideModel.Candidate(-102L, "演示图 B：米白针织上衣",
+                    "视觉风格柔和轻松，其他属性未知；不是在售商品", "", "", List.of()));
+            candidates.add(new GuideModel.Candidate(-103L, "演示图 C：灰色开衫",
+                    "视觉上可作叠穿参考，其他属性未知；不是在售商品", "", "", List.of()));
+        }
+        GuideModel.Selection selection = guideModel.chat(List.copyOf(messages), List.copyOf(candidates));
+        if (selection == null || selection.interpretation() == null || selection.interpretation().isBlank()
+                || selection.productIds() == null) {
+            throw new IllegalStateException("导购模型没有返回有效回复");
+        }
+        Set<Long> candidateIds = new HashSet<>(available.stream().map(PublicProductResponse::id).toList());
+        Set<Long> seen = new HashSet<>();
+        List<PublicProductResponse> products = new ArrayList<>();
+        List<String> demoIds = new ArrayList<>();
+        for (Long id : selection.productIds()) {
+            if (id == null || !seen.add(id)) continue;
+            if (candidateIds.contains(id)) {
+                try {
+                    products.add(catalog.get(id));
+                } catch (NotFoundException ignored) {
+                    // Recheck public eligibility after the external model call.
+                }
+            } else if (useDemo && id >= -103L && id <= -101L) {
+                demoIds.add(switch (id.intValue()) {
+                    case -101 -> "blue-shirt";
+                    case -102 -> "ivory-knit";
+                    default -> "gray-cardigan";
+                });
+            }
+            if (products.size() + demoIds.size() == RESULT_LIMIT) break;
+        }
+        String answer = selection.interpretation().strip();
+        if (products.isEmpty() && demoIds.isEmpty() && !selection.productIds().isEmpty()) {
+            answer += " 当前没有通过可售校验的匹配商品。";
+        }
+        return new GuideChatResult(answer, List.copyOf(products), List.copyOf(demoIds));
     }
 }

@@ -12,6 +12,22 @@ export interface AuthMe {
 
 export interface ShopCapabilities {
   mockPaymentAvailable: boolean
+  guideAvailable?: boolean
+  demoCatalogAvailable?: boolean
+  guideModelName?: string
+}
+
+export interface GuideMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+export type GuideDemoProductId = 'blue-shirt' | 'ivory-knit' | 'gray-cardigan'
+
+export interface GuideReply {
+  answer: string
+  products: PublicProduct[]
+  demoProductIds: GuideDemoProductId[]
 }
 
 export interface Category {

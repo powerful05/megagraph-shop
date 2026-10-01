@@ -11,6 +11,12 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.model.Generation;
+import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.messages.SystemMessage;
+import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.chat.prompt.Prompt;
 
 class SpringAiGuideModelTest {
 
@@ -40,5 +46,26 @@ class SpringAiGuideModelTest {
         assertThatThrownBy(() -> model.select("想找外套", List.of()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("解析");
+    }
+
+    @Test
+    void chatPreservesMessageRolesAndRejectsDecimalAndStringIds() {
+        when(chatModel.call(Mockito.any(Prompt.class))).thenReturn(new ChatResponse(List.of(
+                new Generation(new AssistantMessage("""
+                        {"interpretation":"你更偏好蓝色，可以看这张演示图。","productIds":[-101,1.5,"7"]}
+                        """)))));
+        List<GuideModel.Turn> turns = List.of(new GuideModel.Turn("user", "想要上班穿的"),
+                new GuideModel.Turn("assistant", "偏好什么颜色？"), new GuideModel.Turn("user", "蓝色"));
+
+        GuideModel.Selection result = model.chat(turns, List.of());
+
+        assertThat(result.productIds()).containsExactly(-101L);
+        ArgumentCaptor<Prompt> prompt = ArgumentCaptor.forClass(Prompt.class);
+        Mockito.verify(chatModel).call(prompt.capture());
+        assertThat(prompt.getValue().getInstructions()).hasSize(4);
+        assertThat(prompt.getValue().getInstructions().getFirst()).isInstanceOf(SystemMessage.class);
+        assertThat(prompt.getValue().getInstructions().get(1)).isInstanceOf(UserMessage.class);
+        assertThat(prompt.getValue().getInstructions().get(2)).isInstanceOf(AssistantMessage.class);
+        assertThat(prompt.getValue().getInstructions().getLast().getText()).isEqualTo("蓝色");
     }
 }
