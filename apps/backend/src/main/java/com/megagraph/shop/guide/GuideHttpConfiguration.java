@@ -15,8 +15,8 @@ public class GuideHttpConfiguration {
     RestClientCustomizer guideHttpTimeouts() {
         return builder -> {
             var factory = new JdkClientHttpRequestFactory(HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofSeconds(10)).build());
-            factory.setReadTimeout(Duration.ofSeconds(60));
+                    .connectTimeout(Duration.ofSeconds(5)).build());
+            factory.setReadTimeout(Duration.ofSeconds(25));
             builder.requestFactory(factory);
         };
     }

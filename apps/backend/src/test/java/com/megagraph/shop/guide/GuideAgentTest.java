@@ -144,4 +144,19 @@ class GuideAgentTest {
                 base.currency(), base.availableStock(), base.mainImageUrl(), base.publishedAt(), base.skus(),
                 new ProductEvidence(version, 1L, "测试商家", "PHYSICAL", "LOCAL_TEST", "TEST_CONFIRMED", Instant.now(), null));
     }
+
+    @Test
+    void freshSkuPriceMustStillMeetBudgetAfterTheModelCall() {
+        when(model.interpret(anyList())).thenReturn(new GuideIntent(GuideIntent.DeliveryType.PHYSICAL, new BigDecimal("200"), "CNY",
+                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), ""));
+        when(catalog.list()).thenReturn(List.of(product(1L, "外套", "图")));
+        when(model.chat(anyList(), anyList())).thenReturn(new GuideModel.Selection("这件可以作为参考。", List.of(1L)));
+        var original = product(1L, "外套", "图");
+        when(catalog.get(1L)).thenReturn(new PublicProductResponse(original.id(), original.title(), original.subtitle(), original.categoryId(),
+                new BigDecimal("299"), "CNY", 2, "图", original.publishedAt(),
+                List.of(new PublicSkuResponse(1L, "sku-1", "均码", new BigDecimal("299"), "CNY", 2)), null));
+        var result = agent.chat(List.of(new GuideModel.Turn("user", "200以内")), false);
+        assertThat(result.products()).isEmpty();
+        assertThat(result.answer()).contains("发生变化").doesNotContain("这件可以");
+    }
 }

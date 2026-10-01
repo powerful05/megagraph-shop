@@ -7,6 +7,10 @@ import com.megagraph.shop.identity.MerchantStatus;
 import com.megagraph.shop.shared.NotFoundException;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
+import java.util.LinkedHashMap;
+import java.util.HashSet;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +23,7 @@ public class PublicCatalogService {
     private final MerchantRepository merchants;
     private final ProductEvidenceMapper evidence;
     private final TestSupplyPolicy testSupply;
+    private final CategoryRepository categories;
 
     public PublicCatalogService(
             ProductRepository products,
@@ -26,7 +31,8 @@ public class PublicCatalogService {
             ProductImageRepository images,
             MerchantRepository merchants,
             ProductEvidenceMapper evidence,
-            TestSupplyPolicy testSupply
+            TestSupplyPolicy testSupply,
+            CategoryRepository categories
     ) {
         this.products = products;
         this.skus = skus;
@@ -34,6 +40,25 @@ public class PublicCatalogService {
         this.merchants = merchants;
         this.evidence = evidence;
         this.testSupply = testSupply;
+        this.categories = categories;
+    }
+
+    @Transactional(readOnly = true)
+    public Map<Long, String> categoryNames() {
+        Map<Long, Category> byId = categories.findAll().stream().filter(Category::isVisible)
+                .collect(Collectors.toMap(Category::getId, value -> value));
+        Map<Long, String> names = new LinkedHashMap<>();
+        for (Category category : byId.values()) {
+            var visited = new HashSet<Long>();
+            var path = new java.util.ArrayList<String>();
+            Category current = category;
+            while (current != null && visited.add(current.getId())) {
+                path.add(current.getName());
+                current = byId.get(current.getParentId());
+            }
+            names.put(category.getId(), String.join(" ", path));
+        }
+        return Map.copyOf(names);
     }
 
     @Transactional(readOnly = true)

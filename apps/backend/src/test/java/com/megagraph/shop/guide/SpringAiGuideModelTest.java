@@ -91,4 +91,30 @@ class SpringAiGuideModelTest {
         assertThatThrownBy(() -> model.chat(List.of(new GuideModel.Turn("user", "想学摄影")), List.of()))
                 .isInstanceOf(IllegalStateException.class);
     }
+
+    @Test
+    void extractsStructuredBudgetAndExclusionsFromMultiTurnInput() {
+        when(chatModel.call(Mockito.any(Prompt.class))).thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("""
+                {"deliveryType":"PHYSICAL","maxPrice":180.50,"currency":"CNY","searchTerms":["通勤"],
+                "categoryKeywords":[],"requiredColors":[],"excludedColors":["蓝"],"requiredFabrics":["100%棉"],
+                "excludedFabrics":[],"requiredSize":"","needsClarification":false}
+                """)))));
+        var intent = model.interpret(List.of(new GuideModel.Turn("user", "通勤，预算 250"),
+                new GuideModel.Turn("assistant", "蓝色可以吗？"), new GuideModel.Turn("user", "不要蓝，改成180.50以内，只要纯棉")));
+        assertThat(intent.maxPrice()).isEqualByComparingTo("180.50");
+        assertThat(intent.excludedColors()).containsExactly("蓝");
+        assertThat(intent.requiredFabrics()).containsExactly("100%棉");
+        ArgumentCaptor<Prompt> prompt = ArgumentCaptor.forClass(Prompt.class);
+        Mockito.verify(chatModel).call(prompt.capture());
+        assertThat(prompt.getValue().getInstructions().getLast().getText()).contains("改成180.50以内", "不要蓝");
+    }
+
+    @Test
+    void rejectsMalformedIntentInsteadOfSilentlyLosingHardConstraints() {
+        for (String response : List.of("not json", "{\"maxPrice\":\"cheap\"}", "{\"deliveryType\":\"DIGITAL\",\"searchTerms\":[1]}")) {
+            when(chatModel.call(Mockito.any(Prompt.class))).thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage(response)))));
+            assertThatThrownBy(() -> model.interpret(List.of(new GuideModel.Turn("user", "预算100"))))
+                    .isInstanceOf(IllegalStateException.class);
+        }
+    }
 }

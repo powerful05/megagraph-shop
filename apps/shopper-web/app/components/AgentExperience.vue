@@ -7,7 +7,9 @@ const props = defineProps<{
   modelAvailable: boolean
   demoCatalogAvailable: boolean
   modelName: string
+  cartBusy: boolean
 }>()
+const emit = defineEmits<{ addToCart: [product: PublicProduct, skuId: number] }>()
 const apiBase = useRuntimeConfig().public.apiBase
 
 type DemoProduct = {
@@ -77,12 +79,18 @@ const previewLoading = ref(false)
 const previewError = ref('')
 let previewRequest: AbortController | null = null
 const previewClose = ref<HTMLButtonElement | null>(null)
+const previewDialog = ref<HTMLElement | null>(null)
+const previewSkuId = ref<number | null>(null)
+const previewAllowedSkuIds = ref<number[]>([])
+const previewChanged = ref(false)
 const messageList = ref<HTMLElement | null>(null)
 const composer = ref<HTMLTextAreaElement | null>(null)
 let previewTrigger: HTMLElement | null = null
 
 const activeConversation = computed(() => conversations.value.find(item => item.id === activeId.value)!)
 const hasMessages = computed(() => activeConversation.value.messages.length > 0)
+const previewSkus = computed(() => previewProduct.value?.product?.skus.filter(sku => previewAllowedSkuIds.value.includes(sku.id)) ?? [])
+const previewSku = computed(() => previewSkus.value.find(sku => sku.id === previewSkuId.value))
 
 function startConversation() {
   const current = activeConversation.value
@@ -188,7 +196,9 @@ async function sendModelReply(conversation: Conversation) {
     else if (reply?.role === 'assistant' && !reply.error) completedTurns.push(message, reply)
   }
   const history: GuideMessage[] = completedTurns.slice(-19)
-    .map(message => ({ role: message.role, content: message.text }))
+    .map(message => ({ role: message.role, content: message.role === 'assistant' && message.liveProducts?.length
+      ? `${message.text.slice(0, 1400)}\n上轮展示顺序（仅标识，不代表当前可售）：${JSON.stringify(message.liveProducts.map(product => ({ id: product.id, title: product.title })))}`
+      : message.text }))
   while (history.reduce((sum, message) => sum + message.content.length, 0) > 12000 && history.length > 1) {
     history.splice(0, 2)
   }
@@ -228,19 +238,30 @@ function handleComposerKeydown(event: KeyboardEvent) {
   }
 }
 
-async function openPreview(product: DemoProduct) {
+async function openPreview(product: DemoProduct, event?: MouseEvent) {
   previewRequest?.abort()
   previewRequest = new AbortController()
   const request = previewRequest
-  previewTrigger = document.activeElement as HTMLElement | null
+  previewTrigger = event?.currentTarget instanceof HTMLElement ? event.currentTarget : document.activeElement as HTMLElement | null
   previewProduct.value = product
   previewLoading.value = !!product.product
   previewError.value = ''
+  previewChanged.value = false
+  previewAllowedSkuIds.value = product.product?.skus.map(sku => sku.id) ?? []
+  previewSkuId.value = null
   nextTick(() => previewClose.value?.focus())
   if (!product.product) return
   try {
     const fresh = await shopperApi.product(apiBase, product.product.id, request.signal)
-    if (!request.signal.aborted) previewProduct.value = livePreview(fresh)
+    if (!request.signal.aborted) {
+      previewProduct.value = livePreview(fresh)
+      previewSkuId.value = previewSkus.value[0]?.id ?? null
+      previewChanged.value = fresh.evidence.productVersion !== product.product.evidence.productVersion
+        || fresh.skus.some(sku => {
+          const before = product.product!.skus.find(item => item.id === sku.id)
+          return before && (before.price !== sku.price || before.name !== sku.name)
+        })
+    }
   } catch (error) {
     if (!request.signal.aborted) previewError.value = error instanceof Error ? error.message : '商品当前不可用'
   } finally {
@@ -248,17 +269,29 @@ async function openPreview(product: DemoProduct) {
   }
 }
 
-function closePreview() {
+function closePreview(restoreFocus = true) {
   previewRequest?.abort()
   previewProduct.value = null
-  nextTick(() => previewTrigger?.focus())
+  if (restoreFocus) nextTick(() => { if (previewTrigger?.isConnected) previewTrigger.focus() })
+}
+
+function addPreviewToCart() {
+  const product = previewProduct.value?.product
+  const sku = previewSku.value
+  if (!product || !sku || previewLoading.value || previewError.value || props.cartBusy) return
+  closePreview(false)
+  emit('addToCart', product, sku.id)
 }
 
 function handlePreviewKeydown(event: KeyboardEvent) {
-  if (event.key === 'Escape') closePreview()
+  if (event.key === 'Escape') { event.stopPropagation(); closePreview() }
   if (event.key === 'Tab') {
-    event.preventDefault()
-    previewClose.value?.focus()
+    const controls = Array.from(previewDialog.value?.querySelectorAll<HTMLElement>('button:not(:disabled), select:not(:disabled), summary, [tabindex="0"]') ?? [])
+      .filter(control => control.getClientRects().length > 0)
+    const first = controls[0]
+    const last = controls.at(-1)
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus() }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus() }
   }
 }
 
@@ -319,7 +352,7 @@ onBeforeUnmount(() => {
                 <div v-if="message.showProducts" class="demo-results">
                   <div class="results-heading"><strong>图片示例</strong><span>生成素材 · 非真实商家上架商品</span></div>
                   <div class="demo-grid">
-                    <button v-for="product in visibleDemoProducts(message)" :key="product.id" type="button" class="demo-product" @click="openPreview(product)">
+                    <button v-for="product in visibleDemoProducts(message)" :key="product.id" type="button" class="demo-product" @click="openPreview(product, $event)">
                       <img :src="product.image" :alt="`${product.name}，AI 生成的演示商品图`" />
                       <span class="demo-product-meta"><small>{{ product.source }} · 生成示例</small><strong>{{ product.name }}</strong><span>{{ product.note }}</span></span>
                     </button>
@@ -329,7 +362,7 @@ onBeforeUnmount(() => {
                 <div v-if="message.liveProducts?.length" class="demo-results">
                   <div class="results-heading"><strong>匹配商品</strong><span>返回时已核对资料版本与可售状态</span></div>
                   <div class="demo-grid">
-                    <button v-for="product in message.liveProducts" :key="product.id" type="button" class="demo-product" @click="openPreview(livePreview(product))">
+                    <button v-for="product in message.liveProducts" :key="product.id" type="button" class="demo-product" @click="openPreview(livePreview(product), $event)">
                       <img v-if="product.mainImageUrl" :src="`${apiBase}${product.mainImageUrl}`" :alt="product.title" />
                       <div v-else class="missing-image">暂无商品图</div>
                       <span class="demo-product-meta"><small>{{ product.evidence.merchantName }} · {{ product.evidence.dataOrigin === 'LOCAL_TEST' ? '测试供给' : '已发布' }}</small><strong>{{ product.title }}</strong><span>{{ formatPrice(product) }} 起 · 资料版本 {{ product.evidence.productVersion }}</span></span>
@@ -368,12 +401,27 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <div v-if="previewProduct" class="preview-layer" @click.self="closePreview">
-      <section class="preview-dialog" role="dialog" aria-modal="true" :aria-label="`${previewProduct.name}商品详情`" tabindex="-1" @keydown="handlePreviewKeydown">
-        <button ref="previewClose" class="preview-close" type="button" aria-label="关闭图片详情" title="关闭" @click="closePreview">×</button>
+    <div v-if="previewProduct" class="preview-layer" @click.self="closePreview()">
+      <section ref="previewDialog" class="preview-dialog" role="dialog" aria-modal="true" :aria-label="`${previewProduct.name}商品详情`" tabindex="-1" @keydown="handlePreviewKeydown">
+        <button ref="previewClose" class="preview-close" type="button" aria-label="关闭图片详情" title="关闭" @click="closePreview()">×</button>
         <img v-if="previewProduct.image" :src="previewProduct.image" :alt="previewProduct.name" />
         <div v-else class="missing-image">暂无商品图</div>
-        <div><small>{{ previewProduct.source }}{{ previewProduct.live ? '' : ' · AI 生成图片' }}</small><h2>{{ previewProduct.name }}</h2><p>{{ previewProduct.note }}</p><p v-if="previewLoading">正在核对当前资料…</p><p v-else-if="previewError" role="alert">{{ previewError }}</p><ProductSupplyEvidence v-else-if="previewProduct.product" :product="previewProduct.product" /><p v-else>此图不是商家上传的商品，也无法确认材质、规格、价格或库存。</p></div>
+        <div><small>{{ previewProduct.source }}{{ previewProduct.live ? '' : ' · AI 生成图片' }}</small><h2>{{ previewProduct.name }}</h2><p>{{ previewProduct.note }}</p><p v-if="previewLoading">正在核对当前资料…</p><p v-else-if="previewError" role="alert">{{ previewError }}</p>
+          <template v-else-if="previewProduct.product">
+            <p v-if="previewChanged" class="preview-update" role="status">商品资料或规格价格已更新，请核对后再选择。</p>
+            <ProductSupplyEvidence :product="previewProduct.product" />
+            <div class="preview-purchase">
+              <label for="guide-sku">规格</label>
+              <select id="guide-sku" v-model="previewSkuId" :disabled="cartBusy || !previewSkus.length">
+                <option v-for="sku in previewSkus" :key="sku.id" :value="sku.id">{{ sku.name }}</option>
+              </select>
+              <p v-if="previewSku">{{ new Intl.NumberFormat('zh-CN', { style: 'currency', currency: previewSku.currency }).format(previewSku.price) }} · 可售 {{ previewSku.availableStock }} 件</p>
+              <p v-else>本次推荐的规格当前不可售，请重新查询。</p>
+              <button type="button" :disabled="cartBusy || !previewSku" @click="addPreviewToCart">{{ cartBusy ? '处理中…' : '加入购物袋' }}</button>
+            </div>
+          </template>
+          <p v-else>此图不是商家上传的商品，也无法确认材质、规格、价格或库存。</p>
+        </div>
       </section>
     </div>
   </section>
@@ -445,6 +493,13 @@ onBeforeUnmount(() => {
 .preview-dialog small { color: #438461; font-size: 11px; }
 .preview-dialog h2 { margin: 12px 0 16px; font-size: 25px; font-weight: 650; line-height: 1.2; letter-spacing: 0; }
 .preview-dialog p { color: #68746c; font-size: 13px; line-height: 1.7; }
+.preview-purchase { display: grid; gap: 8px; margin-top: 20px; padding-top: 16px; border-top: 1px solid #e5e8e4; }
+.preview-purchase label { font-size: 12px; font-weight: 650; }
+.preview-purchase select { width: 100%; min-width: 0; min-height: 40px; padding: 8px; border: 1px solid #cdd8d0; border-radius: 4px; background: #fff; font-size: 13px; }
+.preview-purchase p { margin: 0; }
+.preview-purchase button { width: 100%; min-height: 42px; padding: 10px; border: 0; border-radius: 4px; background: #267b53; color: #fff; font-size: 13px; font-weight: 650; cursor: pointer; }
+.preview-purchase button:disabled { background: #c6d0c9; cursor: not-allowed; }
+.preview-dialog .preview-update { color: #916222; }
 .preview-close { position: fixed; z-index: 1; top: 32px; right: max(32px, calc((100vw - 760px) / 2 + 12px)); width: 32px; height: 32px; border: 0; border-radius: 5px; background: #fff; font-size: 22px; cursor: pointer; }
 .mobile-history, .sidebar-scrim { display: none; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }

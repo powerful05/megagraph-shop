@@ -52,11 +52,18 @@ const busyAction = ref('')
 const ordersRefreshBusy = ref(false)
 const errorMessage = ref('')
 const notice = ref('')
+let noticeTimer: ReturnType<typeof setTimeout> | null = null
+watch(notice, value => {
+  if (noticeTimer) clearTimeout(noticeTimer)
+  noticeTimer = value ? setTimeout(() => { notice.value = ''; noticeTimer = null }, 6000) : null
+})
 const pollingMessage = ref('')
 const pollingTimedOut = ref(false)
 const cart = ref<ShoppingCart>({ cartId: 0, currency: null, estimatedTotal: 0, items: [] })
 const orders = ref<SalesOrder[]>([])
 const selectedSkuByProduct = reactive<Record<number, number>>({})
+const pendingGuideCart = ref<{ productId: number; skuId: number } | null>(null)
+watch(loginOpen, value => { if (!value && !connected.value) pendingGuideCart.value = null })
 const checkoutKey = ref<string | null>(null)
 watch(connected, value => { if (!value) checkoutKey.value = null })
 watch(() => JSON.stringify(checkout), () => { checkoutKey.value = null })
@@ -192,6 +199,12 @@ async function connectShopper() {
     credentials.password = ''
     await loadPrivateState()
     notice.value = '顾客会话已建立'
+    const pending = pendingGuideCart.value
+    pendingGuideCart.value = null
+    if (pending) {
+      const current = await shopperApi.product(apiBase, pending.productId)
+      await addToCart(current, pending.skuId)
+    }
   })
 }
 
@@ -225,6 +238,7 @@ async function logoutShopper() {
     orderMutationVersion += 1
     ordersRequest = null
     connected.value = false
+    pendingGuideCart.value = null
     cart.value = { cartId: 0, currency: null, estimatedTotal: 0, items: [] }
     orders.value = []
     activePanel.value = null
@@ -242,13 +256,13 @@ function openPanel(panel: CommercePanel) {
   if (panel === 'orders') void recoverOrderState()
 }
 
-async function addToCart(product: PublicProduct) {
+async function addToCart(product: PublicProduct, skuId?: number) {
   if (!connected.value) {
     loginOpen.value = true
     return
   }
-  const sku = chosenSku(product)
-  if (!sku) return
+  const sku = skuId === undefined ? chosenSku(product) : product.skus.find(item => item.id === skuId)
+  if (!sku) { errorMessage.value = '所选规格当前不可售，请重新查询'; return }
   const existing = cart.value.items.find(item => item.skuId === sku.id)
   const nextQuantity = (existing?.quantity ?? 0) + 1
   await execute(`add-${sku.id}`, async () => {
@@ -257,6 +271,16 @@ async function addToCart(product: PublicProduct) {
     activePanel.value = 'cart'
     notice.value = `${product.title} 已加入购物车`
   })
+}
+
+function addGuideProduct(product: PublicProduct, skuId: number) {
+  if (busyAction.value) return
+  if (!connected.value) {
+    pendingGuideCart.value = { productId: product.id, skuId }
+    loginOpen.value = true
+    return
+  }
+  void addToCart(product, skuId)
 }
 
 async function changeQuantity(skuId: number, quantity: number) {
@@ -536,6 +560,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  if (noticeTimer) clearTimeout(noticeTimer)
   shopperApi.onSessionExpired(null)
   clearPollTimer()
   document.removeEventListener('visibilitychange', handleVisibilityChange)
@@ -572,6 +597,8 @@ onBeforeUnmount(() => {
       :model-available="capabilities?.guideAvailable === true"
       :demo-catalog-available="capabilities?.demoCatalogAvailable === true"
       :model-name="capabilities?.guideModelName ?? ''"
+      :cart-busy="Boolean(busyAction)"
+      @add-to-cart="addGuideProduct"
     />
 
     <section v-if="catalogOpen" id="collection" class="collection-section live-catalog">

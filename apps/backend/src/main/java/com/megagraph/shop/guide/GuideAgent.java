@@ -31,7 +31,10 @@ public class GuideAgent {
             throw new IllegalArgumentException("商品需求不能为空");
         }
         GuideModel guideModel = model.orElseThrow(() -> new IllegalStateException("导购模型未启用"));
-        List<PublicProductResponse> available = catalog.list().stream().limit(CANDIDATE_LIMIT).toList();
+        GuideIntent extracted = guideModel.interpret(List.of(new GuideModel.Turn("user", request.strip())));
+        GuideIntent intent = extracted == null ? GuideIntent.empty() : extracted;
+        GuideCatalogSearch search = new GuideCatalogSearch(catalog.categoryNames());
+        List<PublicProductResponse> available = search.search(catalog.list(), intent, CANDIDATE_LIMIT);
         if (available.isEmpty()) {
             return new GuideResult("目前没有可推荐的在售商品。", List.of());
         }
@@ -53,7 +56,7 @@ public class GuideAgent {
                 }
                 try {
                     PublicProductResponse fresh = catalog.get(id);
-                    if (sameEvidenceVersion(available, fresh)) products.add(fresh);
+                    if (sameEvidenceVersion(available, fresh)) search.qualify(fresh, intent).ifPresent(products::add);
                 } catch (NotFoundException ignored) {
                     // Availability can change between candidate retrieval and the final response.
                 }
@@ -88,12 +91,21 @@ public class GuideAgent {
         }
         GuideModel guideModel = model.orElseThrow(() -> new DomainException(
                 HttpStatus.SERVICE_UNAVAILABLE, "GUIDE_UNAVAILABLE", "对话模型暂未启用"));
-        List<PublicProductResponse> available = catalog.list().stream().limit(CANDIDATE_LIMIT).toList();
+        GuideIntent extracted = guideModel.interpret(List.copyOf(messages));
+        GuideIntent intent = extracted == null ? GuideIntent.empty() : extracted;
+        GuideCatalogSearch search = new GuideCatalogSearch(catalog.categoryNames());
+        List<PublicProductResponse> publicCatalog = catalog.list();
+        List<PublicProductResponse> available = search.search(publicCatalog, intent, CANDIDATE_LIMIT);
         List<GuideModel.Candidate> candidates = new ArrayList<>(available.stream()
                 .map(product -> new GuideModel.Candidate(product.id(), product.title(), product.subtitle(),
                         product.priceFrom().toPlainString(), product.currency(),
                         product.skus().stream().map(sku -> sku.name()).toList(), product.evidence())).toList());
-        boolean useDemo = allowDemoProducts && available.isEmpty();
+        boolean useDemo = allowDemoProducts && publicCatalog.isEmpty()
+                && !intent.needsClarification()
+                && (intent.deliveryType() == GuideIntent.DeliveryType.UNKNOWN || intent.deliveryType() == GuideIntent.DeliveryType.PHYSICAL)
+                && intent.maxPrice() == null && intent.requiredSize().isEmpty()
+                && intent.requiredColors().isEmpty() && intent.excludedColors().isEmpty()
+                && intent.requiredFabrics().isEmpty() && intent.excludedFabrics().isEmpty() && intent.categoryKeywords().isEmpty();
         if (useDemo) {
             candidates.add(new GuideModel.Candidate(-101L, "演示图 A：浅蓝衬衫",
                     "视觉风格清爽利落，其他属性未知；不是在售商品", "", "", List.of(), null));
@@ -117,7 +129,8 @@ public class GuideAgent {
             if (candidateIds.contains(id)) {
                 try {
                     PublicProductResponse fresh = catalog.get(id);
-                    if (sameEvidenceVersion(available, fresh)) products.add(fresh);
+                    var matching = search.qualify(fresh, intent);
+                    if (sameEvidenceVersion(available, fresh) && matching.isPresent()) products.add(matching.get());
                     else candidateChanged = true;
                 } catch (NotFoundException ignored) {
                     // Recheck public eligibility after the external model call.

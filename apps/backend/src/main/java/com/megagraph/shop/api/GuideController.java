@@ -48,6 +48,9 @@ public class GuideController {
         if (!concurrentRequests.tryAcquire()) {
             throw new DomainException(HttpStatus.TOO_MANY_REQUESTS, "GUIDE_BUSY", "导购正在处理其他请求，请稍后重试");
         }
+        String requestId = java.util.UUID.randomUUID().toString();
+        long started = System.nanoTime();
+        org.slf4j.MDC.put("guideRequestId", requestId);
         try {
             GuideChatResult result = agent.chat(request.messages().stream()
                     .map(turn -> new GuideModel.Turn(turn.role(), turn.content())).toList(), demoCatalogAvailable);
@@ -59,6 +62,9 @@ public class GuideController {
             throw new DomainException(HttpStatus.SERVICE_UNAVAILABLE, "GUIDE_MODEL_FAILED",
                     "模型暂时无法回复，请稍后重试");
         } finally {
+            LOG.info("Guide request requestId={}, turns={}, milliseconds={}", requestId, request.messages().size(),
+                    (System.nanoTime() - started) / 1_000_000);
+            org.slf4j.MDC.remove("guideRequestId");
             concurrentRequests.release();
         }
     }

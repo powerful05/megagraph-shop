@@ -9,6 +9,8 @@ public interface GuideModel {
 
     Selection chat(List<Turn> messages, List<Candidate> candidates);
 
+    default GuideIntent interpret(List<Turn> messages) { return GuideIntent.empty(); }
+
     record Turn(String role, String content) {
     }
 
