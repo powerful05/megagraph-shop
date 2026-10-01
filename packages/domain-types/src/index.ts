@@ -54,6 +54,37 @@ export interface ProductSku {
   status: 'ENABLED' | 'DISABLED'
 }
 
+export interface SupplySizeRow {
+  skuCode: string
+  sizeLabel: string
+  chestCm: number
+  lengthCm: number
+  shoulderCm: number | null
+  sleeveCm: number | null
+}
+
+export interface SupplyDetails {
+  color: string
+  fabric: string
+  fit: string
+  seasons: string[]
+  scenarios: string[]
+  measurementNote: string
+  imageSourceNote: string
+  sizeChart: SupplySizeRow[]
+}
+
+export interface ProductEvidence {
+  productVersion: number
+  merchantId: number
+  merchantName: string
+  deliveryType: 'PHYSICAL'
+  dataOrigin: 'MERCHANT' | 'LOCAL_TEST'
+  confirmationStatus: 'MISSING' | 'UNCONFIRMED' | 'MERCHANT_CONFIRMED' | 'TEST_CONFIRMED'
+  confirmedAt: string | null
+  details: SupplyDetails | null
+}
+
 export interface MerchantProduct {
   id: number
   version: number
@@ -65,6 +96,7 @@ export interface MerchantProduct {
   publishedAt: string | null
   images: ProductImage[]
   skus: ProductSku[]
+  evidence: ProductEvidence
 }
 
 export interface PublicProduct {
@@ -78,6 +110,7 @@ export interface PublicProduct {
   mainImageUrl: string | null
   publishedAt: string
   skus: PublicSku[]
+  evidence: ProductEvidence
 }
 
 export interface PublicSku {

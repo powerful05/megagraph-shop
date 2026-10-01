@@ -82,6 +82,22 @@ public class ProductService {
 
         product.revise(request.title().trim(), trimToNull(request.subtitle()), category.getId());
         upsertSku(actor, product, request.sku());
+        if (request.supplyDetails() != null) {
+            validateSizeChart(product, request.supplyDetails());
+            try {
+                product.reviseSupplyDetails(objectMapper.writeValueAsString(request.supplyDetails()));
+            } catch (JsonProcessingException exception) {
+                throw new IllegalStateException("Cannot serialize supply details", exception);
+            }
+        } else if (product.getSupplyDetails() != null) {
+            // A changed SKU code must not leave an orphaned size-chart row.
+            try {
+                validateSizeChart(product, objectMapper.readValue(product.getSupplyDetails(),
+                        com.megagraph.shop.api.SupplyDetails.class));
+            } catch (JsonProcessingException exception) {
+                throw new IllegalStateException("Invalid stored supply details", exception);
+            }
+        }
         Product saved = products.saveAndFlush(product);
         return mapper.toMerchantResponse(saved);
     }
@@ -184,6 +200,17 @@ public class ProductService {
         );
         if (!hasSellableSku) {
             throw new ValidationException("PRODUCT_SELLABLE_SKU_REQUIRED", "至少一个启用 SKU 必须有合法价格和可售库存");
+        }
+    }
+
+    private void validateSizeChart(Product product, com.megagraph.shop.api.SupplyDetails details) {
+        var codes = skus.findByProductIdAndDeletedAtIsNullOrderByIdAsc(product.getId()).stream()
+                .map(ProductSku::getSkuCode).collect(java.util.stream.Collectors.toSet());
+        var seen = new java.util.HashSet<String>();
+        for (var row : details.sizeChart()) {
+            if (!codes.contains(row.skuCode()) || !seen.add(row.skuCode())) {
+                throw new ValidationException("SIZE_CHART_SKU_INVALID", "尺码表必须对应本商品的 SKU，且不能重复");
+            }
         }
     }
 

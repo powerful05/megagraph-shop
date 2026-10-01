@@ -13,7 +13,7 @@ public record ProductResponse(
         String publishStatus,
         Instant publishedAt,
         List<ProductImageResponse> images,
-        List<SkuResponse> skus
+        List<SkuResponse> skus,
+        ProductEvidence evidence
 ) {
 }
-

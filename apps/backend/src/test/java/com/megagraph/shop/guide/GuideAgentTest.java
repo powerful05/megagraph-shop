@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.eq;
 
 import com.megagraph.shop.api.PublicProductResponse;
 import com.megagraph.shop.api.PublicSkuResponse;
+import com.megagraph.shop.api.ProductEvidence;
 import com.megagraph.shop.catalog.PublicCatalogService;
 import com.megagraph.shop.shared.NotFoundException;
 import java.math.BigDecimal;
@@ -116,6 +117,31 @@ class GuideAgentTest {
     private PublicProductResponse product(Long id, String title, String image) {
         return new PublicProductResponse(id, title, "适合日常穿着", 1L, new BigDecimal("199.00"),
                 "CNY", 2, image, Instant.parse("2026-09-30T00:00:00Z"),
-                List.of(new PublicSkuResponse(id, "sku-" + id, "均码", new BigDecimal("199.00"), "CNY", 2)));
+                List.of(new PublicSkuResponse(id, "sku-" + id, "均码", new BigDecimal("199.00"), "CNY", 2)), null);
+    }
+
+    @Test
+    void changedEvidenceVersionWithdrawsOldAnswerAndProducts() {
+        PublicProductResponse original = versionedProduct(1L);
+        when(catalog.list()).thenReturn(List.of(original));
+        when(model.chat(anyList(), anyList())).thenReturn(new GuideModel.Selection("这件商品是旧面料。", List.of(1L)));
+        when(catalog.get(1L)).thenReturn(versionedProduct(2L));
+
+        GuideChatResult result = agent.chat(List.of(new GuideModel.Turn("user", "想找棉衬衫")), false);
+
+        assertThat(result.products()).isEmpty();
+        assertThat(result.answer()).contains("发生变化").doesNotContain("旧面料");
+        var capture = org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(model).chat(anyList(), capture.capture());
+        GuideModel.Candidate sent = (GuideModel.Candidate) capture.getValue().getFirst();
+        assertThat(sent.evidence().productVersion()).isEqualTo(1L);
+        assertThat(sent.evidence().dataOrigin()).isEqualTo("LOCAL_TEST");
+    }
+
+    private PublicProductResponse versionedProduct(Long version) {
+        PublicProductResponse base = product(1L, "棉衬衫", "图片");
+        return new PublicProductResponse(base.id(), base.title(), base.subtitle(), base.categoryId(), base.priceFrom(),
+                base.currency(), base.availableStock(), base.mainImageUrl(), base.publishedAt(), base.skus(),
+                new ProductEvidence(version, 1L, "测试商家", "PHYSICAL", "LOCAL_TEST", "TEST_CONFIRMED", Instant.now(), null));
     }
 }

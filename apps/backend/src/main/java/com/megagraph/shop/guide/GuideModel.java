@@ -1,6 +1,7 @@
 package com.megagraph.shop.guide;
 
 import java.util.List;
+import com.megagraph.shop.api.ProductEvidence;
 
 public interface GuideModel {
 
@@ -12,7 +13,7 @@ public interface GuideModel {
     }
 
     record Candidate(Long id, String title, String subtitle, String priceFrom, String currency,
-                     List<String> skuNames) {
+                     List<String> skuNames, ProductEvidence evidence) {
     }
 
     record Selection(String interpretation, List<Long> productIds) {

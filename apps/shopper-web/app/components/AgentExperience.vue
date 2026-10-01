@@ -18,6 +18,7 @@ type DemoProduct = {
   source: string
   live?: boolean
   price?: string
+  product?: PublicProduct
 }
 
 type Message = {
@@ -72,6 +73,9 @@ const pendingId = ref<number | null>(null)
 const progress = ref('正在阅读你的描述…')
 const sidebarOpen = ref(false)
 const previewProduct = ref<DemoProduct | null>(null)
+const previewLoading = ref(false)
+const previewError = ref('')
+let previewRequest: AbortController | null = null
 const previewClose = ref<HTMLButtonElement | null>(null)
 const messageList = ref<HTMLElement | null>(null)
 const composer = ref<HTMLTextAreaElement | null>(null)
@@ -162,7 +166,7 @@ function livePreview(product: PublicProduct): DemoProduct {
   return {
     id: String(product.id), name: product.title, note: product.subtitle ?? '',
     image: product.mainImageUrl ? `${apiBase}${product.mainImageUrl}` : '',
-    source: '已发布商品', live: true, price: formatPrice(product),
+    source: product.evidence.merchantName, live: true, price: formatPrice(product), product,
   }
 }
 
@@ -224,13 +228,28 @@ function handleComposerKeydown(event: KeyboardEvent) {
   }
 }
 
-function openPreview(product: DemoProduct) {
+async function openPreview(product: DemoProduct) {
+  previewRequest?.abort()
+  previewRequest = new AbortController()
+  const request = previewRequest
   previewTrigger = document.activeElement as HTMLElement | null
   previewProduct.value = product
+  previewLoading.value = !!product.product
+  previewError.value = ''
   nextTick(() => previewClose.value?.focus())
+  if (!product.product) return
+  try {
+    const fresh = await shopperApi.product(apiBase, product.product.id, request.signal)
+    if (!request.signal.aborted) previewProduct.value = livePreview(fresh)
+  } catch (error) {
+    if (!request.signal.aborted) previewError.value = error instanceof Error ? error.message : '商品当前不可用'
+  } finally {
+    if (!request.signal.aborted) previewLoading.value = false
+  }
 }
 
 function closePreview() {
+  previewRequest?.abort()
   previewProduct.value = null
   nextTick(() => previewTrigger?.focus())
 }
@@ -247,6 +266,7 @@ onBeforeUnmount(() => {
   if (progressTimer) clearTimeout(progressTimer)
   if (responseTimer) clearTimeout(responseTimer)
   requestController?.abort()
+  previewRequest?.abort()
 })
 </script>
 
@@ -307,12 +327,12 @@ onBeforeUnmount(() => {
                   <p class="results-footnote">图片仅用于界面演示，不提供价格、库存和购买入口。</p>
                 </div>
                 <div v-if="message.liveProducts?.length" class="demo-results">
-                  <div class="results-heading"><strong>在售商品</strong><span>返回时已核对可售状态</span></div>
+                  <div class="results-heading"><strong>匹配商品</strong><span>返回时已核对资料版本与可售状态</span></div>
                   <div class="demo-grid">
                     <button v-for="product in message.liveProducts" :key="product.id" type="button" class="demo-product" @click="openPreview(livePreview(product))">
                       <img v-if="product.mainImageUrl" :src="`${apiBase}${product.mainImageUrl}`" :alt="product.title" />
                       <div v-else class="missing-image">暂无商品图</div>
-                      <span class="demo-product-meta"><small>已发布商品</small><strong>{{ product.title }}</strong><span>{{ formatPrice(product) }} 起</span></span>
+                      <span class="demo-product-meta"><small>{{ product.evidence.merchantName }} · {{ product.evidence.dataOrigin === 'LOCAL_TEST' ? '测试供给' : '已发布' }}</small><strong>{{ product.title }}</strong><span>{{ formatPrice(product) }} 起 · 资料版本 {{ product.evidence.productVersion }}</span></span>
                     </button>
                   </div>
                 </div>
@@ -349,11 +369,11 @@ onBeforeUnmount(() => {
     </div>
 
     <div v-if="previewProduct" class="preview-layer" @click.self="closePreview">
-      <section class="preview-dialog" role="dialog" aria-modal="true" :aria-label="`${previewProduct.name}演示图片`" tabindex="-1" @keydown="handlePreviewKeydown">
+      <section class="preview-dialog" role="dialog" aria-modal="true" :aria-label="`${previewProduct.name}商品详情`" tabindex="-1" @keydown="handlePreviewKeydown">
         <button ref="previewClose" class="preview-close" type="button" aria-label="关闭图片详情" title="关闭" @click="closePreview">×</button>
         <img v-if="previewProduct.image" :src="previewProduct.image" :alt="previewProduct.name" />
         <div v-else class="missing-image">暂无商品图</div>
-        <div><small>{{ previewProduct.source }}{{ previewProduct.live ? '' : ' · AI 生成图片' }}</small><h2>{{ previewProduct.name }}</h2><p>{{ previewProduct.note }}</p><p v-if="previewProduct.live">{{ previewProduct.price }} 起，请在真实商品目录中核对规格和当前库存。</p><p v-else>此图不是商家上传的商品，也无法确认材质、规格、价格或库存。</p></div>
+        <div><small>{{ previewProduct.source }}{{ previewProduct.live ? '' : ' · AI 生成图片' }}</small><h2>{{ previewProduct.name }}</h2><p>{{ previewProduct.note }}</p><p v-if="previewLoading">正在核对当前资料…</p><p v-else-if="previewError" role="alert">{{ previewError }}</p><ProductSupplyEvidence v-else-if="previewProduct.product" :product="previewProduct.product" /><p v-else>此图不是商家上传的商品，也无法确认材质、规格、价格或库存。</p></div>
       </section>
     </div>
   </section>
@@ -418,14 +438,14 @@ onBeforeUnmount(() => {
 .composer-actions button { flex: 0 0 30px; width: 30px; height: 30px; border: 0; border-radius: 6px; color: #fff; background: #267b53; font-size: 20px; cursor: pointer; }
 .composer-actions button:disabled { background: #c6d0c9; cursor: not-allowed; }
 .composer-disclaimer { margin: 8px 0 0; color: #a2aaa3; text-align: center; font-size: 10px; line-height: 1.4; }
-.preview-layer { position: fixed; z-index: 60; inset: 0; display: grid; place-items: center; padding: 20px; background: #17221bcc; }
+.preview-layer { position: fixed; z-index: 60; inset: 0; display: grid; place-items: start center; padding: 20px; background: #17221bcc; }
 .preview-dialog { position: relative; display: grid; width: min(760px, 100%); max-height: calc(100svh - 40px); grid-template-columns: minmax(0, 1fr) minmax(220px, .9fr); overflow: auto; border-radius: 8px; background: #fff; }
-.preview-dialog img { display: block; width: 100%; height: 100%; max-height: 680px; object-fit: cover; }
+.preview-dialog img { display: block; width: 100%; height: auto; align-self: start; object-fit: contain; }
 .preview-dialog > div { align-self: center; padding: 32px; }
 .preview-dialog small { color: #438461; font-size: 11px; }
 .preview-dialog h2 { margin: 12px 0 16px; font-size: 25px; font-weight: 650; line-height: 1.2; letter-spacing: 0; }
 .preview-dialog p { color: #68746c; font-size: 13px; line-height: 1.7; }
-.preview-close { position: absolute; top: 12px; right: 12px; width: 32px; height: 32px; border: 0; border-radius: 5px; background: #fff; font-size: 22px; cursor: pointer; }
+.preview-close { position: fixed; z-index: 1; top: 32px; right: max(32px, calc((100vw - 760px) / 2 + 12px)); width: 32px; height: 32px; border: 0; border-radius: 5px; background: #fff; font-size: 22px; cursor: pointer; }
 .mobile-history, .sidebar-scrim { display: none; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
 @media (max-width: 760px) {

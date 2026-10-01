@@ -533,7 +533,7 @@ onBeforeUnmount(() => {
       </a>
       <div class="nav-links">
         <button type="button" :aria-pressed="catalogOpen" @click="catalogOpen = !catalogOpen">
-          {{ catalogOpen ? '返回对话' : '真实商品目录' }}
+          {{ catalogOpen ? '返回对话' : '商品目录' }}
         </button>
         <button type="button" @click="openPanel('orders')">
           订单<span v-if="actionableOrderCount">{{ actionableOrderCount }}</span>
@@ -614,6 +614,7 @@ onBeforeUnmount(() => {
               <span>＋</span>
             </button>
           </div>
+          <details class="product-evidence-details"><summary>商品资料与尺码</summary><ProductSupplyEvidence :product="product" /></details>
         </article>
       </div>
     </section>

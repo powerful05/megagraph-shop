@@ -30,7 +30,7 @@ class SpringAiGuideModelTest {
                 {"interpretation":"想找一件适合通勤的外套","productIds":[7,"8",9]}
                 """);
         GuideModel.Candidate candidate = new GuideModel.Candidate(7L, "外套", "简洁剪裁", "199.00", "CNY",
-                List.of("均码"));
+                List.of("均码"), null);
 
         GuideModel.Selection selection = model.select("想穿去上班", List.of(candidate));
 

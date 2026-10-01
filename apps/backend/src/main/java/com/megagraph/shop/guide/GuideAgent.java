@@ -40,7 +40,7 @@ public class GuideAgent {
                 .map(product -> new GuideModel.Candidate(
                         product.id(), product.title(), product.subtitle(),
                         product.priceFrom().toPlainString(), product.currency(),
-                        product.skus().stream().map(sku -> sku.name()).toList()))
+                        product.skus().stream().map(sku -> sku.name()).toList(), product.evidence()))
                 .toList();
         GuideModel.Selection selection = guideModel.select(request.strip(), candidates);
         Set<Long> candidateIds = new HashSet<>(available.stream().map(PublicProductResponse::id).toList());
@@ -52,7 +52,8 @@ public class GuideAgent {
                     continue;
                 }
                 try {
-                    products.add(catalog.get(id));
+                    PublicProductResponse fresh = catalog.get(id);
+                    if (sameEvidenceVersion(available, fresh)) products.add(fresh);
                 } catch (NotFoundException ignored) {
                     // Availability can change between candidate retrieval and the final response.
                 }
@@ -91,15 +92,15 @@ public class GuideAgent {
         List<GuideModel.Candidate> candidates = new ArrayList<>(available.stream()
                 .map(product -> new GuideModel.Candidate(product.id(), product.title(), product.subtitle(),
                         product.priceFrom().toPlainString(), product.currency(),
-                        product.skus().stream().map(sku -> sku.name()).toList())).toList());
+                        product.skus().stream().map(sku -> sku.name()).toList(), product.evidence())).toList());
         boolean useDemo = allowDemoProducts && available.isEmpty();
         if (useDemo) {
             candidates.add(new GuideModel.Candidate(-101L, "演示图 A：浅蓝衬衫",
-                    "视觉风格清爽利落，其他属性未知；不是在售商品", "", "", List.of()));
+                    "视觉风格清爽利落，其他属性未知；不是在售商品", "", "", List.of(), null));
             candidates.add(new GuideModel.Candidate(-102L, "演示图 B：米白针织上衣",
-                    "视觉风格柔和轻松，其他属性未知；不是在售商品", "", "", List.of()));
+                    "视觉风格柔和轻松，其他属性未知；不是在售商品", "", "", List.of(), null));
             candidates.add(new GuideModel.Candidate(-103L, "演示图 C：灰色开衫",
-                    "视觉上可作叠穿参考，其他属性未知；不是在售商品", "", "", List.of()));
+                    "视觉上可作叠穿参考，其他属性未知；不是在售商品", "", "", List.of(), null));
         }
         GuideModel.Selection selection = guideModel.chat(List.copyOf(messages), List.copyOf(candidates));
         if (selection == null || selection.interpretation() == null || selection.interpretation().isBlank()
@@ -110,13 +111,17 @@ public class GuideAgent {
         Set<Long> seen = new HashSet<>();
         List<PublicProductResponse> products = new ArrayList<>();
         List<String> demoIds = new ArrayList<>();
+        boolean candidateChanged = false;
         for (Long id : selection.productIds()) {
             if (id == null || !seen.add(id)) continue;
             if (candidateIds.contains(id)) {
                 try {
-                    products.add(catalog.get(id));
+                    PublicProductResponse fresh = catalog.get(id);
+                    if (sameEvidenceVersion(available, fresh)) products.add(fresh);
+                    else candidateChanged = true;
                 } catch (NotFoundException ignored) {
                     // Recheck public eligibility after the external model call.
+                    candidateChanged = true;
                 }
             } else if (useDemo && id >= -103L && id <= -101L) {
                 demoIds.add(switch (id.intValue()) {
@@ -128,9 +133,19 @@ public class GuideAgent {
             if (products.size() + demoIds.size() == RESULT_LIMIT) break;
         }
         String answer = selection.interpretation().strip();
+        if (candidateChanged) {
+            return new GuideChatResult("候选商品的资料或可售状态刚刚发生变化，请重新发送需求，我会按当前资料重新核对。",
+                    List.of(), List.of());
+        }
         if (products.isEmpty() && demoIds.isEmpty() && !selection.productIds().isEmpty()) {
             answer += " 当前没有通过可售校验的匹配商品。";
         }
         return new GuideChatResult(answer, List.copyOf(products), List.copyOf(demoIds));
+    }
+
+    private boolean sameEvidenceVersion(List<PublicProductResponse> candidates, PublicProductResponse fresh) {
+        return candidates.stream().filter(product -> product.id().equals(fresh.id())).anyMatch(product ->
+                product.evidence() == null ? fresh.evidence() == null : fresh.evidence() != null
+                        && product.evidence().productVersion().equals(fresh.evidence().productVersion()));
     }
 }

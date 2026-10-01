@@ -1,4 +1,4 @@
-import type { AuthMe, GuideMessage, GuideReply, MockPaymentResult, SalesOrder, ShoppingCart } from '@megagraph/domain-types'
+import type { AuthMe, GuideMessage, GuideReply, MockPaymentResult, PublicProduct, SalesOrder, ShoppingCart } from '@megagraph/domain-types'
 
 export interface ShopperCredentials {
   username: string
@@ -66,6 +66,9 @@ async function request<T>(
 }
 
 export const shopperApi = {
+  product(apiBase: string, id: number, signal?: AbortSignal): Promise<PublicProduct> {
+    return request<PublicProduct>(apiBase, `/api/shop/v1/products/${id}`, { username: '', password: '' }, { signal })
+  },
   guide(apiBase: string, messages: GuideMessage[], signal: AbortSignal): Promise<GuideReply> {
     return request<GuideReply>(apiBase, '/api/shop/v1/guide/messages', { username: '', password: '' }, {
       method: 'POST', body: JSON.stringify({ messages }), signal,

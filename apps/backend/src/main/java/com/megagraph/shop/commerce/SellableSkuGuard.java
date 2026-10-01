@@ -5,6 +5,7 @@ import com.megagraph.shop.catalog.ProductRepository;
 import com.megagraph.shop.catalog.ProductSku;
 import com.megagraph.shop.catalog.PublishStatus;
 import com.megagraph.shop.catalog.SkuStatus;
+import com.megagraph.shop.catalog.TestSupplyPolicy;
 import com.megagraph.shop.identity.MerchantRepository;
 import com.megagraph.shop.identity.MerchantStatus;
 import com.megagraph.shop.shared.NotFoundException;
@@ -16,10 +17,12 @@ public class SellableSkuGuard {
 
     private final ProductRepository products;
     private final MerchantRepository merchants;
+    private final TestSupplyPolicy testSupply;
 
-    public SellableSkuGuard(ProductRepository products, MerchantRepository merchants) {
+    public SellableSkuGuard(ProductRepository products, MerchantRepository merchants, TestSupplyPolicy testSupply) {
         this.products = products;
         this.merchants = merchants;
+        this.testSupply = testSupply;
     }
 
     public Product requireSellable(ProductSku sku, int quantity) {
@@ -29,6 +32,7 @@ public class SellableSkuGuard {
         Product product = products.findById(sku.getProductId())
                 .filter(value -> value.getDeletedAt() == null)
                 .filter(value -> value.getPublishStatus() == PublishStatus.PUBLISHED)
+                .filter(testSupply::permits)
                 .orElseThrow(() -> new NotFoundException("PRODUCT_NOT_SELLABLE", "商品不存在或当前不可售"));
         boolean merchantActive = merchants.findById(product.getMerchantId())
                 .map(merchant -> merchant.getStatus() == MerchantStatus.ACTIVE)

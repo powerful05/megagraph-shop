@@ -268,3 +268,5 @@ h2 { margin: 0; font-size: clamp(44px, 7vw, 92px); font-weight: 480; letter-spac
 
 html:has(.reduce-motion) { scroll-behavior: auto; }
 .reduce-motion *, .reduce-motion *::before, .reduce-motion *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+:root .product-evidence-details { margin: 0 18px 18px; border-top: 1px solid #dce4df; padding-top: 12px; }
+:root .product-evidence-details > summary { cursor: pointer; color: #286744; font-size: 12px; }

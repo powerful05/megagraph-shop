@@ -17,17 +17,23 @@ public class PublicCatalogService {
     private final ProductSkuRepository skus;
     private final ProductImageRepository images;
     private final MerchantRepository merchants;
+    private final ProductEvidenceMapper evidence;
+    private final TestSupplyPolicy testSupply;
 
     public PublicCatalogService(
             ProductRepository products,
             ProductSkuRepository skus,
             ProductImageRepository images,
-            MerchantRepository merchants
+            MerchantRepository merchants,
+            ProductEvidenceMapper evidence,
+            TestSupplyPolicy testSupply
     ) {
         this.products = products;
         this.skus = skus;
         this.images = images;
         this.merchants = merchants;
+        this.evidence = evidence;
+        this.testSupply = testSupply;
     }
 
     @Transactional(readOnly = true)
@@ -49,6 +55,7 @@ public class PublicCatalogService {
     }
 
     public boolean isEligible(Product product) {
+        if (!testSupply.permits(product)) return false;
         if (product.getDeletedAt() != null || product.getPublishStatus() != PublishStatus.PUBLISHED) {
             return false;
         }
@@ -95,7 +102,8 @@ public class PublicCatalogService {
                                 sku.getCurrency(),
                                 sku.getAvailableStock()
                         ))
-                        .toList()
+                        .toList(),
+                evidence.map(product)
         );
     }
 }

@@ -14,6 +14,7 @@ public record PublicProductResponse(
         Integer availableStock,
         String mainImageUrl,
         Instant publishedAt,
-        List<PublicSkuResponse> skus
+        List<PublicSkuResponse> skus,
+        ProductEvidence evidence
 ) {
 }

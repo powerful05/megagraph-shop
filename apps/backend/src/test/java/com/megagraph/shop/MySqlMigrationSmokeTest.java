@@ -40,6 +40,8 @@ class MySqlMigrationSmokeTest {
 
         try (Connection connection = DriverManager.getConnection(url, username, password)) {
             assertNullable(connection, "refund_order", "provider_refund_id", true);
+            assertNullable(connection, "product", "supply_details", true);
+            assertNullable(connection, "product", "test_supply", false);
             assertNullable(connection, "refund_order", "refunded_at", true);
             assertUniqueConstraint(connection, "payment_channel_event", "uk_payment_channel_event");
             assertUniqueConstraint(connection, "payment_order", "uk_payment_provider_id");
