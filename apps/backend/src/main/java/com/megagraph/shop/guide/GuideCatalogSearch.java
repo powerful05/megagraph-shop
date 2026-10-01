@@ -71,7 +71,9 @@ public class GuideCatalogSearch {
         SupplyDetails details = confirmedDetails(product);
         String text = normalize(product.title() + " " + product.subtitle() + " " + (details == null ? "" :
                 details.color() + " " + details.fabric() + " " + details.fit() + " " + String.join(" ", details.scenarios())
-                        + " " + String.join(" ", details.seasons())));
+                        + " " + String.join(" ", details.seasons()) + " " + details.specifications().stream()
+                        .filter(row -> product.skus().stream().anyMatch(sku -> sku.code().equals(row.skuCode())))
+                        .map(row -> row.name() + " " + row.value()).collect(java.util.stream.Collectors.joining(" "))));
         return (int) intent.searchTerms().stream().filter(term -> text.contains(normalize(term))).count();
     }
 

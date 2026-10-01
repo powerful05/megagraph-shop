@@ -4,6 +4,8 @@ const props = defineProps<{ product: PublicProduct }>()
 const evidence = computed(() => props.product.evidence)
 const details = computed(() => ['MERCHANT_CONFIRMED', 'TEST_CONFIRMED'].includes(evidence.value.confirmationStatus)
   ? evidence.value.details : null)
+const specificationGroups = computed(() => props.product.skus.map(sku => ({ sku,
+  rows: details.value?.specifications.filter(row => row.skuCode === sku.code) ?? [] })).filter(group => group.rows.length))
 const confirmedLabel = computed(() => ({ MISSING: '资料未补齐', UNCONFIRMED: '资料待确认',
   MERCHANT_CONFIRMED: '商家已确认', TEST_CONFIRMED: '测试资料已确认' })[evidence.value.confirmationStatus])
 </script>
@@ -11,17 +13,18 @@ const confirmedLabel = computed(() => ({ MISSING: '资料未补齐', UNCONFIRMED
 <template>
   <section class="supply-evidence" aria-label="商品资料与推荐依据">
     <header><strong>{{ evidence.merchantName }}</strong><span>{{ confirmedLabel }} · 版本 {{ evidence.productVersion }}</span></header>
-    <p v-if="evidence.dataOrigin === 'LOCAL_TEST'" class="test-notice">本地测试商品。属性、价格、库存与尺码均为测试数据，图片为 AI 生成素材，不是真实商家供给。</p>
-    <p v-if="!details">没有已确认的属性和尺码依据，不能据此判断面料、版型或合身程度。</p>
+    <p v-if="evidence.dataOrigin === 'LOCAL_TEST'" class="test-notice">本地测试商品。属性、价格、库存与规格均为测试数据，图片为 AI 生成素材，不是真实商家供给。</p>
+    <p v-if="!details">没有已确认的商品资料，不能据此判断材质、规格或适用程度。</p>
     <template v-else>
       <dl>
         <dt>颜色</dt><dd>{{ details.color }}</dd>
-        <dt>面料</dt><dd>{{ details.fabric }}</dd>
-        <dt>版型</dt><dd>{{ details.fit }}</dd>
-        <dt>季节</dt><dd>{{ details.seasons.join('、') }}</dd>
+        <dt>{{ details.profile === 'GENERAL_PHYSICAL' ? '材质' : '面料' }}</dt><dd>{{ details.fabric }}</dd>
+        <template v-if="details.profile !== 'GENERAL_PHYSICAL'"><dt>版型</dt><dd>{{ details.fit }}</dd></template>
+        <template v-if="details.seasons.length"><dt>季节</dt><dd>{{ details.seasons.join('、') }}</dd></template>
         <dt>场景</dt><dd>{{ details.scenarios.join('、') }}</dd>
         <dt>图片来源</dt><dd>{{ details.imageSourceNote }}</dd>
       </dl>
+      <template v-if="details.profile !== 'GENERAL_PHYSICAL'">
       <h3>该商品尺码表 / cm</h3>
       <div class="size-table-scroll" tabindex="0" aria-label="尺码表">
         <table>
@@ -31,6 +34,15 @@ const confirmedLabel = computed(() => ({ MISSING: '资料未补齐', UNCONFIRMED
       </div>
       <p>{{ details.measurementNote }}</p>
       <p>以上为成衣测量值；不同商品的同名尺码不等价，是否合身还需结合人体尺寸与活动余量。</p>
+      </template>
+      <template v-else>
+        <h3>该商品规格资料</h3>
+        <div v-for="group in specificationGroups" :key="group.sku.id">
+          <small>{{ group.sku.name }} · {{ group.sku.code }}</small>
+          <dl><template v-for="row in group.rows" :key="row.name"><dt>{{ row.name }}</dt><dd>{{ row.value }}</dd></template></dl>
+        </div>
+        <p v-if="details.measurementNote">{{ details.measurementNote }}</p>
+      </template>
     </template>
     <h3>当前可售规格</h3>
     <ul><li v-for="sku in product.skus" :key="sku.id"><span>{{ sku.name }}</span><span>{{ new Intl.NumberFormat('zh-CN', { style: 'currency', currency: sku.currency }).format(sku.price) }} · 库存 {{ sku.availableStock }}</span></li></ul>

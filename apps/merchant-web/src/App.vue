@@ -39,11 +39,30 @@ const scenarioText = ref('')
 
 function addSupplyDetails() {
   supplyDraft.value = {
+    profile: 'APPAREL', specifications: [],
     color: '', fabric: '', fit: '', seasons: [], scenarios: [], measurementNote: '', imageSourceNote: '',
     sizeChart: (activeProduct.value?.skus.length ? activeProduct.value.skus : [{ code: form.code, name: form.name }])
       .map(sku => ({ skuCode: sku.code, sizeLabel: sku.name, chestCm: 0, lengthCm: 0, shoulderCm: null, sleeveCm: null })),
   }
   scenarioText.value = ''
+}
+
+function changeSupplyProfile() {
+  const details = supplyDraft.value
+  if (!details) return
+  const skus = activeProduct.value?.skus.length ? activeProduct.value.skus : [{ code: form.code, name: form.name }]
+  details.fit = ''
+  details.seasons = []
+  details.measurementNote = ''
+  details.sizeChart = details.profile === 'APPAREL'
+    ? skus.map(sku => ({ skuCode: sku.code, sizeLabel: sku.name, chestCm: 0, lengthCm: 0, shoulderCm: null, sleeveCm: null })) : []
+  details.specifications = details.profile === 'GENERAL_PHYSICAL'
+    ? skus.map(sku => ({ skuCode: sku.code, name: '规格', value: '' })) : []
+}
+
+function addSpecification() {
+  if (!supplyDraft.value || supplyDraft.value.specifications.length >= 30) return
+  supplyDraft.value.specifications.push({ skuCode: activeProduct.value?.skus[0]?.code ?? form.code, name: '', value: '' })
 }
 
 let pollTimer: ReturnType<typeof setTimeout> | null = null
@@ -710,19 +729,22 @@ onBeforeUnmount(() => {
                   </el-form-item>
                 </div>
 
-                <h3>商品资料与尺码依据</h3>
-                <p v-if="activeProduct.evidence.dataOrigin === 'LOCAL_TEST'" class="error-banner">本地测试供给，图片为生成素材，属性和尺码均为测试数据。</p>
-                <p v-if="!supplyDraft">尚未填写资料，导购不会推断面料、版型或尺码。</p>
+                <h3>商品资料与规格依据</h3>
+                <p v-if="activeProduct.evidence.dataOrigin === 'LOCAL_TEST'" class="test-supply-note">本地测试供给，图片为生成素材，属性和规格均为测试数据。</p>
+                <p v-if="!supplyDraft">尚未填写已确认的商品资料。</p>
                 <el-button v-if="!supplyDraft" :disabled="!canEdit || activeProduct.publishStatus === 'PUBLISHED'" @click="addSupplyDetails">添加商品资料</el-button>
                 <template v-if="supplyDraft">
+                  <el-form-item label="资料类型"><el-select v-model="supplyDraft.profile" :disabled="!canEdit || activeProduct.publishStatus === 'PUBLISHED'" class="full-width" @change="changeSupplyProfile"><el-option label="服饰" value="APPAREL" /><el-option label="通用实物" value="GENERAL_PHYSICAL" /></el-select></el-form-item>
                   <el-form-item label="颜色"><el-input v-model="supplyDraft.color" maxlength="80" /></el-form-item>
-                  <el-form-item label="面料与成分"><el-input v-model="supplyDraft.fabric" maxlength="200" /></el-form-item>
+                  <el-form-item :label="supplyDraft.profile === 'GENERAL_PHYSICAL' ? '材质与成分' : '面料与成分'"><el-input v-model="supplyDraft.fabric" maxlength="200" /></el-form-item>
+                  <template v-if="supplyDraft.profile === 'APPAREL'">
                   <el-form-item label="版型"><el-input v-model="supplyDraft.fit" maxlength="80" /></el-form-item>
                   <el-form-item label="季节">
                     <el-select v-model="supplyDraft.seasons" multiple class="full-width">
                       <el-option v-for="season in ['春', '夏', '秋', '冬']" :key="season" :label="season" :value="season" />
                     </el-select>
                   </el-form-item>
+                  </template>
                   <el-form-item label="适用场景（逗号分隔）"><el-input v-model="scenarioText" maxlength="300" /></el-form-item>
                   <el-form-item label="图片来源声明"><el-input v-model="supplyDraft.imageSourceNote" maxlength="300" /></el-form-item>
                   <el-form-item label="测量方法与误差"><el-input v-model="supplyDraft.measurementNote" maxlength="300" /></el-form-item>
@@ -734,6 +756,15 @@ onBeforeUnmount(() => {
                     <el-form-item label="肩宽 / cm"><el-input-number v-model="row.shoulderCm" :min="1" :max="200" :precision="1" class="full-width" /></el-form-item>
                     <el-form-item label="袖长 / cm"><el-input-number v-model="row.sleeveCm" :min="1" :max="200" :precision="1" class="full-width" /></el-form-item>
                   </div>
+                  <template v-if="supplyDraft.profile === 'GENERAL_PHYSICAL'">
+                    <div v-for="(row, rowIndex) in supplyDraft.specifications" :key="rowIndex" class="form-grid">
+                      <el-form-item label="规格对应 SKU"><el-input v-model="row.skuCode" maxlength="100" /></el-form-item>
+                      <el-form-item label="规格项"><el-input v-model="row.name" maxlength="40" /></el-form-item>
+                      <el-form-item label="规格值"><el-input v-model="row.value" maxlength="200" /></el-form-item>
+                      <el-button class="specification-remove" :disabled="!canEdit || activeProduct.publishStatus === 'PUBLISHED'" :aria-label="`删除规格 ${rowIndex + 1}`" title="删除规格" @click="supplyDraft.specifications.splice(rowIndex, 1)">×</el-button>
+                    </div>
+                    <el-button :disabled="!canEdit || activeProduct.publishStatus === 'PUBLISHED' || supplyDraft.specifications.length >= 30" @click="addSpecification">添加规格资料</el-button>
+                  </template>
                 </template>
 
                 <div class="action-row">

@@ -72,6 +72,35 @@ class CrossMerchantCheckoutIntegrationTest {
     }
 
     @Test
+    void mixedCategoriesKeepGenericAndLegacyApparelSnapshotsAfterLaterProductRevision() throws Exception {
+        Fixture f = fixture();
+        var firstProduct = products.findById(skus.findById(f.firstSku()).orElseThrow().getProductId()).orElseThrow();
+        Long ownerId = users.findByUsernameIgnoreCase(f.owner()).orElseThrow().getId();
+        firstProduct.offShelf();
+        var legacy = (com.fasterxml.jackson.databind.node.ObjectNode) json.readTree(firstProduct.getSupplyDetails());
+        legacy.remove(List.of("profile", "specifications"));
+        firstProduct.reviseSupplyDetails(json.writeValueAsString(legacy)); firstProduct.confirm(ownerId); firstProduct.publish(); products.saveAndFlush(firstProduct);
+        var secondProduct = products.findById(skus.findById(f.secondSku()).orElseThrow().getProductId()).orElseThrow();
+        String code = skus.findById(f.secondSku()).orElseThrow().getSkuCode();
+        var details = new SupplyDetails("红", "纸", "", List.of(), List.of("记录"), "测试", "测试图", List.of(),
+                SupplyDetails.Profile.GENERAL_PHYSICAL, List.of(new SupplyDetails.Specification(code, "规格", "A5")));
+        secondProduct.offShelf(); secondProduct.reviseSupplyDetails(json.writeValueAsString(details));
+        secondProduct.confirm(ownerId); secondProduct.publish(); products.saveAndFlush(secondProduct);
+        add(f, f.firstSku(), 1); add(f, f.secondSku(), 1);
+        JsonNode result = checkout(f, UUID.randomUUID().toString());
+        assertThat(result.path("orders").get(0).path("items").get(0).path("supplyDetails").path("profile").asText()).isEqualTo("APPAREL");
+        JsonNode genericOrder = result.path("orders").get(1);
+        assertThat(genericOrder.path("items").get(0).path("supplyDetails").path("profile").asText()).isEqualTo("GENERAL_PHYSICAL");
+        secondProduct = products.findById(secondProduct.getId()).orElseThrow();
+        secondProduct.offShelf();
+        secondProduct.reviseSupplyDetails(json.writeValueAsString(new SupplyDetails("红", "纸", "", List.of(), List.of("记录"),
+                "测试", "测试图", List.of(), SupplyDetails.Profile.GENERAL_PHYSICAL,
+                List.of(new SupplyDetails.Specification(code, "规格", "A4"))))); products.saveAndFlush(secondProduct);
+        mvc.perform(get("/api/shop/v1/orders/{id}", genericOrder.path("id").asLong()).with(httpBasic(f.buyer(), "test123")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].supplyDetails.specifications[0].value").value("A5"));
+    }
+
+    @Test
     void oneMerchantPaymentFailureCannotUndoTheOtherMerchantSuccessOrAllowShipping() throws Exception {
         Fixture f = fixture();
         add(f, f.firstSku(), 1); add(f, f.secondSku(), 1);

@@ -64,6 +64,7 @@ export interface SupplySizeRow {
 }
 
 export interface SupplyDetails {
+  profile: 'APPAREL' | 'GENERAL_PHYSICAL'
   color: string
   fabric: string
   fit: string
@@ -72,6 +73,7 @@ export interface SupplyDetails {
   measurementNote: string
   imageSourceNote: string
   sizeChart: SupplySizeRow[]
+  specifications: { skuCode: string; name: string; value: string }[]
 }
 
 export interface ProductEvidence {

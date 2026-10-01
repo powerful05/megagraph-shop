@@ -93,6 +93,21 @@ class GuideCatalogSearchTest {
     }
 
     @Test
+    void generalPhysicalSkuUsesItsOwnSpecLabelAndNeverApparelMeasurements() {
+        var details = new SupplyDetails("红", "纸", "", List.of(), List.of("手写"), "测试规格", "测试图", List.of(),
+                SupplyDetails.Profile.GENERAL_PHYSICAL,
+                List.of(new SupplyDetails.Specification("TEST-1", "规格", "A5")));
+        var evidence = new ProductEvidence(1L, 1L, "测试商家", "PHYSICAL", "LOCAL_TEST", "TEST_CONFIRMED", Instant.now(), details);
+        var paper = new PublicProductResponse(1L, "纸质笔记本", "手写记录", 1L, new BigDecimal("29"), "CNY", 2, null,
+                Instant.now(), List.of(sku(1L, "A5", "29", "CNY")), evidence);
+        assertThat(search.qualify(paper, intent("30", List.of(), List.of(), List.of(), "A5"))).isPresent();
+        assertThat(search.qualify(paper, intent("30", List.of(), List.of(), List.of(), "M"))).isEmpty();
+        var laptop = new GuideIntent(GuideIntent.DeliveryType.PHYSICAL, null, "CNY", List.of(), List.of("笔记本电脑"),
+                List.of(), List.of(), List.of(), List.of(), "");
+        assertThat(search.search(List.of(paper), laptop, 50)).isEmpty();
+    }
+
+    @Test
     void scenarioTermsRankSupplyWithoutInventingHardRequirements() {
         var first = product(1L, "休闲上衣", "灰", "棉", "CONFIRMED", "CNY", "M", "100");
         var second = product(2L, "通勤衬衫", "白", "棉", "CONFIRMED", "CNY", "M", "100");

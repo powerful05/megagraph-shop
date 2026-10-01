@@ -43,6 +43,8 @@ class ProductSupplyIntegrationTest {
         assertThat(visible.path("evidence").path("confirmationStatus").asText()).isEqualTo("MERCHANT_CONFIRMED");
         assertThat(visible.path("evidence").path("merchantName").asText()).isNotBlank();
         assertThat(visible.path("evidence").path("details").path("sizeChart").get(0).path("chestCm").asInt()).isEqualTo(104);
+        assertThat(visible.path("evidence").path("details").path("profile").asText()).isEqualTo("APPAREL");
+        assertThat(visible.path("evidence").path("details").path("specifications")).isEmpty();
         JsonNode offShelf = transition(published, "off-shelf");
         JsonNode edited = revise(offShelf, details(skuCode, "50% 棉 / 50% 粘纤"));
         assertThat(edited.path("evidence").path("confirmedAt").isNull()).isTrue();
@@ -77,6 +79,69 @@ class ProductSupplyIntegrationTest {
                 .content(json.writeValueAsString(body(draft, invalid))))
                 .andExpect(status().isBadRequest());
         assertThat(products.findById(draft.path("id").asLong()).orElseThrow().getVersion()).isEqualTo(draft.path("version").asLong());
+    }
+
+    @Test
+    void generalPhysicalSpecificationsCanBeConfirmedPublishedAndRevisedWithoutApparelMeasurements() throws Exception {
+        JsonNode published = publish(revise(createDraft(), generalDetails(skuCode)));
+        mvc.perform(get("/api/shop/v1/products/{id}", published.path("id").asLong()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.evidence.details.profile").value("GENERAL_PHYSICAL"))
+                .andExpect(jsonPath("$.evidence.details.sizeChart").isEmpty())
+                .andExpect(jsonPath("$.evidence.details.specifications[0].value").value("A5"));
+        var editedDetails = new java.util.HashMap<>(generalDetails(skuCode));
+        editedDetails.put("specifications", List.of(Map.of("skuCode", skuCode, "name", "规格", "value", "A4")));
+        JsonNode edited = revise(transition(published, "off-shelf"), editedDetails);
+        assertThat(edited.path("evidence").path("confirmationStatus").asText()).isEqualTo("UNCONFIRMED");
+        assertThat(publish(edited).path("evidence").path("details").path("specifications").get(0).path("value").asText()).isEqualTo("A4");
+    }
+
+    @Test
+    void generalSpecificationsRejectUnknownOrDuplicateSkuAndCannotKeepOrphanedRowsAfterCodeChange() throws Exception {
+        JsonNode draft = createDraft();
+        for (var invalid : List.of(generalDetails("OTHER-SKU"), duplicateSpecifications())) {
+            mvc.perform(patch("/api/merchant/v1/products/{id}/draft", draft.path("id").asLong())
+                    .with(httpBasic(USER, "merchant123")).contentType(MediaType.APPLICATION_JSON)
+                    .content(json.writeValueAsString(body(draft, invalid))))
+                    .andExpect(status().isUnprocessableEntity()).andExpect(jsonPath("$.code").value("SPECIFICATION_SKU_INVALID"));
+        }
+        JsonNode revised = revise(draft, generalDetails(skuCode));
+        var changed = new java.util.HashMap<>(body(revised, null));
+        changed.put("sku", Map.of("code", skuCode + "-NEW", "name", "A5", "price", 29, "stock", 10));
+        mvc.perform(patch("/api/merchant/v1/products/{id}/draft", draft.path("id").asLong())
+                .with(httpBasic(USER, "merchant123")).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(changed)))
+                .andExpect(status().isUnprocessableEntity()).andExpect(jsonPath("$.code").value("SPECIFICATION_SKU_INVALID"));
+        assertThat(products.findById(draft.path("id").asLong()).orElseThrow().getVersion()).isEqualTo(revised.path("version").asLong());
+    }
+
+    @Test
+    void generalProfileCannotUseApparelSizeChartOrOmitSpecifications() throws Exception {
+        JsonNode draft = createDraft();
+        var mixed = new java.util.HashMap<>(generalDetails(skuCode));
+        mixed.put("sizeChart", details(skuCode, "棉").get("sizeChart"));
+        var missing = new java.util.HashMap<>(generalDetails(skuCode));
+        missing.put("specifications", List.of());
+        for (var invalid : List.of(mixed, missing)) {
+            mvc.perform(patch("/api/merchant/v1/products/{id}/draft", draft.path("id").asLong())
+                    .with(httpBasic(USER, "merchant123")).contentType(MediaType.APPLICATION_JSON)
+                    .content(json.writeValueAsString(body(draft, invalid)))).andExpect(status().isBadRequest());
+        }
+        assertThat(products.findById(draft.path("id").asLong()).orElseThrow().getVersion()).isEqualTo(draft.path("version").asLong());
+    }
+
+    private Map<String, Object> generalDetails(String code) {
+        var result = new java.util.HashMap<String, Object>();
+        result.put("profile", "GENERAL_PHYSICAL"); result.put("color", "红"); result.put("fabric", "纸质");
+        result.put("fit", ""); result.put("seasons", List.of()); result.put("scenarios", List.of("会议记录"));
+        result.put("measurementNote", "测试规格"); result.put("imageSourceNote", "测试样图"); result.put("sizeChart", List.of());
+        result.put("specifications", List.of(Map.of("skuCode", code, "name", "规格", "value", "A5")));
+        return result;
+    }
+
+    private Map<String, Object> duplicateSpecifications() {
+        var result = new java.util.HashMap<>(generalDetails(skuCode));
+        var row = ((List<?>) result.get("specifications")).getFirst();
+        result.put("specifications", List.of(row, row));
+        return result;
     }
 
     @Test

@@ -34,10 +34,12 @@ async function request(route, init = {}) {
 const capabilities = await request('/api/shop/v1/capabilities')
 if (!capabilities.guideAvailable) throw new Error('A real guide model must be enabled')
 const catalog = await request('/api/shop/v1/products')
-const expectedCodes = new Set(['TEST-BLUE-M', 'TEST-IVORY-M', 'TEST-GRAY-M'])
-if (catalog.length !== 3 || catalog.some(product => product.evidence.dataOrigin !== 'LOCAL_TEST')
-    || catalog.flatMap(product => product.skus).some(sku => !expectedCodes.has(sku.code))) {
-  throw new Error('Fixed questions require the three explicitly labelled supply-demo products')
+const expectedCodes = new Set(['TEST-BLUE-M', 'TEST-IVORY-M', 'TEST-GRAY-M', 'TEST-BAG-A4', 'TEST-NOTE-A5'])
+const actualCodes = catalog.flatMap(product => product.skus.map(sku => sku.code))
+if (catalog.length !== 5 || catalog.some(product => product.evidence.dataOrigin !== 'LOCAL_TEST')
+    || actualCodes.length !== expectedCodes.size || new Set(actualCodes).size !== expectedCodes.size
+    || actualCodes.some(code => !expectedCodes.has(code))) {
+  throw new Error('Fixed questions require the five explicitly labelled supply-demo products')
 }
 const csrf = await request('/api/auth/v1/csrf')
 const report = { createdAt: new Date().toISOString(), model: capabilities.guideModelName, cases: [] }
