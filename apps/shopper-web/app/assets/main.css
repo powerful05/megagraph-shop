@@ -270,3 +270,8 @@ html:has(.reduce-motion) { scroll-behavior: auto; }
 .reduce-motion *, .reduce-motion *::before, .reduce-motion *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 :root .product-evidence-details { margin: 0 18px 18px; border-top: 1px solid #dce4df; padding-top: 12px; }
 :root .product-evidence-details > summary { cursor: pointer; color: #286744; font-size: 12px; }
+.cart-merchant-group, .checkout-merchant-group { padding-block: 14px; border-bottom: 1px solid #dce4df; }
+.cart-merchant-group > h3, .checkout-merchant-group > h3 { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; font-size: 14px; }
+.cart-merchant-group small, .checkout-merchant-group small { color: #737c77; font-size: 12px; }
+.checkout-merchant-group p, .order-supply-snapshot p { font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.order-supply-snapshot { margin-block: 12px; font-size: 12px; } .order-supply-snapshot summary { cursor: pointer; }

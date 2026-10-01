@@ -1,4 +1,4 @@
-import type { AuthMe, GuideMessage, GuideReply, MockPaymentResult, PublicProduct, SalesOrder, ShoppingCart } from '@megagraph/domain-types'
+import type { AuthMe, CheckoutGroup, GuideMessage, GuideReply, MockPaymentResult, PublicProduct, SalesOrder, ShoppingCart } from '@megagraph/domain-types'
 
 export interface ShopperCredentials {
   username: string
@@ -124,6 +124,11 @@ export const shopperApi = {
       method: 'POST',
       headers: { 'Idempotency-Key': idempotencyKey },
       body: JSON.stringify(details),
+    })
+  },
+  createCheckout(apiBase: string, credentials: ShopperCredentials, idempotencyKey: string, details: CheckoutDetails) {
+    return request<CheckoutGroup>(apiBase, '/api/shop/v1/checkouts', credentials, {
+      method: 'POST', headers: { 'Idempotency-Key': idempotencyKey }, body: JSON.stringify(details),
     })
   },
   mockPayment(

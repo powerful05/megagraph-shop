@@ -44,7 +44,9 @@ public class CartService {
         ProductSku sku = skus.findById(skuId)
                 .orElseThrow(() -> new NotFoundException("SKU_NOT_FOUND", "SKU 不存在"));
         Product product = sellableSkuGuard.requireSellable(sku, quantity);
-        requireSingleMerchant(cart, product.getMerchantId());
+        if (!"CNY".equals(sku.getCurrency())) {
+            throw new ValidationException("CART_CURRENCY_UNSUPPORTED", "本阶段购物车仅支持 CNY");
+        }
 
         ShoppingCartItem item = items.findByCartIdAndSkuId(cart.getId(), skuId)
                 .orElseGet(() -> new ShoppingCartItem(cart.getId(), skuId, quantity));
@@ -61,17 +63,7 @@ public class CartService {
     }
 
     private ShoppingCart requireCart(Long userId) {
-        return carts.findByUserId(userId).orElseGet(() -> carts.save(new ShoppingCart(userId)));
-    }
-
-    private void requireSingleMerchant(ShoppingCart cart, Long merchantId) {
-        for (ShoppingCartItem item : items.findByCartIdOrderByIdAsc(cart.getId())) {
-            ProductSku existingSku = skus.findById(item.getSkuId())
-                    .orElseThrow(() -> new NotFoundException("CART_SKU_NOT_FOUND", "购物车中的 SKU 不存在"));
-            if (!existingSku.getMerchantId().equals(merchantId)) {
-                throw new ValidationException("CART_SINGLE_MERCHANT_REQUIRED", "当前阶段购物车只能包含同一商家的商品");
-            }
-        }
+        return carts.findByUserIdForUpdate(userId).orElseGet(() -> carts.save(new ShoppingCart(userId)));
     }
 
     private CartResponse toResponse(ShoppingCart cart) {

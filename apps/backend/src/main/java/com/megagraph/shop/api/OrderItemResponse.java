@@ -11,6 +11,8 @@ public record OrderItemResponse(
         BigDecimal unitPrice,
         String currency,
         Integer quantity,
-        BigDecimal lineAmount
+        BigDecimal lineAmount,
+        Long productVersion,
+        SupplyDetails supplyDetails
 ) {
 }

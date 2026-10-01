@@ -180,6 +180,8 @@ export interface OrderItem {
   currency: string
   quantity: number
   lineAmount: number
+  productVersion: number | null
+  supplyDetails: SupplyDetails | null
 }
 
 export interface PaymentSummary {
@@ -232,6 +234,8 @@ export interface SalesOrder {
   orderNo: string
   userId: number
   merchantId: number
+  checkoutGroupId: number | null
+  testOrder: boolean
   status: OrderStatus
   totalAmount: number
   currency: string
@@ -245,6 +249,15 @@ export interface SalesOrder {
   afterSale: AfterSaleSummary | null
   items: OrderItem[]
   reservations: StockReservation[]
+}
+
+export interface CheckoutGroup {
+  id: number
+  groupNo: string
+  currency: string
+  totalAmount: number
+  createdAt: string
+  orders: SalesOrder[]
 }
 
 export interface IngestionJob {

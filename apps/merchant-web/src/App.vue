@@ -89,9 +89,9 @@ const refundReviewOrders = computed(() => orders.value
     || order.afterSale?.status === 'REFUND_FAILED').length)
 const hasPollingOrders = computed(() => orders.value.some(needsMerchantOrderPolling))
 const revenueStatuses: SalesOrder['status'][] = ['PAID', 'SHIPPED', 'COMPLETED']
-const paidOrders = computed(() => orders.value.filter(order => revenueStatuses.includes(order.status)).length)
+const paidOrders = computed(() => orders.value.filter(order => !order.testOrder && revenueStatuses.includes(order.status)).length)
 const paidRevenue = computed(() => orders.value
-  .filter(order => revenueStatuses.includes(order.status))
+  .filter(order => !order.testOrder && revenueStatuses.includes(order.status))
   .reduce((total, order) => total + order.totalAmount, 0))
 
 async function execute(action: () => Promise<void>) {
@@ -252,7 +252,7 @@ function replaceOrder(updated: SalesOrder) {
 }
 
 function canShipOrder(order: SalesOrder): boolean {
-  return canEdit.value && order.status === 'PAID' && !isAfterSaleBlockingShipment(order.afterSale?.status)
+  return canEdit.value && !order.testOrder && order.status === 'PAID' && !isAfterSaleBlockingShipment(order.afterSale?.status)
 }
 
 function canRetryRefund(order: SalesOrder): boolean {
@@ -808,6 +808,7 @@ onBeforeUnmount(() => {
                   <span>#{{ order.id }}</span>
                   <strong>{{ order.orderNo }}</strong>
                   <small>{{ formatDate(order.createdAt) }}</small>
+                  <small v-if="order.testOrder">试用子订单 · 下单组 #{{ order.checkoutGroupId }} · 不发货、不结算</small>
                 </div>
                 <div class="order-statuses">
                   <span :class="`order-status ${order.status.toLowerCase()}`">{{ orderStatusLabel(order.status) }}</span>

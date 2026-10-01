@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import type {
   MockPaymentResult,
+  OrderItem,
   PublicProduct,
   PublicSku,
   SalesOrder,
@@ -56,6 +57,19 @@ const pollingTimedOut = ref(false)
 const cart = ref<ShoppingCart>({ cartId: 0, currency: null, estimatedTotal: 0, items: [] })
 const orders = ref<SalesOrder[]>([])
 const selectedSkuByProduct = reactive<Record<number, number>>({})
+const checkoutKey = ref<string | null>(null)
+watch(connected, value => { if (!value) checkoutKey.value = null })
+watch(() => JSON.stringify(checkout), () => { checkoutKey.value = null })
+const cartMerchantGroups = computed(() => [...new Set(cart.value.items.map(item => item.merchantId))].map(merchantId => {
+  const items = cart.value.items.filter(item => item.merchantId === merchantId)
+  return { merchantId, name: products.value.find(product => product.evidence.merchantId === merchantId)?.evidence.merchantName ?? `商家 #${merchantId}`,
+    items, total: items.reduce((sum, item) => sum + item.lineAmount, 0) }
+}))
+function merchantName(merchantId: number) {
+  return products.value.find(product => product.evidence.merchantId === merchantId)?.evidence.merchantName ?? `商家 #${merchantId}`
+}
+function orderSupplyItems(order: SalesOrder) { return order.items.filter(item => item.supplyDetails) }
+function sizeRowsForItem(item: OrderItem) { return item.supplyDetails?.sizeChart.filter(row => row.skuCode === item.skuCode) ?? [] }
 const refundReasons = reactive<Record<number, string>>({})
 const submittedPayments = reactive<Record<number, boolean>>({})
 
@@ -239,6 +253,7 @@ async function addToCart(product: PublicProduct) {
   const nextQuantity = (existing?.quantity ?? 0) + 1
   await execute(`add-${sku.id}`, async () => {
     cart.value = await shopperApi.setCartItem(apiBase, credentials, sku.id, nextQuantity)
+    checkoutKey.value = null
     activePanel.value = 'cart'
     notice.value = `${product.title} 已加入购物车`
   })
@@ -248,28 +263,32 @@ async function changeQuantity(skuId: number, quantity: number) {
   if (quantity < 1) return removeCartItem(skuId)
   await execute(`quantity-${skuId}`, async () => {
     cart.value = await shopperApi.setCartItem(apiBase, credentials, skuId, quantity)
+    checkoutKey.value = null
   })
 }
 
 async function removeCartItem(skuId: number) {
   await execute(`remove-${skuId}`, async () => {
     cart.value = await shopperApi.removeCartItem(apiBase, credentials, skuId)
+    checkoutKey.value = null
   })
 }
 
 async function createOrder() {
   await execute('checkout', async () => {
-    const order = await shopperApi.createOrder(
+    checkoutKey.value ??= crypto.randomUUID()
+    const group = await shopperApi.createCheckout(
       apiBase,
       credentials,
-      crypto.randomUUID(),
+      checkoutKey.value,
       checkout,
     )
     orderMutationVersion += 1
-    orders.value = [order, ...orders.value.filter(item => item.id !== order.id)]
+    orders.value = [...group.orders, ...orders.value.filter(item => !group.orders.some(order => order.id === item.id))]
+    checkoutKey.value = null
     cart.value = await shopperApi.cart(apiBase, credentials)
     activePanel.value = 'orders'
-    notice.value = `订单 ${order.orderNo} 已创建，库存已预占`
+    notice.value = `下单组 ${group.groupNo} 已创建，共 ${group.orders.length} 个试用子订单，库存分别预占`
     await refresh()
     schedulePolling(true)
   })
@@ -662,10 +681,12 @@ onBeforeUnmount(() => {
             <div v-if="cart.items.length === 0" class="drawer-empty">
               <span>EMPTY / 00</span>
               <h3>购物袋还是空的</h3>
-              <p>从当前可售商品中选择一件。当前购物袋仍限同一商家，跨商家拆单会在 3A 开放。</p>
+              <p>还没有选中的商品。</p>
             </div>
             <template v-else>
-              <article v-for="item in cart.items" :key="item.skuId" class="cart-line">
+              <section v-for="group in cartMerchantGroups" :key="group.merchantId" class="cart-merchant-group">
+                <h3>{{ group.name }} <small>{{ formatPrice(group.total, cart.currency ?? 'CNY') }}</small></h3>
+              <article v-for="item in group.items" :key="item.skuId" class="cart-line">
                 <div>
                   <span>{{ item.skuCode }}</span>
                   <h3>{{ item.productTitle }}</h3>
@@ -679,10 +700,11 @@ onBeforeUnmount(() => {
                 <strong>{{ formatPrice(item.lineAmount, item.currency) }}</strong>
                 <button class="text-button" type="button" @click="removeCartItem(item.skuId)">移除</button>
               </article>
+              </section>
               <footer class="cart-summary">
                 <div><span>预计合计</span><strong>{{ formatPrice(cart.estimatedTotal, cart.currency ?? 'CNY') }}</strong></div>
                 <p>提交订单时，后端会重新读取价格和库存；这里的金额不是交易事实。</p>
-                <p>当前仍是单商家购物袋；跨商家组合与拆单尚未开放。</p>
+                <p>{{ cartMerchantGroups.length }} 家商家，各自生成独立试用订单。</p>
               <button v-if="mockPaymentAvailable" type="button" @click="activePanel = 'checkout'">进入结算 <span>→</span></button>
               <p v-else>当前环境只开放选品与购物袋；订单提交和 Mock 支付暂未开放。</p>
               </footer>
@@ -695,6 +717,11 @@ onBeforeUnmount(() => {
               <span>{{ cartCount }} 件商品</span>
               <strong>{{ formatPrice(cart.estimatedTotal, cart.currency ?? 'CNY') }}</strong>
             </div>
+            <section v-for="group in cartMerchantGroups" :key="group.merchantId" class="checkout-merchant-group">
+              <h3>{{ group.name }} <small>{{ formatPrice(group.total, cart.currency ?? 'CNY') }}</small></h3>
+              <p v-for="item in group.items" :key="item.skuId">{{ item.productTitle }} · {{ item.skuName }} × {{ item.quantity }}</p>
+              <small>实物 · 独立子订单 · Mock 支付 · 不发货</small>
+            </section>
             <form @submit.prevent="createOrder">
               <label>收件人<input v-model="checkout.recipientName" required maxlength="80" /></label>
               <label>联系电话<input v-model="checkout.recipientPhone" required maxlength="32" /></label>
@@ -704,7 +731,7 @@ onBeforeUnmount(() => {
                 <p>此阶段不会调用真实支付渠道。仅在本地 Mock 环境可以创建订单并模拟支付结果。</p>
               </div>
               <button type="submit" :disabled="!mockPaymentAvailable || busyAction === 'checkout' || cart.items.length === 0">
-                {{ busyAction === 'checkout' ? '正在锁定库存…' : '创建订单并预占库存' }}
+                {{ busyAction === 'checkout' ? '正在锁定库存…' : `创建 ${cartMerchantGroups.length} 个试用子订单` }}
               </button>
             </form>
           </section>
@@ -731,8 +758,9 @@ onBeforeUnmount(() => {
                 <div>
                   <span>{{ order.orderNo }}</span>
                   <small>{{ formatDate(order.createdAt) }}</small>
+                  <small>{{ merchantName(order.merchantId) }}<template v-if="order.checkoutGroupId"> · 下单组 #{{ order.checkoutGroupId }}</template><template v-if="order.testOrder"> · 试用子订单</template></small>
                 </div>
-                <strong :class="`status-${order.status.toLowerCase()}`">{{ orderStatusLabel(order.status) }}</strong>
+                <strong :class="`status-${order.status.toLowerCase()}`">{{ order.testOrder && order.status === 'PAID' ? '模拟支付成功 · 不发货' : orderStatusLabel(order.status) }}</strong>
               </header>
               <div class="order-items">
                 <p v-for="item in order.items" :key="item.skuId">
@@ -740,6 +768,12 @@ onBeforeUnmount(() => {
                   <strong>{{ formatPrice(item.lineAmount, item.currency) }}</strong>
                 </p>
               </div>
+              <details v-for="item in orderSupplyItems(order)" :key="`evidence-${item.skuId}`" class="order-supply-snapshot">
+                <summary>{{ item.productTitle }} · 下单资料版本 {{ item.productVersion }}</summary>
+                <p>{{ item.supplyDetails?.color }} · {{ item.supplyDetails?.fabric }} · {{ item.supplyDetails?.fit }}</p>
+                <p v-for="row in sizeRowsForItem(item)" :key="row.skuCode">{{ row.sizeLabel }} · 成衣胸围 {{ row.chestCm }} cm · 衣长 {{ row.lengthCm }} cm</p>
+                <p>{{ item.supplyDetails?.measurementNote }}</p>
+              </details>
               <div class="order-facts">
                 <span>支付 / {{ paymentStatusLabel(order) }}</span>
                 <span>库存 / {{ reservationSummary(order) }}</span>

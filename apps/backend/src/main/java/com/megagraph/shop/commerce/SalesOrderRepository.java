@@ -14,6 +14,7 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long> {
     Optional<SalesOrder> findByIdAndUserId(Long id, Long userId);
     List<SalesOrder> findByUserIdOrderByCreatedAtDesc(Long userId);
     List<SalesOrder> findByMerchantIdOrderByCreatedAtDesc(Long merchantId);
+    List<SalesOrder> findByCheckoutGroupIdOrderByIdAsc(Long checkoutGroupId);
     List<SalesOrder> findByStatusAndExpiresAtBeforeOrderByExpiresAtAsc(OrderStatus status, Instant now);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
