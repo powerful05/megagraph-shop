@@ -82,8 +82,16 @@ public class SpringAiGuideModel implements GuideModel {
                 本次候选商品 JSON：
                 """ + facts));
         for (Turn message : messages) {
-            promptMessages.add("assistant".equals(message.role())
-                    ? new AssistantMessage(message.content()) : new UserMessage(message.content()));
+            if ("assistant".equals(message.role())) {
+                try {
+                    promptMessages.add(new AssistantMessage(mapper.writeValueAsString(
+                            new Selection(message.content(), List.of()))));
+                } catch (JsonProcessingException exception) {
+                    throw new IllegalStateException("无法构造导购对话上下文", exception);
+                }
+            } else {
+                promptMessages.add(new UserMessage(message.content()));
+            }
         }
         OpenAiChatOptions.Builder options = OpenAiChatOptions.builder()
                 .maxTokens(2000)
@@ -94,11 +102,20 @@ public class SpringAiGuideModel implements GuideModel {
             throw new IllegalStateException("导购模型没有返回回复");
         }
         String text = response.getResult().getOutput().getText();
+        return parseChatReply(text, response.getResult().getMetadata().getFinishReason());
+    }
+
+    private Selection parseChatReply(String text, String finishReason) {
         try {
             return parse(text);
         } catch (IllegalStateException exception) {
-            LOG.warn("Guide reply format rejected: finishReason={}, characters={}",
-                    response.getResult().getMetadata().getFinishReason(), text == null ? 0 : text.length());
+            LOG.warn("Guide reply format rejected: reason={}, finishReason={}, characters={}",
+                    exception.getMessage(), finishReason, text == null ? 0 : text.length());
+            String answer = text == null ? "" : text.strip();
+            if ("STOP".equalsIgnoreCase(finishReason) && !answer.isEmpty() && answer.length() <= 2000
+                    && !answer.startsWith("{") && !answer.startsWith("[") && !answer.startsWith("```")) {
+                return new Selection(answer, List.of());
+            }
             throw exception;
         }
     }

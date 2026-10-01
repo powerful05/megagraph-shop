@@ -13,6 +13,7 @@ import org.mockito.Mockito;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
+import org.springframework.ai.chat.metadata.ChatGenerationMetadata;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
@@ -66,6 +67,28 @@ class SpringAiGuideModelTest {
         assertThat(prompt.getValue().getInstructions().getFirst()).isInstanceOf(SystemMessage.class);
         assertThat(prompt.getValue().getInstructions().get(1)).isInstanceOf(UserMessage.class);
         assertThat(prompt.getValue().getInstructions().get(2)).isInstanceOf(AssistantMessage.class);
+        assertThat(prompt.getValue().getInstructions().get(2).getText()).contains("\"interpretation\"", "偏好什么颜色");
         assertThat(prompt.getValue().getInstructions().getLast().getText()).isEqualTo("蓝色");
+    }
+
+    @Test
+    void completedPlainTextChatRepliesRemainUsableWithoutProductSelections() {
+        when(chatModel.call(Mockito.any(Prompt.class))).thenReturn(new ChatResponse(List.of(
+                new Generation(new AssistantMessage("可以先选择手机摄影的短课，目前没有匹配的在售课程。"),
+                        ChatGenerationMetadata.builder().finishReason("STOP").build()))));
+
+        GuideModel.Selection result = model.chat(List.of(new GuideModel.Turn("user", "想学手机摄影")), List.of());
+
+        assertThat(result.interpretation()).contains("手机摄影");
+        assertThat(result.productIds()).isEmpty();
+    }
+
+    @Test
+    void truncatedJsonIsNotShownAsAChatAnswer() {
+        when(chatModel.call(Mockito.any(Prompt.class))).thenReturn(new ChatResponse(List.of(
+                new Generation(new AssistantMessage("{\"interpretation\":\"尚未结束"),
+                        ChatGenerationMetadata.builder().finishReason("LENGTH").build()))));
+        assertThatThrownBy(() -> model.chat(List.of(new GuideModel.Turn("user", "想学摄影")), List.of()))
+                .isInstanceOf(IllegalStateException.class);
     }
 }
