@@ -410,8 +410,11 @@ public class DigitalDeliveryService {
   public OrderResponse claim(Long user, Long id, String idem) {
     requireDemo();
     String k = key(idem);
-    db.queryForObject("select id from app_user where id=? for update", Long.class, user);
+    // Existing-order operations always acquire the order before the account mutex.
+    // after_sale_request's user FK takes a shared account lock while holding this order;
+    // taking the account first would form a real InnoDB FK deadlock with refund requests.
     SalesOrder order = ownedLocked(user, id);
+    db.queryForObject("select id from app_user where id=? for update", Long.class, user);
     var e = eligible(order, false);
     var keys =
         db.queryForList(

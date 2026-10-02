@@ -15,3 +15,5 @@ OrderResponse追加deliveryType（旧订单PHYSICAL）与nullable delivery。del
 验证：`mvn -s .mvn/settings.xml -f apps/backend/pom.xml -Dtest=DigitalDeliveryIntegrationTest test`。MySQL对应继承同专项，使用独立空8.4+库及 `MYSQL_DIGITAL_URL`、`MYSQL_DIGITAL_USERNAME`、`MYSQL_DIGITAL_PASSWORD` 后运行 `-Dtest=MySqlDigitalDeliveryTest`。V9升级保留旧商品/SKU/订单/Session/导购/Outbox且旧订单默认PHYSICAL，新增V11、不可改写旧迁移。浏览器与真实MySQL验收由Lead记录，H2测试不代替该证据。
 
 Worker验证记录：20个DigitalDeliveryIntegrationTest通过、0跳过，覆盖授权/角色、公开与版本、购买幂等与混入拒绝、价格/文件快照、付款/领取/下载与SHA、退款/拒绝/失败阻止领取、到期、失败/取消无权益、跨交付幂等、5种Outbox故障回滚、不同回调ID并发、已建立旧快照的换文件与领取/退款互斥、无模型对话来源及历史JSON。后续改动最终批次66/66通过（数字20、GuideAgent26、GuideChat8、GuideConversation12），此前相称旧commerce/跨商家/guide配置86/86通过（数字18、commerce15、跨商家6、guide26+8+12+1）。这些均本地测试，不声称真实MySQL或浏览器已完成；Lead另归档真实验收。
+
+真实MySQL首轮发现并修复领取与售后FK死锁：旧claim先锁app_user X再order，而售后先锁order后插入after_sale_request，user外键检查需要app_user S，形成环。claim改为先锁所属order再锁app_user（该账号领取幂等键仍互斥），不捕获或重试掩盖数据库死锁。购买的账号mutex只创建新订单或普通读幂等结果，不锁既有订单。Worker新增定序测试：售后先持order，latch确认claim已进入order-lock查询，再售后insert；败方无claim key、无CLAIMED事件。另测同账号不同订单相同领取key并发只一个权益被领取。修复后Worker22/22数字专项通过；真实MySQL重验交Lead，首轮失败不能视为准入通过。

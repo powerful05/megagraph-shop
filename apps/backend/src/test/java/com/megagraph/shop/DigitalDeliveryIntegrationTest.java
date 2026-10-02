@@ -43,7 +43,10 @@ class DigitalDeliveryIntegrationTest {
   @Autowired DigitalDeliveryService digital;
   @Autowired OrderService orders;
   @Autowired AfterSaleService afterSales;
-  @Autowired SalesOrderRepository orderRepo;
+
+  @org.springframework.test.context.bean.override.mockito.MockitoSpyBean
+  SalesOrderRepository orderRepo;
+
   @Autowired MockChannelCommandJob commands;
   @Autowired PlatformTransactionManager tm;
   @Autowired AtomicReference<String> fault;
@@ -870,5 +873,121 @@ class DigitalDeliveryIntegrationTest {
             db.queryForObject(
                 "select count(*) from delivery_offer where merchant_id=?", Long.class, m))
         .isEqualTo(offersBefore);
+  }
+
+  @Test
+  void refundHoldingOrderCanInsertUserForeignKeyWhileClaimWaitsForOrder() throws Exception {
+    var o = paid();
+    long id = o.get("id").asLong();
+    CountDownLatch claimAtOrder = new CountDownLatch(1);
+    var repositoryDelegate =
+        org.mockito.Mockito.mockingDetails(orderRepo).getMockCreationSettings().getDefaultAnswer();
+    org.mockito.Mockito.doAnswer(
+            invocation -> {
+              if (Thread.currentThread().getName().equals("digital-claim-fk-worker"))
+                claimAtOrder.countDown();
+              return repositoryDelegate.answer(invocation);
+            })
+        .when(orderRepo)
+        .findByIdForUpdate(id);
+    try (var pool =
+        Executors.newSingleThreadExecutor(r -> new Thread(r, "digital-claim-fk-worker"))) {
+      AtomicReference<Future<Boolean>> claimant = new AtomicReference<>();
+      var refund =
+          new TransactionTemplate(tm)
+              .execute(
+                  tx -> {
+                    orderRepo.findByIdForUpdate(id).orElseThrow();
+                    claimant.set(
+                        pool.submit(
+                            () -> {
+                              try {
+                                digital.claim(user(), id, key());
+                                return true;
+                              } catch (com.megagraph.shop.shared.ConflictException expected) {
+                                return false;
+                              }
+                            }));
+                    try {
+                      assertThat(claimAtOrder.await(5, TimeUnit.SECONDS)).isTrue();
+                    } catch (InterruptedException e) {
+                      throw new IllegalStateException(e);
+                    }
+                    // The claim has entered its order-lock query. With the previous account-first
+                    // implementation it already held app_user X here and the insert's FK needed S.
+                    return afterSales.request(
+                        user(), id, key(), new CreateAfterSaleRequest("测试FK竞争退款"));
+                  });
+      assertThat(refund.afterSale().status()).isEqualTo("REQUESTED");
+      assertThat(claimant.get().get(10, TimeUnit.SECONDS)).isFalse();
+      assertThat(
+              db.queryForObject(
+                  "select count(*) from digital_claim_key where order_id=?", Long.class, id))
+          .isZero();
+      Long entitlementId =
+          db.queryForObject("select id from digital_entitlement where order_id=?", Long.class, id);
+      assertThat(
+              db.queryForObject(
+                  "select count(*) from outbox_event where aggregate_type='DIGITAL_ENTITLEMENT' and"
+                      + " aggregate_id=? and event_type='DIGITAL_ENTITLEMENT_CLAIMED'",
+                  Long.class,
+                  entitlementId))
+          .isZero();
+      assertThat(
+              db.queryForObject(
+                  "select status from digital_entitlement where order_id=?", String.class, id))
+          .isEqualTo("AVAILABLE");
+    }
+  }
+
+  @Test
+  void sameClaimKeyAcrossDistinctOrdersRemainsAtomic() throws Exception {
+    long a = paid().get("id").asLong(), b = paid().get("id").asLong();
+    String k = key();
+    CountDownLatch ready = new CountDownLatch(2), go = new CountDownLatch(1);
+    try (var pool = Executors.newFixedThreadPool(2)) {
+      var first =
+          pool.submit(
+              () -> {
+                ready.countDown();
+                go.await();
+                try {
+                  digital.claim(user(), a, k);
+                  return true;
+                } catch (com.megagraph.shop.shared.ConflictException expected) {
+                  return false;
+                }
+              });
+      var second =
+          pool.submit(
+              () -> {
+                ready.countDown();
+                go.await();
+                try {
+                  digital.claim(user(), b, k);
+                  return true;
+                } catch (com.megagraph.shop.shared.ConflictException expected) {
+                  return false;
+                }
+              });
+      assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
+      go.countDown();
+      assertThat(first.get(10, TimeUnit.SECONDS) ^ second.get(10, TimeUnit.SECONDS)).isTrue();
+    }
+    assertThat(
+            db.queryForObject(
+                "select count(*) from digital_claim_key where user_id=? and idempotency_key=?",
+                Long.class,
+                user(),
+                k))
+        .isEqualTo(1);
+    assertThat(
+            db.queryForObject(
+                "select count(*) from digital_entitlement where order_id in (?,?) and"
+                    + " status='CLAIMED'",
+                Long.class,
+                a,
+                b))
+        .isEqualTo(1);
   }
 }
