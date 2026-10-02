@@ -1,6 +1,6 @@
 # 阶段4交付记录
 
-状态：4A受控Mock商品生产与4D1自建数字文件已验收；B/C分别完成输入不足裁决；4D2待实施，整个阶段4未完成。当前工作位于隔离集成分支 `codex/phase-4-integration`，阶段3基线 `c7ccb1d`，尚未合入main或推送。恢复先读 `PHASE_4_EXECUTION.md`，再核对实际Git/监听与数据库状态。
+状态：4A受控Mock商品生产与4D1自建数字文件已验收；B/C分别完成输入不足裁决；4D2实现与专项准备中，整个阶段4未完成。当前工作位于隔离集成分支 `codex/phase-4-integration`，阶段3基线 `c7ccb1d`，尚未合入main或推送。恢复先读 `PHASE_4_EXECUTION.md`，再核对实际Git/监听与数据库状态。
 
 ## 当前入口与模式
 

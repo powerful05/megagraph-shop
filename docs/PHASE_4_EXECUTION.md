@@ -98,3 +98,9 @@ D1验收提交8f1e9f7后冻结D2合同8e3a733。Lead新建三个独立树：phas
 V12唯一预约新增迁移。已批准独立appointment_account_lock行X+app_user FK S，不用app_user X→slot以免隐式售后FK循环；所有已有order→payment必要→slot→reservation current-read。QA又发现原expiry整批TX可跨order持同slot形成环，Lead要求scalar外层无TX、每ID REQUIRES_NEW短TXcurrent复查及真实定序证明。close只当前version幂等、旧version409，start/expires排他边界。合同补充将Lead提交后告知Workers，不由他们cherry-pick。
 
 当前D2实现与独立审查进行中，没有D2测试或功能通过结论。Lead下一项审实际mutex/SQL/API共享shape，再集成专项→真实MySQL空库/升级→根verify→正常Session双账号最后名额/取消再购/付款/退款/显式测试完成与浏览器恢复。现有merchant与shopper两个app_user均ROLE_CUSTOMER（DatabaseUserDetailsService实际给所有账号），可用两个已有测试Session验证容量，不需创建账号/更改权限。旧D1与4A数据保留；整个阶段4合main/正常私有push/CI仍待最终验收。
+
+## 4D2首轮审查与恢复点
+
+Lead/QA已读后端开发树，currentOffer改offer单表X，MySQL merchant资格使用LOCK IN SHARE MODE而非join排他锁；expiry无外层事务/scalarIDs逐单TransactionTemplate REQUIRES_NEW。修复方向已批准，但尚未实跑D2专项，不能记为并发通过。QA首轮新增7926d3b已审集成300a0b3；输入严格deserializer拒小数token、epoch/无时区，毫秒规范化在hash/validate/store之前，契约同步此普通技术决定。Workers仍各自独立phase-4d2树，实现/测试进行中。
+
+Lead已通过正常Session只读记录Demo V11旧数据：`apps/backend/var/phase4-evidence/d2-preview-v11-before.json`，包含数字order3 CLAIMED、order4 REFUNDED/REVOKED及已发布实物68。后续本轮预览V11→V12只增量迁移，不reset；集成后对比这些事实与旧文件SHA。当前完整服务保持8084/5176/3004，同mg_p4_demo_20261003/no-guide；第三方调用仍总计1条4A文本，D2无模型调用。下一项等待完整Worker提交并审查→串行真实MySQL最终专项/升级→根verify→同schema迁移和双账号浏览器预约闭环。
