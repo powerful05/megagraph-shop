@@ -46,6 +46,10 @@ Backend 当前开发树已看到 `currentPublicOffer` 完整 FOR UPDATE 取公�
 
 已读取 Backend 首轮 Surefire `DigitalDeliveryIntegrationTest` 报告：10 tests、0 failures、0 errors、0 skipped，12.22 s；其中缺失 expectedOfferVersion、混入 SKU/价格、支付后权益、未领拒下载、实际 bytes SHA-256、private/no-store、匿名/另一账号、未领取退款/已领取拒退、拒绝恢复/过期、创建及领取 Outbox 回滚、旧历史 JSON 有断言。报告对应首轮代码，不宣称之后所有修订已通过，也不是 MySQL 或浏览器验收。支付/退款权益 Outbox 回滚、定序 RR 竞争、不同事件重复支付与商家角色专项仍待最终证据。
 
+Backend `d768099` 最新专项报告为 15 tests、0 failures、0 errors、0 skipped，14.50 s。已读新增断言而非仅方法名：支付 AVAILABLE 与退款 REVOKED Outbox 注入失败后，订单/支付/权益持久状态回滚；不同 eventId 并发支付回调均 APPLIED 且只有一权益；显式先建立普通读 snapshot，再等待商家改价、换资产、确认与发布，购买保存新金额与真实关联资产 hash；显式先建立旧 snapshot，再让 claim 或退款申请先成功，败方两种方向均 Conflict；expectedOfferVersion 超 long/小数拒绝，数字幂等键用于实物创建拒绝。当前看到 assetId current-read、scalar 资源定位和写守卫修订落实，先前反馈没有已知未修的阻断漏洞。
+
+仍需验收证据：上述 15 项在真实 MySQL 执行结果，offer 跨商家及角色写权限，数字支付 FAILED/CANCELLED/EXPIRED 不生权益，实物→数字幂等类型冲突，以及 Lead 真实浏览器对话到领取下载与刷新。双方静态 guard 存在不能替代这些范围的运行证据。
+
 ## 结论
 
 尚不能宣布 D1 通过。当前产出为旧领域边界核实与具体审查入口；待 Backend/Frontend 的实现与运行证据到位后更新。本次准备不运行付费模型、修改业务或重复充分完成的 4A/B/C 验证。
