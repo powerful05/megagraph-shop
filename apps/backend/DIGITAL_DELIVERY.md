@@ -13,3 +13,5 @@
 OrderResponse追加deliveryType（旧订单PHYSICAL）与nullable delivery。delivery含purchase字段、nullable entitlement、server claimAvailable/downloadAvailable布尔资格提示；操作时仍再次验证。GuideChatResult追加deliveryOffers与responseSource（TEXT_MODEL/JAVA_DIGITAL/NO_MODEL）；历史JSON缺字段兼容，3/5/6arg构造保留。统一连续对话入口默认可用，数字明确意图由Java召回当前公开offer、不调用模型；未启用模型的其他请求如实返回当前无真实导购。模型Bean仍仅guide profile，不改变已有真实文本模型导购。
 
 验证：`mvn -s .mvn/settings.xml -f apps/backend/pom.xml -Dtest=DigitalDeliveryIntegrationTest test`。MySQL对应继承同专项，使用独立空8.4+库及 `MYSQL_DIGITAL_URL`、`MYSQL_DIGITAL_USERNAME`、`MYSQL_DIGITAL_PASSWORD` 后运行 `-Dtest=MySqlDigitalDeliveryTest`。V9升级保留旧商品/SKU/订单/Session/导购/Outbox且旧订单默认PHYSICAL，新增V11、不可改写旧迁移。浏览器与真实MySQL验收由Lead记录，H2测试不代替该证据。
+
+Worker验证记录：20个DigitalDeliveryIntegrationTest通过、0跳过，覆盖授权/角色、公开与版本、购买幂等与混入拒绝、价格/文件快照、付款/领取/下载与SHA、退款/拒绝/失败阻止领取、到期、失败/取消无权益、跨交付幂等、5种Outbox故障回滚、不同回调ID并发、已建立旧快照的换文件与领取/退款互斥、无模型对话来源及历史JSON。后续改动最终批次66/66通过（数字20、GuideAgent26、GuideChat8、GuideConversation12），此前相称旧commerce/跨商家/guide配置86/86通过（数字18、commerce15、跨商家6、guide26+8+12+1）。这些均本地测试，不声称真实MySQL或浏览器已完成；Lead另归档真实验收。

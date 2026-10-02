@@ -668,4 +668,207 @@ class DigitalDeliveryIntegrationTest {
             () -> orders.create(user(), k, new CreateOrderRequest("测试", "00000000000", "测试")))
         .isInstanceOf(com.megagraph.shop.shared.ConflictException.class);
   }
+
+  @Autowired com.megagraph.shop.identity.UserAccountRepository users;
+  @Autowired com.megagraph.shop.identity.MerchantRepository merchants;
+  @Autowired com.megagraph.shop.identity.MerchantUserRepository memberships;
+  @Autowired org.springframework.security.crypto.password.PasswordEncoder encoder;
+
+  String roleAccount(com.megagraph.shop.identity.MerchantRole role, Long merchant) {
+    String name = "digital-role-" + key() + "@test.local";
+    var account =
+        users.saveAndFlush(
+            new com.megagraph.shop.identity.UserAccount(
+                name, encoder.encode("digital-test-only"), "数字角色测试"));
+    memberships.saveAndFlush(
+        new com.megagraph.shop.identity.MerchantUser(merchant, account.getId(), role));
+    return name;
+  }
+
+  @Test
+  void rolesAndMerchantIsolation() throws Exception {
+    Long merchant = merchantId();
+    String editor = roleAccount(com.megagraph.shop.identity.MerchantRole.EDITOR, merchant),
+        publisher = roleAccount(com.megagraph.shop.identity.MerchantRole.PUBLISHER, merchant);
+    var offer =
+        result(
+            post("/api/merchant/v1/delivery-offers")
+                .with(httpBasic(editor, "digital-test-only"))
+                .header("X-Merchant-Id", merchant)
+                .header("Idempotency-Key", key())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"deliveryType\":\"DIGITAL_FILE\",\"title\":\"角色测试文件\",\"description\":\"自建测试资料\",\"price\":9.90,\"currency\":\"CNY\"}"));
+    long id = offer.get("id").asLong();
+    var confirm =
+        result(
+            post("/api/merchant/v1/delivery-offers/" + id + "/confirm")
+                .with(httpBasic(editor, "digital-test-only"))
+                .header("X-Merchant-Id", merchant)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"version\":0}"));
+    mvc.perform(
+            post("/api/merchant/v1/delivery-offers/" + id + "/publish")
+                .with(httpBasic(editor, "digital-test-only"))
+                .header("X-Merchant-Id", merchant)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"version\":1}"))
+        .andExpect(status().isForbidden());
+    mvc.perform(
+            patch("/api/merchant/v1/delivery-offers/" + id)
+                .with(httpBasic(publisher, "digital-test-only"))
+                .header("X-Merchant-Id", merchant)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"version\":1,\"title\":\"测试\",\"description\":\"测试\",\"price\":1,\"currency\":\"CNY\"}"))
+        .andExpect(status().isForbidden());
+    result(
+        post("/api/merchant/v1/delivery-offers/" + id + "/publish")
+            .with(httpBasic(publisher, "digital-test-only"))
+            .header("X-Merchant-Id", merchant)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"version\":1}"));
+    Long other = merchants.saveAndFlush(new com.megagraph.shop.identity.Merchant("另一测试商家")).getId();
+    String owner = roleAccount(com.megagraph.shop.identity.MerchantRole.OWNER, other);
+    mvc.perform(
+            patch("/api/merchant/v1/delivery-offers/" + id)
+                .with(httpBasic(owner, "digital-test-only"))
+                .header("X-Merchant-Id", other)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"version\":2,\"title\":\"测试\",\"description\":\"测试\",\"price\":1,\"currency\":\"CNY\"}"))
+        .andExpect(status().isNotFound());
+    assertThat(
+            result(
+                get("/api/merchant/v1/delivery-offers")
+                    .with(httpBasic(owner, "digital-test-only"))
+                    .header("X-Merchant-Id", other)))
+        .isEmpty();
+  }
+
+  @Test
+  void failedCancelledExpiredNeverIssueEntitlement() throws Exception {
+    for (String state : List.of("FAILURE", "CANCELLED", "EXPIRED")) {
+      var order = buy(published(), key());
+      long id = order.get("id").asLong();
+      if ("EXPIRED".equals(state)) {
+        db.update(
+            "update sales_order set expires_at=? where id=?",
+            java.sql.Timestamp.from(Instant.now().minusSeconds(1)),
+            id);
+        orders.expireOverdueOrders();
+      } else {
+        orders.applyMockPayment(user(), id, key(), MockPaymentResult.valueOf(state));
+        commands.processAvailable(100);
+      }
+      assertThat(
+              db.queryForObject(
+                  "select count(*) from digital_entitlement where order_id=?", Long.class, id))
+          .isZero();
+      mvc.perform(
+              shopper(post("/api/shop/v1/orders/" + id + "/digital-claim"))
+                  .header("Idempotency-Key", key()))
+          .andExpect(status().isConflict());
+      mvc.perform(shopper(get("/api/shop/v1/orders/" + id + "/digital-download")))
+          .andExpect(status().isConflict());
+    }
+    var pending = buy(published(), key());
+    orders.cancel(user(), pending.get("id").asLong());
+    assertThat(
+            db.queryForObject(
+                "select count(*) from digital_entitlement where order_id=?",
+                Long.class,
+                pending.get("id").asLong()))
+        .isZero();
+  }
+
+  @Test
+  void physicalIdempotencyCannotReplayAsDigital() throws Exception {
+    String k = key();
+    var physical =
+        orderRepo.saveAndFlush(
+            new SalesOrder(
+                "D1-PHYSICAL-" + key().substring(0, 20),
+                user(),
+                merchantId(),
+                k,
+                "CNY",
+                BigDecimal.ONE,
+                "测试",
+                "00000000000",
+                "测试",
+                Instant.now().plusSeconds(300)));
+    var offer = published();
+    assertThatThrownBy(() -> digital.purchase(user(), k, request(offer)))
+        .isInstanceOf(com.megagraph.shop.shared.ConflictException.class);
+    assertThat(
+            db.queryForObject(
+                "select delivery_type from sales_order where id=?", String.class, physical.getId()))
+        .isEqualTo("PHYSICAL");
+  }
+
+  @Test
+  void failedRefundRemainsBlockedAndNoModelSourceAndValidation() throws Exception {
+    var o = paid();
+    long id = o.get("id").asLong();
+    afterSales.request(user(), id, key(), new CreateAfterSaleRequest("测试失败退款"));
+    afterSales.approve(merchantId(), id, key(), new ResolveAfterSaleRequest("测试批准"));
+    db.update(
+        "update refund_order set provider_refund_id=? where order_id=?",
+        "d1-failed-refund-" + id,
+        id);
+    event(key(), "d1-failed-refund-" + id, "REFUND_FAILED", "REFUND", new BigDecimal("9.90"));
+    var blocked = result(shopper(get("/api/shop/v1/orders/" + id)));
+    assertThat(blocked.at("/afterSale/status").asText()).isEqualTo("REFUND_FAILED");
+    assertThat(blocked.at("/delivery/claimAvailable").asBoolean()).isFalse();
+    mvc.perform(
+            shopper(post("/api/shop/v1/orders/" + id + "/digital-claim"))
+                .header("Idempotency-Key", key()))
+        .andExpect(status().isConflict());
+    var answer =
+        result(
+            shopper(post("/api/shop/v1/guide/messages"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"messages\":[{\"role\":\"user\",\"content\":\"我想买衣服\"}]}"));
+    assertThat(answer.get("responseSource").asText()).isEqualTo("NO_MODEL");
+    assertThat(answer.get("products")).isEmpty();
+    mvc.perform(
+            shopper(post("/api/shop/v1/guide/messages"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"messages\":[{\"role\":\"assistant\",\"content\":\"数字文件\"}]}"))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void offerCreationOutboxFailureLeavesNoAssetOrOffer() {
+    Long m = merchantId();
+    long
+        before =
+            db.queryForObject(
+                "select count(*) from digital_asset where merchant_id=?", Long.class, m),
+        offersBefore =
+            db.queryForObject(
+                "select count(*) from delivery_offer where merchant_id=?", Long.class, m);
+    fault.set("DELIVERY_OFFER_CREATED");
+    try {
+      assertThatThrownBy(
+              () ->
+                  digital.create(
+                      m,
+                      key(),
+                      new DeliveryOfferRequest(
+                          null, "DIGITAL_FILE", "测试回滚", "自建测试文件", BigDecimal.ONE, "CNY")))
+          .isInstanceOf(IllegalStateException.class);
+    } finally {
+      fault.set(null);
+    }
+    assertThat(
+            db.queryForObject(
+                "select count(*) from digital_asset where merchant_id=?", Long.class, m))
+        .isEqualTo(before);
+    assertThat(
+            db.queryForObject(
+                "select count(*) from delivery_offer where merchant_id=?", Long.class, m))
+        .isEqualTo(offersBefore);
+  }
 }

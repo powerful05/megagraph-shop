@@ -74,7 +74,7 @@ public class GuideAgent {
                 + "。具体属性与交易信息以当前商品资料为准。", List.copyOf(products));
     }
 
-    public GuideChatResult chat(List<GuideModel.Turn> messages, boolean allowDemoProducts) {
+    public static void validateHistory(List<GuideModel.Turn> messages) {
         if (messages == null || messages.isEmpty() || messages.size() > 19
                 || messages.stream().mapToInt(turn -> turn.content().length()).sum() > 12000) {
             throw new DomainException(HttpStatus.BAD_REQUEST, "GUIDE_HISTORY_INVALID", "对话过长，请开始新对话");
@@ -94,6 +94,10 @@ public class GuideAgent {
         if (!"user".equals(messages.getLast().role())) {
             throw new DomainException(HttpStatus.BAD_REQUEST, "GUIDE_HISTORY_INVALID", "请提交新的用户消息");
         }
+    }
+
+    public GuideChatResult chat(List<GuideModel.Turn> messages, boolean allowDemoProducts) {
+        validateHistory(messages);
         GuideModel guideModel = model.orElseThrow(() -> new DomainException(
                 HttpStatus.SERVICE_UNAVAILABLE, "GUIDE_UNAVAILABLE", "对话模型暂未启用"));
         GuideIntent extracted = guideModel.interpret(List.copyOf(messages));
