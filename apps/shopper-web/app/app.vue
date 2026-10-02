@@ -3,7 +3,10 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } 
 import { Plus, RefreshCw } from 'lucide-vue-next'
 import ProductImage from './components/ProductImage.vue'
 import DigitalOrderDelivery from './components/DigitalOrderDelivery.vue'
+import AppointmentOrderDelivery from './components/AppointmentOrderDelivery.vue'
 import type {
+  AppointmentOffer,
+  AppointmentSlot,
   DeliveryOffer,
   MockPaymentResult,
   OrderItem,
@@ -17,7 +20,7 @@ import {
   needsShopperOrderPolling,
   nextOrderPollingDelay,
 } from '@megagraph/domain-types'
-import { cancelShopperRequests, shopperApi, type ShopperCredentials } from './api'
+import { cancelShopperRequests, clearPendingAppointmentPurchase, readPendingAppointmentPurchase, savePendingAppointmentPurchase, shopperApi, type ShopperCredentials } from './api'
 
 type CommercePanel = 'cart' | 'checkout' | 'orders'
 
@@ -89,6 +92,8 @@ function orderSupplyItems(order: SalesOrder) { return order.items.filter(item =>
 function sizeRowsForItem(item: OrderItem) { return item.supplyDetails?.sizeChart.filter(row => row.skuCode === item.skuCode) ?? [] }
 const refundReasons = reactive<Record<number, string>>({})
 const submittedPayments = reactive<Record<number, boolean>>({})
+const expiredAppointmentHolds = ref<Record<number, boolean>>({})
+watch(accountUserId, () => { expiredAppointmentHolds.value = {} })
 
 let pollTimer: ReturnType<typeof setTimeout> | null = null
 let pollStartedAt: number | null = null
@@ -332,6 +337,7 @@ async function createOrder() {
 }
 
 async function applyPayment(order: SalesOrder, result: MockPaymentResult) {
+  if (result === 'SUCCESS' && !canSimulatePayment(order)) { errorMessage.value = '预约预占已失效，请刷新订单核对释放状态。'; return }
   await execute(`payment-${order.id}-${result}`, async () => {
     const updated = await shopperApi.mockPayment(
       apiBase,
@@ -358,7 +364,7 @@ async function cancelOrder(order: SalesOrder) {
   await execute(`cancel-${order.id}`, async () => {
     const updated = await shopperApi.cancelOrder(apiBase, credentials, order.id)
     replaceOrder(updated)
-    notice.value = order.deliveryType === 'DIGITAL_FILE' ? '数字订单已取消，未产生文件权益' : '订单已取消，预占库存已释放'
+    notice.value = order.deliveryType === 'APPOINTMENT' ? '预约订单已取消，预占名额已释放' : order.deliveryType === 'DIGITAL_FILE' ? '数字订单已取消，未产生文件权益' : '订单已取消，预占库存已释放'
     await refreshInventoryFacts()
   })
 }
@@ -386,9 +392,59 @@ async function requestRefund(order: SalesOrder) {
       reason,
     )
     replaceOrder(updated)
-    notice.value = order.deliveryType === 'DIGITAL_FILE' ? '退款申请已提交，文件领取与下载已暂停' : '退款申请已提交，发货已暂停'
+    notice.value = order.deliveryType === 'APPOINTMENT' ? '预约退款申请已提交，模拟测试完成已暂停' : order.deliveryType === 'DIGITAL_FILE' ? '退款申请已提交，文件领取与下载已暂停' : '退款申请已提交，发货已暂停'
   })
 }
+
+async function purchaseAppointment(displayed: AppointmentOffer | number, slot?: AppointmentSlot) {
+  if (busyAction.value) return
+  if (!connected.value || accountUserId.value === null) { loginOpen.value = true; notice.value = '登录后请重新查看当前测试预约并明确选择时段。'; return }
+  if (!mockPaymentAvailable.value) { errorMessage.value = '当前环境未开放预约测试订单与 Mock 支付。'; return }
+  const offerId = typeof displayed === 'number' ? displayed : displayed.id
+  await execute(`appointment-buy-${offerId}`, async () => {
+    const owner = accountUserId.value
+    if (owner === null) return
+    let pending = readPendingAppointmentPurchase(owner, offerId)
+    const recovering = pending !== null
+    if (!pending) {
+      if (typeof displayed === 'number' || !slot) throw new Error('没有待核实的原请求，请重新查看当前预约并选择时段。')
+      const current = await shopperApi.appointmentOffer(apiBase, offerId)
+      if (owner !== accountUserId.value) return
+      const currentSlot = current.slots.find(item => item.id === slot.id)
+      if (current.version !== displayed.version || current.price !== displayed.price || !currentSlot || currentSlot.version !== slot.version || currentSlot.status !== 'OPEN' || currentSlot.remaining < 1 || Date.parse(currentSlot.startAt) <= Date.now()) throw new Error('预约资料、时段或名额已变化，请刷新详情后重新选择并明确试购。')
+      pending = { key: crypto.randomUUID(), item: { offerId, slotId: currentSlot.id, quantity: 1, expectedOfferVersion: current.version, expectedSlotVersion: currentSlot.version } }
+      savePendingAppointmentPurchase(owner, pending)
+    }
+    let created: SalesOrder
+    try { created = await shopperApi.createAppointmentOrder(apiBase, pending.item, pending.key) }
+    catch (reason) {
+      if (owner !== accountUserId.value) return
+      const status = reason instanceof Error && 'status' in reason ? Number(reason.status) : 0
+      if (status >= 400 && status < 500) clearPendingAppointmentPurchase(owner, offerId)
+      if (!status || status >= 500) throw new Error('预约试购结果待核实，请刷新订单，或在原预约卡片核对上次请求。')
+      throw reason
+    }
+    if (owner !== accountUserId.value) return
+    clearPendingAppointmentPurchase(owner, offerId)
+    orderMutationVersion++
+    orders.value = [created, ...orders.value.filter(order => order.id !== created.id)]
+    activePanel.value = 'orders'
+    notice.value = recovering ? '上次预约试购请求已核对，订单和时段以保存的快照为准。' : '预约名额已预占，请在截止前显式模拟支付；支付成功仍不代表测试完成。'
+    schedulePolling(true)
+  })
+}
+function displayOrderStatus(order: SalesOrder) {
+  if (order.deliveryType === 'APPOINTMENT') {
+    if (order.appointment?.reservation.status === 'FULFILLED') return '已模拟测试完成'
+    if (order.status === 'PAID' && order.appointment?.reservation.status === 'CONFIRMED') return '预约已确认 · 未测试完成'
+    if (order.status === 'PAID') return '已支付，请核对预约状态'
+  }
+  return order.deliveryType === 'DIGITAL_FILE' && order.status === 'PAID' ? '模拟支付成功 · 数字文件' : order.testOrder && order.status === 'PAID' ? '模拟支付成功 · 不发货' : orderStatusLabel(order.status)
+}
+function canSimulatePayment(order: SalesOrder) {
+  return order.deliveryType !== 'APPOINTMENT' || order.appointment?.reservation.status === 'HELD' && !expiredAppointmentHolds.value[order.id] && Date.parse(order.appointment.reservation.expiresAt) > Date.now() && Date.parse(order.appointment.startAt) > Date.now()
+}
+function appointmentHoldExpired(orderId: number) { expiredAppointmentHolds.value[orderId] = true; void recoverOrderState() }
 
 async function purchaseDigital(displayed: DeliveryOffer) {
   if (busyAction.value) return
@@ -447,7 +503,9 @@ async function downloadDigital(order: SalesOrder) {
   })
 }
 function canRequestRefund(order: SalesOrder) {
-  return order.status === 'PAID' && !order.afterSale && (order.deliveryType !== 'DIGITAL_FILE' || order.delivery?.entitlement?.status === 'AVAILABLE')
+  if (order.status !== 'PAID' || order.afterSale) return false
+  if (order.deliveryType === 'APPOINTMENT') return order.appointment?.reservation.status === 'CONFIRMED' && order.payment?.status === 'SUCCEEDED' && !order.payment.reconciliationRequired
+  return order.deliveryType !== 'DIGITAL_FILE' || order.delivery?.entitlement?.status === 'AVAILABLE'
 }
 
 function replaceOrder(updated: SalesOrder) {
@@ -674,6 +732,7 @@ onBeforeUnmount(() => {
       id="top"
       :model-available="capabilities?.guideAvailable === true"
       :digital-delivery-available="capabilities?.digitalDeliveryAvailable === true"
+      :appointment-delivery-available="capabilities?.appointmentDeliveryAvailable === true"
       :demo-catalog-available="capabilities?.demoCatalogAvailable === true"
       :model-name="capabilities?.guideModelName ?? ''"
       :cart-busy="Boolean(busyAction)"
@@ -683,6 +742,7 @@ onBeforeUnmount(() => {
       @update:reduce-motion="manualReduceMotion = $event"
       @add-to-cart="addGuideProduct"
       @purchase-digital="purchaseDigital"
+      @purchase-appointment="purchaseAppointment"
       @refresh-capabilities="refreshCapabilities()"
     />
 
@@ -859,7 +919,7 @@ onBeforeUnmount(() => {
             <div v-if="orders.length === 0" class="drawer-empty">
               <span>ORDER / 00</span>
               <h3>还没有订单</h3>
-              <p>完成一次结算后，订单及其支付、库存预占状态会显示在这里。</p>
+              <p>完成结算或单独试购后，订单、支付与交付状态会显示在这里。</p>
             </div>
             <article v-for="order in orders" v-else :key="order.id" class="order-card">
               <header>
@@ -868,8 +928,9 @@ onBeforeUnmount(() => {
                   <small>{{ formatDate(order.createdAt) }}</small>
                   <small>{{ merchantName(order.merchantId) }}<template v-if="order.checkoutGroupId"> · 下单组 #{{ order.checkoutGroupId }}</template><template v-if="order.testOrder"> · 试用子订单</template></small>
                 </div>
-                <strong :class="`status-${order.status.toLowerCase()}`">{{ order.deliveryType === 'DIGITAL_FILE' && order.status === 'PAID' ? '模拟支付成功 · 数字文件' : order.testOrder && order.status === 'PAID' ? '模拟支付成功 · 不发货' : orderStatusLabel(order.status) }}</strong>
+                <strong :class="`status-${order.status.toLowerCase()}`">{{ displayOrderStatus(order) }}</strong>
               </header>
+              <AppointmentOrderDelivery v-if="order.deliveryType === 'APPOINTMENT'" :order="order" @hold-expired="appointmentHoldExpired(order.id)" />
               <DigitalOrderDelivery v-if="order.deliveryType === 'DIGITAL_FILE'" :order="order" :busy="Boolean(busyAction)" @claim="claimDigital(order)" @download="downloadDigital(order)" />
               <div class="order-items">
                 <p v-for="item in order.items" :key="item.skuId">
@@ -885,7 +946,7 @@ onBeforeUnmount(() => {
               </details>
               <div class="order-facts">
                 <span>支付 / {{ paymentStatusLabel(order) }}</span>
-                <span v-if="order.deliveryType !== 'DIGITAL_FILE'">库存 / {{ reservationSummary(order) }}</span>
+                <span v-if="!order.deliveryType || order.deliveryType === 'PHYSICAL'">库存 / {{ reservationSummary(order) }}</span>
               </div>
               <div v-if="order.payment?.reconciliationRequired" class="reconciliation-card">
                 <strong>支付状态需要人工核查</strong>
@@ -932,7 +993,7 @@ onBeforeUnmount(() => {
               >
                 <p>开发支付回调模拟器</p>
                 <div>
-                  <button type="button" :disabled="Boolean(busyAction)" @click="applyPayment(order, 'SUCCESS')">模拟成功</button>
+                  <button type="button" :disabled="Boolean(busyAction) || !canSimulatePayment(order)" @click="applyPayment(order, 'SUCCESS')">模拟成功</button>
                   <button type="button" :disabled="Boolean(busyAction)" @click="applyPayment(order, 'FAILURE')">模拟失败</button>
                   <button type="button" :disabled="Boolean(busyAction)" @click="applyPayment(order, 'CANCELLED')">模拟渠道取消</button>
                   <button type="button" :disabled="Boolean(busyAction)" @click="cancelOrder(order)">主动取消订单</button>
@@ -958,7 +1019,7 @@ onBeforeUnmount(() => {
                 @submit.prevent="requestRefund(order)"
               >
                 <label>
-                  <span>{{ order.deliveryType === 'DIGITAL_FILE' ? '未领取文件退款' : 'REFUND BEFORE SHIPMENT' }}</span>
+                  <span>{{ order.deliveryType === 'APPOINTMENT' ? '未测试完成的预约退款' : order.deliveryType === 'DIGITAL_FILE' ? '未领取文件退款' : 'REFUND BEFORE SHIPMENT' }}</span>
                   <textarea
                     v-model="refundReasons[order.id]"
                     maxlength="500"

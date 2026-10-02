@@ -1,4 +1,4 @@
-import type { AuthMe, CheckoutGroup, DeliveryOffer, GuideConversationDetail, GuideConversationSummary, GuideTurnRequest, GuideMessage, GuideReply, MockPaymentResult, PublicProduct, SalesOrder, ShoppingCart } from '@megagraph/domain-types'
+import type { AppointmentOffer, AppointmentPurchaseItem, AuthMe, CheckoutGroup, DeliveryOffer, GuideConversationDetail, GuideConversationSummary, GuideTurnRequest, GuideMessage, GuideReply, MockPaymentResult, PublicProduct, SalesOrder, ShoppingCart } from '@megagraph/domain-types'
 
 export interface ShopperCredentials {
   username: string
@@ -27,9 +27,9 @@ export function cancelShopperRequests() {
   csrfToken = ''
 }
 
-async function ensureCsrf(apiBase: string): Promise<string> {
+async function ensureCsrf(apiBase: string, signal?: AbortSignal | null): Promise<string> {
   if (!csrfToken) {
-    const response = await fetch(`${apiBase}/api/auth/v1/csrf`, { credentials: 'same-origin' })
+    const response = await fetch(`${apiBase}/api/auth/v1/csrf`, { credentials: 'same-origin', signal })
     if (!response.ok) throw new Error('无法获取请求安全令牌')
     const body = await response.json() as { token: string }
     csrfToken = body.token
@@ -46,7 +46,7 @@ async function request<T>(
   const signal = path.startsWith('/api/shop/v1/') ? (init.signal ? AbortSignal.any([shopperRequests.signal, init.signal]) : shopperRequests.signal) : init.signal
   const headers = new Headers(init.headers)
   if (init.method && !['GET', 'HEAD'].includes(init.method.toUpperCase())) {
-    headers.set('X-CSRF-TOKEN', await ensureCsrf(apiBase))
+    headers.set('X-CSRF-TOKEN', await ensureCsrf(apiBase, signal))
   }
   if (init.body != null) headers.set('Content-Type', 'application/json')
   const response = await fetch(`${apiBase}${path}`, { ...init, headers, signal, credentials: 'same-origin' })
@@ -54,7 +54,7 @@ async function request<T>(
     const body = (await response.json().catch(() => ({}))) as ApiErrorBody
     if (body.code === 'CSRF_TOKEN_INVALID') {
       csrfToken = ''
-      await ensureCsrf(apiBase).catch(() => {})
+      await ensureCsrf(apiBase, signal).catch(() => {})
     }
     if (response.status === 401 && path !== '/api/auth/v1/login') onSessionExpired?.()
     const fields = body.fieldErrors ? Object.values(body.fieldErrors).join('；') : ''
@@ -65,7 +65,41 @@ async function request<T>(
   return result as T
 }
 
+export interface PendingAppointmentPurchase { key: string; item: AppointmentPurchaseItem }
+const pendingAppointmentPurchases = new Map<string, PendingAppointmentPurchase>()
+function appointmentPurchaseStorage(owner: number, offerId: number) { return `megagraph-appointment-buy-${owner}-${offerId}` }
+export function readPendingAppointmentPurchase(owner: number, offerId: number): PendingAppointmentPurchase | null {
+  const storage = appointmentPurchaseStorage(owner, offerId)
+  const cached = pendingAppointmentPurchases.get(storage)
+  if (cached) return cached
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(storage) ?? 'null')
+    const item = saved?.item
+    if (typeof saved?.key === 'string' && item?.offerId === offerId && Number.isInteger(item.slotId) && item.slotId > 0 && item.quantity === 1 && Number.isInteger(item.expectedOfferVersion) && item.expectedOfferVersion >= 0 && Number.isInteger(item.expectedSlotVersion) && item.expectedSlotVersion >= 0) {
+      const result: PendingAppointmentPurchase = { key: saved.key, item: { offerId, slotId: item.slotId, quantity: 1, expectedOfferVersion: item.expectedOfferVersion, expectedSlotVersion: item.expectedSlotVersion } }
+      pendingAppointmentPurchases.set(storage, result); return result
+    }
+  } catch { /* Optional session storage. */ }
+  return null
+}
+export function savePendingAppointmentPurchase(owner: number, pending: PendingAppointmentPurchase) {
+  const storage = appointmentPurchaseStorage(owner, pending.item.offerId)
+  pendingAppointmentPurchases.set(storage, pending)
+  try { sessionStorage.setItem(storage, JSON.stringify(pending)) } catch { /* Keep in memory if storage is unavailable. */ }
+}
+export function clearPendingAppointmentPurchase(owner: number, offerId: number) {
+  const storage = appointmentPurchaseStorage(owner, offerId)
+  pendingAppointmentPurchases.delete(storage)
+  try { sessionStorage.removeItem(storage) } catch { /* Optional session storage. */ }
+}
+
 export const shopperApi = {
+  appointmentOffer(apiBase: string, id: number, signal?: AbortSignal) {
+    return request<AppointmentOffer>(apiBase, `/api/shop/v1/appointment-offers/${id}`, { username: '', password: '' }, { signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15000)]) : AbortSignal.timeout(15000) })
+  },
+  createAppointmentOrder(apiBase: string, item: AppointmentPurchaseItem, key: string) {
+    return request<SalesOrder>(apiBase, '/api/shop/v1/appointment-orders', { username: '', password: '' }, { method: 'POST', headers: { 'Idempotency-Key': key }, body: JSON.stringify({ items: [item] }), signal: AbortSignal.timeout(15000) })
+  },
   deliveryOffer(apiBase: string, id: number, signal?: AbortSignal) {
     return request<DeliveryOffer>(apiBase, `/api/shop/v1/delivery-offers/${id}`, { username: '', password: '' }, { signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15000)]) : AbortSignal.timeout(15000) })
   },
@@ -150,7 +184,7 @@ export const shopperApi = {
     })
   },
   orders(apiBase: string, credentials: ShopperCredentials) {
-    return request<SalesOrder[]>(apiBase, '/api/shop/v1/orders', credentials)
+    return request<SalesOrder[]>(apiBase, '/api/shop/v1/orders', credentials, { signal: AbortSignal.timeout(15000) })
   },
   createOrder(
     apiBase: string,

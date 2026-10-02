@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, toRef, watch } from 'vue'
 import { ArrowUp, Columns2, MessageSquare, PanelLeft, Plus, RefreshCw, Square, X } from 'lucide-vue-next'
-import type { DeliveryOffer, PublicProduct } from '@megagraph/domain-types'
+import type { AppointmentOffer, AppointmentSlot, DeliveryOffer, PublicProduct } from '@megagraph/domain-types'
 import { useGuideConversations, type AgentMessage as Message } from '../composables/useGuideConversations'
 import ProductComparison from './ProductComparison.vue'
 import ProductImage from './ProductImage.vue'
 import DigitalOfferCard from './DigitalOfferCard.vue'
+import AppointmentOfferCard from './AppointmentOfferCard.vue'
 import { shopperApi } from '../api'
 
 const props = defineProps<{
   modelAvailable: boolean
   digitalDeliveryAvailable: boolean
+  appointmentDeliveryAvailable: boolean
   demoCatalogAvailable: boolean
   modelName: string
   cartBusy: boolean
@@ -18,7 +20,7 @@ const props = defineProps<{
   reduceMotion: boolean
   systemReduceMotion: boolean
 }>()
-const emit = defineEmits<{ addToCart: [product: PublicProduct, skuId: number]; purchaseDigital: [offer: DeliveryOffer]; refreshCapabilities: []; 'update:reduceMotion': [value: boolean] }>()
+const emit = defineEmits<{ addToCart: [product: PublicProduct, skuId: number]; purchaseDigital: [offer: DeliveryOffer]; purchaseAppointment: [offer: AppointmentOffer | number, slot?: AppointmentSlot]; refreshCapabilities: []; 'update:reduceMotion': [value: boolean] }>()
 const apiBase = useRuntimeConfig().public.apiBase
 
 type DemoProduct = {
@@ -81,7 +83,7 @@ let previewTrigger: HTMLElement | null = null
 
 const { conversations, activeId, activeConversation, pendingId, waiting, progress, loading, historyError, canRetry, canSend,
   startConversation: createChat, selectConversation: switchChat, send, stopWaiting, recover, loadHistory } = useGuideConversations(
-  apiBase, toRef(props, 'accountUserId'), () => props.modelAvailable || props.digitalDeliveryAvailable || !props.demoCatalogAvailable, demoAnswer,
+  apiBase, toRef(props, 'accountUserId'), () => props.modelAvailable || props.digitalDeliveryAvailable || props.appointmentDeliveryAvailable || !props.demoCatalogAvailable, demoAnswer,
   () => { if (!props.modelAvailable) emit('refreshCapabilities'); void nextTick(scrollToEnd) },
 )
 const hasMessages = computed(() => activeConversation.value.messages.length > 0)
@@ -91,6 +93,7 @@ const previewSku = computed(() => previewSkus.value.find(sku => sku.id === previ
 function basisFor(message: Message, productId: number) {
   return message.recommendationBasis?.filter(item => item.productId === productId) ?? []
 }
+function purchaseAppointment(offer: AppointmentOffer, slot: AppointmentSlot) { emit('purchaseAppointment', offer, slot) }
 
 function startConversation() {
   createChat()
@@ -309,15 +312,15 @@ onBeforeUnmount(() => {
     <div class="agent-main">
       <div class="conversation-topline">
         <button ref="historyTrigger" class="mobile-history" type="button" aria-label="打开对话历史" :aria-expanded="sidebarOpen" @click="openHistory"><PanelLeft :size="18" /></button>
-        <span>AI 超市 <small>{{ modelAvailable ? '真实对话' : digitalDeliveryAvailable ? '测试供给' : demoCatalogAvailable ? '演示模式' : '暂不可用' }}</small></span>
-        <span class="not-connected">{{ modelAvailable ? modelName : digitalDeliveryAvailable ? '数字文件来自商家确认资料' : demoCatalogAvailable ? '未接入实时模型' : '对话服务未就绪' }}</span>
+        <span>AI 超市 <small>{{ modelAvailable ? '真实对话' : digitalDeliveryAvailable || appointmentDeliveryAvailable ? '测试供给' : demoCatalogAvailable ? '演示模式' : '暂不可用' }}</small></span>
+        <span class="not-connected">{{ modelAvailable ? modelName : appointmentDeliveryAvailable ? '固定时段来自商家确认资料' : digitalDeliveryAvailable ? '数字文件来自商家确认资料' : demoCatalogAvailable ? '未接入实时模型' : '对话服务未就绪' }}</span>
       </div>
 
       <div ref="messageList" class="message-scroll" role="log" aria-live="polite" aria-relevant="additions">
         <div v-if="!hasMessages" class="empty-conversation">
           <div class="agent-symbol" aria-hidden="true"><span>✳</span></div>
           <h1>你在找什么？</h1>
-          <p>{{ !modelAvailable && digitalDeliveryAvailable ? '描述想找的数字测试文件，核对商家确认资料后再决定是否单独试购。' : demoCatalogAvailable && !modelAvailable ? '用自己的话描述想法。这里先演示对话和商品图片的呈现。' : '想解决什么、喜欢什么，或者还没想清楚，都可以从这里聊起。' }}</p>
+          <p>{{ !modelAvailable && appointmentDeliveryAvailable ? '描述想找的测试预约，核对商家确认资料和北京时间时段后再决定是否单独试购。' : !modelAvailable && digitalDeliveryAvailable ? '描述想找的数字测试文件，核对商家确认资料后再决定是否单独试购。' : demoCatalogAvailable && !modelAvailable ? '用自己的话描述想法。这里先演示对话和商品图片的呈现。' : '想解决什么、喜欢什么，或者还没想清楚，都可以从这里聊起。' }}</p>
         </div>
         <div v-else class="message-stack">
           <template v-for="message in activeConversation.messages" :key="message.id">
@@ -327,7 +330,7 @@ onBeforeUnmount(() => {
             <article v-else class="assistant-row">
               <div class="assistant-avatar" aria-hidden="true">✳</div>
               <div class="assistant-content">
-                <div class="assistant-name">MegaGraph <span>{{ message.error ? '回复失败' : message.modelReply ? (message.responseSource === 'JAVA_DIGITAL' ? '已核验测试资料' : message.responseSource === 'NO_MODEL' ? '模型未启用' : modelName || '文本模型回复') : '演示回复' }}</span></div>
+                <div class="assistant-name">MegaGraph <span>{{ message.error ? '回复失败' : message.modelReply ? (message.responseSource === 'JAVA_DIGITAL' || message.responseSource === 'JAVA_APPOINTMENT' ? '已核验测试资料' : message.responseSource === 'NO_MODEL' ? '模型未启用' : modelName || '文本模型回复') : '演示回复' }}</span></div>
                 <p>{{ message.text }}</p>
                 <div v-if="message.advice" class="model-advice"><span>选购建议</span><p>{{ message.advice }}</p></div>
                 <button v-if="message.error && message === activeConversation.messages.at(-1)" class="retry-reply" type="button" :disabled="!canRetry" @click="retryReply">重试</button>
@@ -341,6 +344,7 @@ onBeforeUnmount(() => {
                   </div>
                   <p class="results-footnote">图片仅用于界面演示，不提供价格、库存和购买入口。</p>
                 </div>
+                <AppointmentOfferCard v-for="offer in message.appointmentOffers" :key="`appointment-${offer.id}`" :offer="offer" :busy="cartBusy" :account-user-id="accountUserId" @purchase="purchaseAppointment" @recover="emit('purchaseAppointment', $event)" />
                 <DigitalOfferCard v-for="offer in message.deliveryOffers" :key="`digital-${offer.id}`" :offer="offer" :busy="cartBusy" :account-user-id="accountUserId" @purchase="emit('purchaseDigital', $event)" />
                 <div v-if="message.liveProducts?.length" class="demo-results">
                   <div class="results-heading"><strong>匹配商品</strong><span>返回时已核对资料版本与可售状态</span></div>
@@ -370,7 +374,7 @@ onBeforeUnmount(() => {
           </template>
           <div v-if="pendingId === activeId" class="assistant-row thinking-row" role="status">
             <div class="assistant-avatar" aria-hidden="true">✳</div>
-            <div class="assistant-content"><div class="assistant-name">MegaGraph <span>{{ !modelAvailable && !digitalDeliveryAvailable && demoCatalogAvailable ? '演示处理中' : '正在回复' }}</span></div><p><span class="thinking-dot" />{{ progress }}</p></div>
+            <div class="assistant-content"><div class="assistant-name">MegaGraph <span>{{ !modelAvailable && !digitalDeliveryAvailable && !appointmentDeliveryAvailable && demoCatalogAvailable ? '演示处理中' : '正在回复' }}</span></div><p><span class="thinking-dot" />{{ progress }}</p></div>
           </div>
         </div>
       </div>
@@ -394,13 +398,13 @@ onBeforeUnmount(() => {
             @keydown="handleComposerKeydown"
           />
           <div class="composer-actions">
-            <span>{{ !modelAvailable && digitalDeliveryAvailable ? '查询已确认测试供给' : !modelAvailable && demoCatalogAvailable ? '演示对话' : '与 AI 超市对话' }}</span>
+            <span>{{ !modelAvailable && (digitalDeliveryAvailable || appointmentDeliveryAvailable) ? '查询已确认测试供给' : !modelAvailable && demoCatalogAvailable ? '演示对话' : '与 AI 超市对话' }}</span>
             <button v-if="waiting" type="button" aria-label="停止等待" title="停止等待" @click="stopWaiting"><Square :size="17" /></button>
             <button v-else-if="pendingId !== null" type="button" aria-label="刷新请求状态" title="刷新请求状态" @click="recover()"><RefreshCw :size="18" /></button>
             <button v-else type="submit" aria-label="发送消息" title="发送消息" :disabled="!draft.trim() || !canSend"><ArrowUp :size="20" /></button>
           </div>
         </form>
-        <p class="composer-disclaimer">{{ modelAvailable ? (demoCatalogAvailable ? '当前包含生成的演示图；商品交易信息以商家发布为准。' : 'AI 建议仅供选购参考，商品交易信息以商家发布为准。') : digitalDeliveryAvailable ? '可查询商家已确认的自建测试文件。此为受控 Demo，使用 Mock 支付；支付成功后 24 小时内领取及下载。' : demoCatalogAvailable ? '演示回复不代表真实 AI 推荐；交易信息以商家发布和后端数据为准。' : '对话服务状态暂不可用，商品目录以当前服务端资料为准。' }}</p>
+        <p class="composer-disclaimer">{{ modelAvailable ? (demoCatalogAvailable ? '当前包含生成的演示图；商品交易信息以商家发布为准。' : 'AI 建议仅供选购参考，商品交易信息以商家发布为准。') : appointmentDeliveryAvailable ? '可查询商家已确认的测试预约。预约使用北京时间固定时段和 Mock 支付；支付确认预约，商家显式模拟测试完成，不实际预约或线下履约。' : digitalDeliveryAvailable ? '可查询商家已确认的自建测试文件。此为受控 Demo，使用 Mock 支付；支付成功后 24 小时内领取及下载。' : demoCatalogAvailable ? '演示回复不代表真实 AI 推荐；交易信息以商家发布和后端数据为准。' : '对话服务状态暂不可用，商品目录以当前服务端资料为准。' }}</p>
       </div>
     </div>
 

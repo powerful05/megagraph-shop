@@ -1,4 +1,4 @@
-import type { AuthMe, Category, DeliveryOffer, IngestionArtifact, IngestionJob, MerchantProduct, SalesOrder, SupplyDetails } from '@megagraph/domain-types'
+import type { AppointmentOffer, AuthMe, Category, DeliveryOffer, IngestionArtifact, IngestionJob, MerchantProduct, SalesOrder, SupplyDetails } from '@megagraph/domain-types'
 
 const API_BASE = ''
 
@@ -29,9 +29,9 @@ export function cancelMerchantRequests() {
   csrfToken = ''
 }
 
-async function ensureCsrf(): Promise<string> {
+async function ensureCsrf(signal?: AbortSignal | null): Promise<string> {
   if (!csrfToken) {
-    const response = await fetch('/api/auth/v1/csrf', { credentials: 'same-origin' })
+    const response = await fetch('/api/auth/v1/csrf', { credentials: 'same-origin', signal })
     if (!response.ok) throw new Error('无法获取请求安全令牌')
     csrfToken = (await response.json() as { token: string }).token
   }
@@ -51,7 +51,7 @@ async function request<T>(
     headers.set('X-Merchant-Id', String(credentials.merchantId))
   }
   if (init.method && !['GET', 'HEAD'].includes(init.method.toUpperCase())) {
-    headers.set('X-CSRF-TOKEN', await ensureCsrf())
+    headers.set('X-CSRF-TOKEN', await ensureCsrf(signal))
   }
   if (!(init.body instanceof FormData) && init.body != null) {
     headers.set('Content-Type', 'application/json')
@@ -64,11 +64,11 @@ async function request<T>(
     const body = (await response.json().catch(() => ({}))) as ApiErrorBody
     if (body.code === 'CSRF_TOKEN_INVALID') {
       csrfToken = ''
-      await ensureCsrf().catch(() => {})
+      await ensureCsrf(signal).catch(() => {})
     }
     if (response.status === 401 && path !== '/api/auth/v1/login') onSessionExpired?.()
     const fields = body.fieldErrors ? Object.values(body.fieldErrors).join('；') : ''
-    throw new Error([body.message ?? `请求失败（${response.status}）`, fields].filter(Boolean).join('：'))
+    throw Object.assign(new Error([body.message ?? `请求失败（${response.status}）`, fields].filter(Boolean).join('：')), { status: response.status, code: body.code })
   }
   const result = response.status === 204 ? undefined : await response.json()
   if (signal?.aborted) throw new DOMException('Merchant selection changed', 'AbortError')
@@ -76,6 +76,27 @@ async function request<T>(
 }
 
 export const merchantApi = {
+  appointmentOffers(credentials: Credentials, signal?: AbortSignal) {
+    return request<AppointmentOffer[]>('/api/merchant/v1/appointment-offers', credentials, { signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15000)]) : AbortSignal.timeout(15000) })
+  },
+  createAppointmentOffer(credentials: Credentials, form: { title: string; description: string; price: number }, key: string, signal?: AbortSignal) {
+    return request<AppointmentOffer>('/api/merchant/v1/appointment-offers', credentials, { method: 'POST', headers: { 'Idempotency-Key': key }, body: JSON.stringify({ ...form, currency: 'CNY', deliveryType: 'APPOINTMENT' }), signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15000)]) : AbortSignal.timeout(15000) })
+  },
+  updateAppointmentOffer(credentials: Credentials, offer: AppointmentOffer, form: { title: string; description: string; price: number }, signal?: AbortSignal) {
+    return request<AppointmentOffer>(`/api/merchant/v1/appointment-offers/${offer.id}`, credentials, { method: 'PATCH', body: JSON.stringify({ ...form, version: offer.version, currency: 'CNY' }), signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15000)]) : AbortSignal.timeout(15000) })
+  },
+  mutateAppointmentOffer(credentials: Credentials, offer: AppointmentOffer, action: 'confirm' | 'publish' | 'off-shelf', signal?: AbortSignal) {
+    return request<AppointmentOffer>(`/api/merchant/v1/appointment-offers/${offer.id}/${action}`, credentials, { method: 'POST', body: JSON.stringify({ version: offer.version }), signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15000)]) : AbortSignal.timeout(15000) })
+  },
+  createAppointmentSlot(credentials: Credentials, offerId: number, payload: { version: number; startAt: string; endAt: string; capacity: number }, key: string, signal?: AbortSignal) {
+    return request<AppointmentOffer>(`/api/merchant/v1/appointment-offers/${offerId}/slots`, credentials, { method: 'POST', headers: { 'Idempotency-Key': key }, body: JSON.stringify(payload), signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15000)]) : AbortSignal.timeout(15000) })
+  },
+  closeAppointmentSlot(credentials: Credentials, offerId: number, slotId: number, version: number, signal?: AbortSignal) {
+    return request<AppointmentOffer>(`/api/merchant/v1/appointment-offers/${offerId}/slots/${slotId}/close`, credentials, { method: 'POST', body: JSON.stringify({ version }), signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15000)]) : AbortSignal.timeout(15000) })
+  },
+  completeAppointment(credentials: Credentials, orderId: number, version: number, key: string, signal?: AbortSignal) {
+    return request<SalesOrder>(`/api/merchant/v1/orders/${orderId}/appointment-complete`, credentials, { method: 'POST', headers: { 'Idempotency-Key': key }, body: JSON.stringify({ version }), signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15000)]) : AbortSignal.timeout(15000) })
+  },
   deliveryOffers(credentials: Credentials, signal?: AbortSignal) {
     return request<DeliveryOffer[]>('/api/merchant/v1/delivery-offers', credentials, { signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15000)]) : AbortSignal.timeout(15000) })
   },
@@ -116,7 +137,7 @@ export const merchantApi = {
     return request<MerchantProduct[]>('/api/merchant/v1/products', credentials)
   },
   orders(credentials: Credentials) {
-    return request<SalesOrder[]>('/api/merchant/v1/orders', credentials)
+    return request<SalesOrder[]>('/api/merchant/v1/orders', credentials, { signal: AbortSignal.timeout(15000) })
   },
   shipOrder(
     credentials: Credentials,

@@ -1,5 +1,5 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
-import type { DeliveryOffer, GuideConversationDetail, GuideMessage, GuideRecommendationBasis, GuideReply, GuideTurnRequest, PublicProduct } from '@megagraph/domain-types'
+import type { AppointmentOffer, DeliveryOffer, GuideConversationDetail, GuideMessage, GuideRecommendationBasis, GuideReply, GuideTurnRequest, PublicProduct } from '@megagraph/domain-types'
 import { shopperApi } from '../api'
 
 export interface AgentMessage {
@@ -12,6 +12,7 @@ export interface AgentMessage {
   demoIds?: string[]
   liveProducts?: PublicProduct[]
   deliveryOffers?: DeliveryOffer[]
+  appointmentOffers?: AppointmentOffer[]
   modelReply?: boolean
   responseSource?: GuideReply['responseSource']
   error?: boolean
@@ -61,7 +62,7 @@ export function useGuideConversations(apiBase: string, owner: Ref<number | null>
 
   function assistant(reply: GuideReply, requestId: string): AgentMessage {
     return { id: `${requestId}-assistant`, requestId, role: 'assistant', text: reply.answer, advice: reply.advice,
-      liveProducts: reply.products, deliveryOffers: reply.deliveryOffers ?? [], recommendationBasis: reply.recommendationBasis, modelReply: true,
+      liveProducts: reply.products, deliveryOffers: reply.deliveryOffers ?? [], appointmentOffers: reply.appointmentOffers ?? [], recommendationBasis: reply.recommendationBasis, modelReply: true,
       responseSource: reply.responseSource ?? 'TEXT_MODEL',
       showProducts: reply.demoProductIds.length > 0, demoIds: reply.demoProductIds }
   }

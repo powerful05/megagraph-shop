@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { AuthMe, Category, MerchantProduct, SalesOrder, SupplyDetails } from '@megagraph/domain-types'
 import {
+  formatBeijingTime,
   isAfterSaleBlockingShipment,
   needsMerchantOrderPolling,
   nextOrderPollingDelay,
@@ -10,6 +11,7 @@ import {
 import { cancelMerchantRequests, merchantApi, type Credentials } from './api'
 import IngestionWorkbench from './IngestionWorkbench.vue'
 import DigitalOffersWorkbench from './DigitalOffersWorkbench.vue'
+import AppointmentWorkbench from './AppointmentWorkbench.vue'
 
 const isDevelopment = import.meta.env.DEV
 const credentials = reactive<Credentials>({
@@ -31,7 +33,7 @@ const products = ref<MerchantProduct[]>([])
 const orders = ref<SalesOrder[]>([])
 const shipmentDrafts = reactive<Record<number, { carrierName: string; trackingNo: string }>>({})
 const afterSaleNotes = reactive<Record<number, string>>({})
-const activeArea = ref<'products' | 'orders' | 'digital'>('products')
+const activeArea = ref<'products' | 'orders' | 'digital' | 'appointment'>('products')
 const activeProduct = ref<MerchantProduct | null>(null)
 const storedPreviewUrl = ref('')
 const supplyDraft = ref<SupplyDetails | null>(null)
@@ -262,12 +264,50 @@ function replaceOrder(updated: SalesOrder) {
 }
 
 function canShipOrder(order: SalesOrder): boolean {
-  if (order.deliveryType === 'DIGITAL_FILE') return false
+  if (order.deliveryType === 'DIGITAL_FILE' || order.deliveryType === 'APPOINTMENT') return false
   return canEdit.value && !order.testOrder && order.status === 'PAID' && !isAfterSaleBlockingShipment(order.afterSale?.status)
 }
 
 function canRetryRefund(order: SalesOrder): boolean {
   return merchantRole.value === 'OWNER' && order.afterSale?.status === 'REFUND_FAILED'
+}
+
+function canCompleteAppointment(order: SalesOrder) {
+  return merchantRole.value === 'OWNER' && order.deliveryType === 'APPOINTMENT' && order.status === 'PAID' && order.payment?.status === 'SUCCEEDED' && !order.payment.reconciliationRequired && order.appointment?.reservation.status === 'CONFIRMED' && order.appointment.completeAvailable === true && !isAfterSaleBlockingShipment(order.afterSale?.status)
+}
+function appointmentStatusLabel(status: string) { const labels: Record<string, string> = { HELD: '预占名额', CONFIRMED: '预约已确认', RELEASED: '名额已释放', FULFILLED: '已模拟测试完成' }; return labels[status] ?? status }
+function merchantOrderStatus(order: SalesOrder) {
+  if (order.deliveryType === 'APPOINTMENT' && order.appointment?.reservation.status === 'FULFILLED') return '已模拟测试完成'
+  if (order.deliveryType === 'APPOINTMENT' && order.status === 'PAID') return '预约已支付'
+  return order.deliveryType === 'DIGITAL_FILE' && order.status === 'PAID' ? '数字文件已支付' : orderStatusLabel(order.status)
+}
+const appointmentCompletionPending = new Map<string, { key: string; version: number }>()
+async function completeAppointment(order: SalesOrder) {
+  if (busy.value || !canCompleteAppointment(order) || !order.appointment) return
+  const generation = merchantGeneration
+  const storage = `megagraph-appointment-complete-${identity.value?.userId}-${credentials.merchantId}-${order.id}`
+  let pending = appointmentCompletionPending.get(storage)
+  if (!pending) {
+    try { const saved = JSON.parse(sessionStorage.getItem(storage) ?? 'null'); if (typeof saved?.key === 'string' && Number.isInteger(saved.version)) pending = { key: saved.key, version: saved.version } } catch { /* Optional storage. */ }
+  }
+  pending ??= { key: crypto.randomUUID(), version: order.appointment.reservation.version }
+  appointmentCompletionPending.set(storage, pending)
+  try { sessionStorage.setItem(storage, JSON.stringify(pending)) } catch { /* Retain the original request in memory. */ }
+  const original = pending
+  await execute(async () => {
+    try {
+      const updated = await merchantApi.completeAppointment({ ...credentials }, order.id, original.version, original.key)
+      if (generation !== merchantGeneration) return
+      appointmentCompletionPending.delete(storage)
+      try { sessionStorage.removeItem(storage) } catch { /* Optional storage. */ }
+      replaceOrder(updated); ElMessage.success('预约已模拟测试完成，非真实服务履约。')
+    } catch (reason) {
+      if (generation !== merchantGeneration) return
+      const status = reason instanceof Error && 'status' in reason ? Number(reason.status) : 0
+      if (status >= 400 && status < 500) { appointmentCompletionPending.delete(storage); try { sessionStorage.removeItem(storage) } catch { /* Optional. */ } }
+      throw reason
+    }
+  })
 }
 
 async function shipOrder(order: SalesOrder) {
@@ -414,6 +454,17 @@ function digitalAfterSaleNotice(order: SalesOrder) {
     REFUND_FAILED: '退款未完成，文件领取与下载保持暂停，等待重试或人工处理。',
     REFUNDED: '退款已完成，文件权益已撤销。',
     REJECTED: '退款申请已驳回；有效期限内可继续领取或下载，请核对当前权益状态。',
+  }[order.afterSale.status]
+}
+
+function appointmentAfterSaleNotice(order: SalesOrder) {
+  if (order.deliveryType !== 'APPOINTMENT' || !order.afterSale) return ''
+  return {
+    REQUESTED: '退款申请等待审核，模拟测试完成已暂停。',
+    REFUND_PROCESSING: '渠道正在处理退款，模拟测试完成已暂停；退款成功后释放预约名额。',
+    REFUND_FAILED: '退款未完成，模拟测试完成保持暂停，等待重试或人工处理。',
+    REFUNDED: '退款已完成，预约名额已释放。',
+    REJECTED: '退款申请已驳回，当前预约继续按原约定处理。',
   }[order.afterSale.status]
 }
 
@@ -638,8 +689,10 @@ onBeforeUnmount(() => {
           交易订单 <span>{{ orders.length }}</span>
         </button>
         <button type="button" :class="{ active: activeArea === 'digital' }" @click="activeArea = 'digital'">数字文件</button>
+        <button type="button" :class="{ active: activeArea === 'appointment' }" @click="activeArea = 'appointment'">测试预约</button>
       </nav>
 
+      <AppointmentWorkbench v-if="activeArea === 'appointment' && connected && identity" :key="`appointment-${identity.userId}-${credentials.merchantId}`" :credentials="credentials" :user-id="identity.userId" :role="merchantRole" />
       <DigitalOffersWorkbench v-if="activeArea === 'digital' && connected && identity" :key="`digital-${identity.userId}-${credentials.merchantId}`" :credentials="credentials" :user-id="identity.userId" :role="merchantRole" />
 
       <IngestionWorkbench
@@ -844,10 +897,10 @@ onBeforeUnmount(() => {
                   <span>#{{ order.id }}</span>
                   <strong>{{ order.orderNo }}</strong>
                   <small>{{ formatDate(order.createdAt) }}</small>
-                  <small v-if="order.testOrder">{{ order.deliveryType === 'DIGITAL_FILE' ? '数字测试订单' : '试用订单' }}<template v-if="order.checkoutGroupId != null"> · 下单组 #{{ order.checkoutGroupId }}</template> · {{ order.deliveryType === 'DIGITAL_FILE' ? 'Mock 支付、不真实收费' : '不发货、不结算' }}</small>
+                  <small v-if="order.testOrder">{{ order.deliveryType === 'APPOINTMENT' ? '测试预约订单' : order.deliveryType === 'DIGITAL_FILE' ? '数字测试订单' : '试用订单' }}<template v-if="order.checkoutGroupId != null"> · 下单组 #{{ order.checkoutGroupId }}</template> · {{ order.deliveryType === 'APPOINTMENT' ? 'Mock 支付、不真实履约' : order.deliveryType === 'DIGITAL_FILE' ? 'Mock 支付、不真实收费' : '不发货、不结算' }}</small>
                 </div>
                 <div class="order-statuses">
-                  <span :class="`order-status ${order.status.toLowerCase()}`">{{ order.deliveryType === 'DIGITAL_FILE' && order.status === 'PAID' ? '数字文件已支付' : orderStatusLabel(order.status) }}</span>
+                  <span :class="`order-status ${order.status.toLowerCase()}`">{{ merchantOrderStatus(order) }}</span>
                   <span class="payment-status">PAYMENT / {{ paymentStatusLabel(order) }}</span>
                 </div>
               </header>
@@ -859,6 +912,7 @@ onBeforeUnmount(() => {
 
               <div class="merchant-order-body">
                 <div class="ordered-products">
+                  <template v-if="order.appointment"><p><strong>{{ order.appointment.title }}</strong> · 测试预约</p><p>{{ formatBeijingTime(order.appointment.startAt) }} 至 {{ formatBeijingTime(order.appointment.endAt) }}（北京时间）</p><p>{{ order.appointment.deliveryTerms }}</p><p>{{ order.appointment.refundPolicy }}</p><p>预约 / {{ appointmentStatusLabel(order.appointment.reservation.status) }} · v{{ order.appointment.reservation.version }}</p><p v-if="order.appointment.reservation.status === 'HELD'">预占截止 {{ formatBeijingTime(order.appointment.reservation.expiresAt) }}（北京时间）</p><p v-if="order.appointment.reservation.confirmedAt">确认时间 {{ formatBeijingTime(order.appointment.reservation.confirmedAt) }}（北京时间）</p><p v-if="order.appointment.reservation.fulfilledAt">模拟测试完成时间 {{ formatBeijingTime(order.appointment.reservation.fulfilledAt) }}（北京时间），非真实履约，按本 Demo 规则不再退款。</p><p v-if="order.appointment.reservation.status === 'RELEASED'">当前名额已释放，请核对订单与支付状态。</p><p v-if="order.appointment.reservation.status === 'CONFIRMED'">已支付确认预约，仍须 OWNER 显式模拟测试完成，不会自动履约。</p></template>
                   <template v-if="order.delivery"><p><strong>{{ order.delivery.title }}</strong> · 数字测试文件 · v{{ order.delivery.assetVersion }}</p><p>{{ order.delivery.deliveryTerms }}</p><p>{{ order.delivery.refundPolicy }}</p><p>领取 / {{ order.delivery.entitlement?.status ?? '支付成功后开放' }}</p></template>
                   <p v-for="item in order.items" :key="item.skuId">
                     <span>
@@ -869,7 +923,7 @@ onBeforeUnmount(() => {
                     <strong>{{ formatPrice(item.lineAmount, item.currency) }}</strong>
                   </p>
                 </div>
-                <dl v-if="order.deliveryType !== 'DIGITAL_FILE'" class="delivery-facts">
+                <dl v-if="!order.deliveryType || order.deliveryType === 'PHYSICAL'" class="delivery-facts">
                   <div><dt>收件人</dt><dd>{{ order.recipientName }}</dd></div>
                   <div><dt>电话</dt><dd>{{ order.recipientPhone }}</dd></div>
                   <div><dt>地址</dt><dd>{{ order.shippingAddress }}</dd></div>
@@ -922,8 +976,9 @@ onBeforeUnmount(() => {
                     <strong class="refund-failure-copy">{{ order.afterSale.refund?.failureMessage || order.afterSale.refund?.failureCode || '退款未完成，需要 OWNER 重试或人工处理。' }}</strong>
                   </template>
                 </div>
+                <p v-if="order.deliveryType === 'APPOINTMENT'" class="refund-processing-note">{{ appointmentAfterSaleNotice(order) }}</p>
                 <p v-if="order.deliveryType === 'DIGITAL_FILE'" class="refund-processing-note">{{ digitalAfterSaleNotice(order) }}</p>
-                <div v-if="order.deliveryType !== 'DIGITAL_FILE' && order.afterSale.status === 'REFUND_PROCESSING'" class="refund-processing-note">
+                <div v-if="(!order.deliveryType || order.deliveryType === 'PHYSICAL') && order.afterSale.status === 'REFUND_PROCESSING'" class="refund-processing-note">
                   渠道正在处理退款。订单仍保持已支付，库存不会提前回补，发货已锁定。
                 </div>
                 <div v-else-if="order.afterSale.status === 'REFUND_FAILED'" class="refund-retry-row">
@@ -944,6 +999,8 @@ onBeforeUnmount(() => {
                   <span v-else>只有 OWNER 可以重试失败退款。</span>
                 </div>
               </div>
+
+              <div v-if="order.deliveryType === 'APPOINTMENT' && order.appointment" class="refund-processing-note"><p v-if="order.appointment.reservation.status === 'CONFIRMED' && merchantRole === 'OWNER' && !canCompleteAppointment(order)">当前预约暂不可模拟测试完成，请刷新订单核对支付与售后状态。</p><el-button v-if="merchantRole === 'OWNER' && order.appointment.reservation.status === 'CONFIRMED'" type="primary" :disabled="!canCompleteAppointment(order)" :loading="busy" @click="completeAppointment(order)">模拟测试完成</el-button><p v-else-if="order.appointment.reservation.status === 'CONFIRMED'">只有 OWNER 可以显式模拟测试完成，非真实服务履约。</p></div>
 
               <form
                 v-if="canShipOrder(order)"

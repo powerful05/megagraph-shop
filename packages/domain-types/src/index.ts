@@ -13,6 +13,7 @@ export interface AuthMe {
 export interface ShopCapabilities {
   mockPaymentAvailable: boolean
   digitalDeliveryAvailable?: boolean
+  appointmentDeliveryAvailable?: boolean
   guideAvailable?: boolean
   demoCatalogAvailable?: boolean
   guideModelName?: string
@@ -78,11 +79,90 @@ export interface DigitalDelivery {
   }
 }
 
+export interface AppointmentSlot {
+  id: number
+  offerId: number
+  version: number
+  startAt: string
+  endAt: string
+  capacity: number
+  remaining: number
+  status: 'OPEN' | 'CLOSED'
+}
+
+export interface AppointmentOffer {
+  id: number
+  version: number
+  merchantId: number
+  merchantName: string
+  deliveryType: 'APPOINTMENT'
+  title: string
+  description: string
+  price: number
+  currency: 'CNY'
+  status: 'DRAFT' | 'PUBLISHED' | 'OFF_SHELF'
+  confirmedVersion: number | null
+  testOnly: boolean
+  deliveryTerms: string
+  refundPolicy: string
+  slots: AppointmentSlot[]
+}
+
+export interface AppointmentPurchaseItem {
+  offerId: number
+  slotId: number
+  quantity: 1
+  expectedOfferVersion: number
+  expectedSlotVersion: number
+}
+
+export interface AppointmentDelivery {
+  offerId: number
+  offerVersion: number
+  title: string
+  description: string
+  unitPrice: number
+  currency: string
+  slotId: number
+  slotVersion: number
+  startAt: string
+  endAt: string
+  capacity: number
+  deliveryTerms: string
+  refundPolicy: string
+  testOnly: boolean
+  completeAvailable?: boolean
+  reservation: {
+    id: number
+    version: number
+    status: 'HELD' | 'CONFIRMED' | 'RELEASED' | 'FULFILLED'
+    heldAt: string
+    expiresAt: string
+    confirmedAt: string | null
+    releasedAt: string | null
+    releaseReason: string | null
+    fulfilledAt: string | null
+  }
+}
+
+export function beijingLocalToOffsetIso(value: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) throw new Error('请输入完整的北京时间日期和分钟')
+  const offset = `${value}:00+08:00`
+  const epoch = Date.parse(offset)
+  if (!Number.isFinite(epoch) || new Date(epoch + 8 * 60 * 60 * 1000).toISOString().slice(0, 16) !== value) throw new Error('北京时间日期或时间无效')
+  return offset
+}
+
+export function formatBeijingTime(value: string): string {
+  return new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(value))
+}
+
 export interface GuideReply {
-  responseSource?: 'TEXT_MODEL' | 'JAVA_DIGITAL' | 'NO_MODEL' | null
+  responseSource?: 'TEXT_MODEL' | 'JAVA_DIGITAL' | 'JAVA_APPOINTMENT' | 'NO_MODEL' | null
   answer: string
   products: PublicProduct[]
   deliveryOffers?: DeliveryOffer[]
+  appointmentOffers?: AppointmentOffer[]
   demoProductIds: GuideDemoProductId[]
   advice: string
   recommendationBasis: GuideRecommendationBasis[]
@@ -314,8 +394,9 @@ export interface AfterSaleSummary {
 }
 
 export interface SalesOrder {
-  deliveryType?: 'PHYSICAL' | 'DIGITAL_FILE'
+  deliveryType?: 'PHYSICAL' | 'DIGITAL_FILE' | 'APPOINTMENT'
   delivery?: DigitalDelivery | null
+  appointment?: AppointmentDelivery | null
   id: number
   orderNo: string
   userId: number
