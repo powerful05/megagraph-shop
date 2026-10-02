@@ -11,10 +11,23 @@ public record GuideChatResult(
     String advice,
     List<GuideEvidence.Basis> recommendationBasis,
     List<DeliveryOfferResponse> deliveryOffers,
-    String responseSource) {
+    String responseSource,
+    List<com.megagraph.shop.api.AppointmentOfferResponse> appointmentOffers) {
   public GuideChatResult {
     deliveryOffers = deliveryOffers == null ? List.of() : List.copyOf(deliveryOffers);
+    appointmentOffers = appointmentOffers == null ? List.of() : List.copyOf(appointmentOffers);
     responseSource = responseSource == null ? "TEXT_MODEL" : responseSource;
+  }
+
+  public GuideChatResult(
+      String answer,
+      List<PublicProductResponse> products,
+      List<String> demoProductIds,
+      String advice,
+      List<GuideEvidence.Basis> basis,
+      List<DeliveryOfferResponse> offers,
+      String source) {
+    this(answer, products, demoProductIds, advice, basis, offers, source, List.of());
   }
 
   public GuideChatResult(

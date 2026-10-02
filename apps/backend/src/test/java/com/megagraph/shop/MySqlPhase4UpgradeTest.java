@@ -51,6 +51,8 @@ class MySqlPhase4UpgradeTest {
    assertThat(count(c,"SELECT COUNT(*) FROM digital_asset")).isZero();
    assertThat(count(c,"SELECT COUNT(*) FROM delivery_purchase")).isZero();
    assertThat(count(c,"SELECT COUNT(*) FROM digital_entitlement")).isZero();
+   assertThat(count(c,"SELECT COUNT(*) FROM flyway_schema_history WHERE version='12' AND success=TRUE")).isEqualTo(1);
+   for(String table:new String[]{"appointment_offer","appointment_slot","appointment_purchase","appointment_reservation","appointment_account_lock","appointment_complete_key","appointment_merchant_lock"})assertThat(count(c,"SELECT COUNT(*) FROM "+table)).isZero();
   }
  }
  private static void execute(Connection c,String sql)throws SQLException {try(var s=c.createStatement()){s.executeUpdate(sql);}}

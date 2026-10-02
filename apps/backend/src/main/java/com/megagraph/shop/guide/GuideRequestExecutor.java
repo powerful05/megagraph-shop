@@ -16,15 +16,18 @@ public class GuideRequestExecutor {
   private final GuideAgent agent;
   private final com.megagraph.shop.delivery.DigitalDeliveryService digital;
   private final boolean modelAvailable;
+  private final com.megagraph.shop.delivery.AppointmentService appointments;
   private final boolean demoCatalogAvailable;
   private final Semaphore concurrentRequests = new Semaphore(2);
 
   public GuideRequestExecutor(
       GuideAgent agent,
       Environment environment,
-      com.megagraph.shop.delivery.DigitalDeliveryService digital) {
+      com.megagraph.shop.delivery.DigitalDeliveryService digital,
+      com.megagraph.shop.delivery.AppointmentService appointments) {
     this.agent = agent;
     this.digital = digital;
+    this.appointments = appointments;
     this.modelAvailable = environment.acceptsProfiles(Profiles.of("guide"));
     this.demoCatalogAvailable = environment.acceptsProfiles(Profiles.of("local"));
   }
@@ -38,6 +41,20 @@ public class GuideRequestExecutor {
     org.slf4j.MDC.put("guideRequestId", requestId);
     try {
       String latest = turns.getLast().content();
+      if (latest.matches("(?is).*(预约|固定时段|测试服务|appointment).*")) {
+        var offers = appointments.publicOffers().stream().limit(3).toList();
+        return new GuideChatResult(
+            offers.isEmpty()
+                ? "目前没有已确认公开且有可购时段的测试预约。"
+                : "以下是商家确认的固定时段测试预约，不提供真实线下服务。请查看当前时段、价格与退款约定，再明确试购。",
+            List.of(),
+            List.of(),
+            "支付仅确认名额，模拟测试完成需商家显式操作。",
+            List.of(),
+            List.of(),
+            "JAVA_APPOINTMENT",
+            offers);
+      }
       if (latest.matches("(?is).*(数字文件|测试文件|电子文件|digital file|下载文件|领取文件).*")) {
         var offers = digital.publicOffers().stream().limit(3).toList();
         return new GuideChatResult(

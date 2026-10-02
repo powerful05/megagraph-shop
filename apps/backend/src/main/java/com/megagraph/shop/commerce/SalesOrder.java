@@ -82,6 +82,7 @@ public class SalesOrder {
     }
 
     public void markDigital() { this.deliveryType = "DIGITAL_FILE"; this.testOrder = true; }
+    public void markAppointment() { this.deliveryType = "APPOINTMENT"; this.testOrder = true; }
     public String getDeliveryType() { return deliveryType; }
     public Instant getPaidAt() { return paidAt; }
 

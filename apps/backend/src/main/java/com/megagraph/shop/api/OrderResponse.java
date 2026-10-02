@@ -25,6 +25,7 @@ public record OrderResponse(
         Long checkoutGroupId,
         boolean testOrder,
         String deliveryType,
-        DigitalDeliveryResponse delivery
+        DigitalDeliveryResponse delivery,
+        AppointmentResponse appointment
 ) {
 }

@@ -37,6 +37,7 @@ public class AfterSaleService {
     private final OrderMapper mapper;
     private final ObjectMapper objectMapper;
     private final com.megagraph.shop.delivery.DigitalDeliveryStore digital;
+    private final com.megagraph.shop.delivery.AppointmentStore appointments;
 
     public AfterSaleService(
             SalesOrderRepository orders,
@@ -49,7 +50,8 @@ public class AfterSaleService {
             OutboxEventRepository outbox,
             OrderMapper mapper,
             ObjectMapper objectMapper,
-            com.megagraph.shop.delivery.DigitalDeliveryStore digital
+            com.megagraph.shop.delivery.DigitalDeliveryStore digital,
+            com.megagraph.shop.delivery.AppointmentStore appointments
     ) {
         this.orders = orders;
         this.payments = payments;
@@ -62,6 +64,7 @@ public class AfterSaleService {
         this.mapper = mapper;
         this.objectMapper = objectMapper;
         this.digital = digital;
+        this.appointments = appointments;
     }
 
     @Transactional
@@ -94,6 +97,7 @@ public class AfterSaleService {
         }
 
         digital.requireRefundable(order);
+        appointments.requireRefundable(order);
         AfterSaleRequest afterSale = afterSales.saveAndFlush(new AfterSaleRequest(
                 orderId,
                 userId,
@@ -132,6 +136,7 @@ public class AfterSaleService {
         }
 
         digital.requireRefundable(order);
+        appointments.requireRefundable(order);
         afterSale.startRefund(normalizedKey, request.note().trim());
         RefundOrder refund = refunds.saveAndFlush(new RefundOrder(
                 afterSale.getId(),

@@ -17,6 +17,9 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long> {
     List<SalesOrder> findByCheckoutGroupIdOrderByIdAsc(Long checkoutGroupId);
     List<SalesOrder> findByStatusAndExpiresAtBeforeOrderByExpiresAtAsc(OrderStatus status, Instant now);
 
+    @Query("select o.id from SalesOrder o where o.status=:status and o.expiresAt<:now order by o.expiresAt,o.id")
+    List<Long> findOverdueIds(@Param("status") OrderStatus status,@Param("now") Instant now);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select orders from SalesOrder orders where orders.id = :id")
     Optional<SalesOrder> findByIdForUpdate(@Param("id") Long id);

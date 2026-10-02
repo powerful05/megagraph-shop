@@ -29,6 +29,7 @@ public class ChannelEventService {
     private final InventoryReservationService inventory;
     private final CommerceOutboxWriter outbox;
     private final com.megagraph.shop.delivery.DigitalDeliveryStore digital;
+    private final com.megagraph.shop.delivery.AppointmentStore appointments;
 
     public ChannelEventService(
             PaymentChannelEventRepository inbox,
@@ -39,7 +40,8 @@ public class ChannelEventService {
             RefundAttemptRepository refundAttempts,
             InventoryReservationService inventory,
             CommerceOutboxWriter outbox,
-            com.megagraph.shop.delivery.DigitalDeliveryStore digital
+            com.megagraph.shop.delivery.DigitalDeliveryStore digital,
+            com.megagraph.shop.delivery.AppointmentStore appointments
     ) {
         this.inbox = inbox;
         this.payments = payments;
@@ -50,6 +52,7 @@ public class ChannelEventService {
         this.inventory = inventory;
         this.outbox = outbox;
         this.digital = digital;
+        this.appointments = appointments;
     }
 
     @Transactional
@@ -132,10 +135,20 @@ public class ChannelEventService {
                 if (!isPaymentOpen(payment) || order.getStatus() != OrderStatus.PENDING_PAYMENT) {
                     return review(inboxEvent, "EVENT_STATE_CONFLICT", payment.getId(), null);
                 }
+                if (!appointments.canConfirm(order)) {
+                    payment.cancel(inboxEvent.getId());
+                    order.expire();
+                    appointments.release(order, "EXPIRED");
+                    payments.flush(); orders.flush();
+                    outbox.save("PAYMENT",payment.getId(),payment.getVersion(),"PAYMENT_CANCELLED",eventDetails(inboxEvent,oldPaymentStatus.name(),payment.getStatus().name()));
+                    outbox.save("ORDER",order.getId(),order.getVersion(),"ORDER_EXPIRED",orderEventDetails(inboxEvent,order,oldOrderStatus));
+                    return review(inboxEvent,"LATE_PAYMENT_SUCCESS",payment.getId(),null);
+                }
                 payment.succeed(inboxEvent.getId());
                 order.markPaid();
                 inventory.confirm(order.getId());
                 digital.paid(order);
+                appointments.paid(order);
                 payments.flush();
                 orders.flush();
                 outbox.save("PAYMENT", payment.getId(), payment.getVersion(), "PAYMENT_SUCCEEDED",
@@ -154,6 +167,7 @@ public class ChannelEventService {
                 payment.fail(inboxEvent.getId());
                 order.markPaymentFailed("CHANNEL_PAYMENT_FAILED");
                 inventory.release(order.getId());
+                appointments.release(order, order.getStatus() == OrderStatus.PAYMENT_FAILED ? "PAYMENT_FAILED" : "CANCELLED");
                 payments.flush();
                 orders.flush();
                 outbox.save("PAYMENT", payment.getId(), payment.getVersion(), "PAYMENT_FAILED",
@@ -172,6 +186,7 @@ public class ChannelEventService {
                 payment.cancel(inboxEvent.getId());
                 order.cancel("CHANNEL_PAYMENT_CANCELLED");
                 inventory.release(order.getId());
+                appointments.release(order, order.getStatus() == OrderStatus.PAYMENT_FAILED ? "PAYMENT_FAILED" : "CANCELLED");
                 payments.flush();
                 orders.flush();
                 outbox.save("PAYMENT", payment.getId(), payment.getVersion(), "PAYMENT_CANCELLED",
@@ -244,6 +259,7 @@ public class ChannelEventService {
                 order.markRefunded();
                 inventory.restock(order.getId());
                 digital.refunded(order);
+                appointments.release(order,"REFUNDED");
                 refunds.flush();
                 payments.flush();
                 afterSales.flush();
