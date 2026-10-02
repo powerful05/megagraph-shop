@@ -19,7 +19,7 @@ class MySqlPhase4UpgradeTest {
    execute(c,"INSERT INTO merchant(id,name,status) VALUES(1,'阶段3升级测试','ACTIVE')");
    execute(c,"INSERT INTO merchant_user(merchant_id,user_id,role) VALUES(1,1,'OWNER')");
    execute(c,"INSERT INTO product(id,merchant_id,title,draft_status,publish_status,version,supply_details,test_supply) VALUES(1,1,'阶段3测试商品','CONFIRMED','PUBLISHED',7,'{\"fabric\":\"待确认\"}',TRUE)");
-   execute(c,"INSERT INTO product_sku(id,merchant_id,product_id,sku_code,sku_name,price,currency,available_stock,status) VALUES(1,1,1,'V9-UPGRADE','测试SKU',12.00,'CNY',6,'ACTIVE')");
+   execute(c,"INSERT INTO product_sku(id,merchant_id,product_id,sku_code,sku_name,price,currency,available_stock,status) VALUES(1,1,1,'V9-UPGRADE','测试SKU',12.00,'CNY',6,'ENABLED')");
    execute(c,"INSERT INTO product_image(merchant_id,product_id,storage_key,original_filename,content_type,byte_size,image_role) VALUES(1,1,'test-only-v9.png','v9.png','image/png',12,'MAIN')");
    execute(c,"INSERT INTO sales_order(id,order_no,user_id,merchant_id,idempotency_key,status,currency,total_amount,recipient_name,recipient_phone,shipping_address,expires_at) VALUES(1,'4A-V9-UPGRADE',1,1,'v9-order','PENDING_PAYMENT','CNY',12.00,'测试','00000000000','测试地址',CURRENT_TIMESTAMP(3))");
    execute(c,"INSERT INTO sales_order_item(order_id,product_id,sku_id,merchant_id,product_title,sku_code,sku_name,unit_price,currency,quantity,line_amount) VALUES(1,1,1,1,'阶段3测试商品','V9-UPGRADE','测试SKU',12.00,'CNY',1,12.00)");

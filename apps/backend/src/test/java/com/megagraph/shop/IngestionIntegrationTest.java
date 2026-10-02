@@ -80,12 +80,22 @@ class IngestionIntegrationTest {
   assertThatThrownBy(()->service.retry(actor,q.id(),done.version())).isInstanceOf(ConflictException.class);
  }
  @Test void concurrentSameKeyHasOneJobAndOneStoredInputWhileDifferentPayloadConflicts() throws Exception {
+  Set<String> filesBefore=new HashSet<>(storage.keysOlderThan(Instant.now().plusSeconds(1)));
   String key=UUID.randomUUID().toString(); var pool=Executors.newFixedThreadPool(6);var latch=new CountDownLatch(1);
   try {
    List<Future<IngestionResponse>> calls=new ArrayList<>();
    for(int i=0;i<6;i++)calls.add(pool.submit(()->{latch.await();return service.create(actor,key,image("same.png"));}));
    latch.countDown(); Set<Long> ids=new HashSet<>();for(var f:calls)ids.add(f.get(10,TimeUnit.SECONDS).id());
-   assertThat(ids).hasSize(1);assertThat(db.queryForObject("SELECT COUNT(*) FROM ingestion_job WHERE merchant_id=? AND idempotency_key=?",Integer.class,actor.merchantId(),key)).isEqualTo(1);
+   assertThat(ids).hasSize(1);
+   Set<String> addedFiles=new HashSet<>(storage.keysOlderThan(Instant.now().plusSeconds(1)));addedFiles.removeAll(filesBefore);assertThat(addedFiles).hasSize(1);
+   String winner=db.queryForObject("SELECT storage_key FROM ingestion_job WHERE id=?",String.class,ids.iterator().next());
+   assertThat(addedFiles).containsExactly(winner);
+   try(var stream=storage.load(winner).getInputStream()){assertThat(stream.readAllBytes()).isEqualTo(TestImages.png());}
+   assertThatThrownBy(()->service.create(actor,key,new MockMultipartFile("image","same.png","image/png",TestImages.png(0x00FF00)))).isInstanceOf(ConflictException.class);
+   var secondMerchant=merchants.save(new Merchant("并发同键隔离"));memberships.save(new MerchantUser(secondMerchant.getId(),actor.userId(),MerchantRole.OWNER));
+   var secondActor=new MerchantActor(actor.userId(),secondMerchant.getId(),MerchantRole.OWNER);
+   var separate=service.create(secondActor,key,image("same.png"));assertThat(ids).doesNotContain(separate.id());
+   assertThat(db.queryForObject("SELECT COUNT(*) FROM ingestion_job WHERE merchant_id=? AND idempotency_key=?",Integer.class,actor.merchantId(),key)).isEqualTo(1);
    assertThatThrownBy(()->service.create(actor,key,image("different.png"))).isInstanceOf(ConflictException.class).hasMessageContaining("不同图片");
    assertThatThrownBy(()->service.create(actor,key,image("same.png"),"fail")).isInstanceOf(ConflictException.class);
   } finally {pool.shutdownNow();}
@@ -102,7 +112,7 @@ class IngestionIntegrationTest {
    assertThat(service.artifacts(actor,q.id())).hasSize(1);
   } finally {pool.shutdownNow();}
  }
- @Test void restartedWorkerReclaimsExpiredLeaseAndFencesLateAttempt() {
+ @Test void expiredLeaseReclaimFencesLateAttemptUsingDatabaseState() {
   var q=create("success"); var old=service.claim();expire(q.id());
   assertThat(service.complete(old,generator.generate(old.filename()),10)).isFalse();
   var renewed=service.claim();assertThat(renewed.attempt()).isEqualTo(2);
