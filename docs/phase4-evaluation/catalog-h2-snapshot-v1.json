@@ -1,0 +1,3717 @@
+{
+  "metadata": {
+    "capturedAt": "2026-10-02T16:48:11.864495+00:00",
+    "source": "http://127.0.0.1:8082/api/shop/v1/products",
+    "database": "H2 persistent old Demo, not MySQL",
+    "productCount": 65,
+    "categoryMapSource": "TestSupplyConfig.java fixture category names and observed product.categoryId; not database taxonomy export",
+    "codeRevision": "a0052d3bd89f7b277f7139ac49bb80658de28195",
+    "publicResponseSha256": "ddf58a1dfa6c9051a1c239885d66c0b87fa0c080c5197b39059c097137c8df27"
+  },
+  "categoryNames": {
+    "2": "上衣 女装",
+    "5": "文件袋 日用与文具",
+    "6": "纸质笔记本 日用与文具"
+  },
+  "products": [
+    {
+      "id": 45,
+      "title": "扩展测试 · 红色横线笔记本 10",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 6,
+      "priceFrom": 400.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/45",
+      "publishedAt": "2026-10-02T09:25:15.465Z",
+      "skus": [
+        {
+          "id": 45,
+          "code": "EXP-NOTE-10",
+          "name": "红色 / A5",
+          "price": 400.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 21,
+        "merchantId": 2,
+        "merchantName": "测试商家 A · 轻织",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-02T09:25:08.657Z",
+        "details": {
+          "color": "红色",
+          "fabric": "纸质内页，硬质纸板封面",
+          "fit": "",
+          "seasons": [],
+          "scenarios": [
+            "会议记录",
+            "学习",
+            "手写"
+          ],
+          "measurementNote": "扩展测试设定，与基础样本共用演示图；未验证钢笔防洇墨。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；规格均为测试设定。",
+          "sizeChart": [],
+          "profile": "GENERAL_PHYSICAL",
+          "specifications": [
+            {
+              "skuCode": "EXP-NOTE-10",
+              "name": "规格",
+              "value": "A5，148 × 210 mm"
+            },
+            {
+              "skuCode": "EXP-NOTE-10",
+              "name": "内页",
+              "value": "横线，80张 / 160页"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 65,
+      "title": "扩展测试 · 红色横线笔记本 15",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 6,
+      "priceFrom": 450.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/65",
+      "publishedAt": "2026-10-01T21:04:39.730Z",
+      "skus": [
+        {
+          "id": 65,
+          "code": "EXP-NOTE-15",
+          "name": "红色 / A5",
+          "price": 450.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 3,
+        "merchantName": "测试商家 B · 日常",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.727Z",
+        "details": {
+          "color": "红色",
+          "fabric": "纸质内页，硬质纸板封面",
+          "fit": "",
+          "seasons": [],
+          "scenarios": [
+            "会议记录",
+            "学习",
+            "手写"
+          ],
+          "measurementNote": "扩展测试设定，与基础样本共用演示图；未验证钢笔防洇墨。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；规格均为测试设定。",
+          "sizeChart": [],
+          "profile": "GENERAL_PHYSICAL",
+          "specifications": [
+            {
+              "skuCode": "EXP-NOTE-15",
+              "name": "规格",
+              "value": "A5，148 × 210 mm"
+            },
+            {
+              "skuCode": "EXP-NOTE-15",
+              "name": "内页",
+              "value": "横线，80张 / 160页"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 64,
+      "title": "扩展测试 · 绿色帆布文件袋 15",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 5,
+      "priceFrom": 450.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/64",
+      "publishedAt": "2026-10-01T21:04:39.718Z",
+      "skus": [
+        {
+          "id": 64,
+          "code": "EXP-BAG-15",
+          "name": "绿色 / A4",
+          "price": 450.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 3,
+        "merchantName": "测试商家 B · 日常",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.715Z",
+        "details": {
+          "color": "绿色",
+          "fabric": "100% 棉帆布",
+          "fit": "",
+          "seasons": [],
+          "scenarios": [
+            "通勤",
+            "文件收纳"
+          ],
+          "measurementNote": "扩展测试设定，与基础样本共用演示图；未验证防水或承重。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；规格均为测试设定。",
+          "sizeChart": [],
+          "profile": "GENERAL_PHYSICAL",
+          "specifications": [
+            {
+              "skuCode": "EXP-BAG-15",
+              "name": "适用纸张",
+              "value": "A4文件"
+            },
+            {
+              "skuCode": "EXP-BAG-15",
+              "name": "封口",
+              "value": "开放式袋口，无拉链"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 63,
+      "title": "扩展测试 · 米白针织上衣 15",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 2,
+      "priceFrom": 450.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/63",
+      "publishedAt": "2026-10-01T21:04:39.708Z",
+      "skus": [
+        {
+          "id": 63,
+          "code": "EXP-IVORY-15",
+          "name": "米白 / M",
+          "price": 450.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 3,
+        "merchantName": "测试商家 B · 日常",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.705Z",
+        "details": {
+          "color": "米白",
+          "fabric": "60% 棉 / 40% 粘纤",
+          "fit": "常规",
+          "seasons": [
+            "春",
+            "秋"
+          ],
+          "scenarios": [
+            "通勤",
+            "日常"
+          ],
+          "measurementNote": "测试设定：平铺测量，胸围为成衣一周长度，误差 ±2 cm；不代表图片实物尺寸。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；属性和尺寸均为测试设定。",
+          "sizeChart": [
+            {
+              "skuCode": "EXP-IVORY-15",
+              "sizeLabel": "M",
+              "chestCm": 96,
+              "lengthCm": 58,
+              "shoulderCm": 38,
+              "sleeveCm": 56
+            }
+          ],
+          "profile": "APPAREL",
+          "specifications": []
+        }
+      }
+    },
+    {
+      "id": 62,
+      "title": "扩展测试 · 浅蓝衬衫 15",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 2,
+      "priceFrom": 450.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/62",
+      "publishedAt": "2026-10-01T21:04:39.698Z",
+      "skus": [
+        {
+          "id": 62,
+          "code": "EXP-BLUE-15",
+          "name": "浅蓝 / M",
+          "price": 450.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 3,
+        "merchantName": "测试商家 B · 日常",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.696Z",
+        "details": {
+          "color": "浅蓝",
+          "fabric": "100% 棉",
+          "fit": "直筒",
+          "seasons": [
+            "春",
+            "秋"
+          ],
+          "scenarios": [
+            "通勤",
+            "日常"
+          ],
+          "measurementNote": "测试设定：平铺测量，胸围为成衣一周长度，误差 ±2 cm；不代表图片实物尺寸。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；属性和尺寸均为测试设定。",
+          "sizeChart": [
+            {
+              "skuCode": "EXP-BLUE-15",
+              "sizeLabel": "M",
+              "chestCm": 104,
+              "lengthCm": 66,
+              "shoulderCm": 44,
+              "sleeveCm": 58
+            }
+          ],
+          "profile": "APPAREL",
+          "specifications": []
+        }
+      }
+    },
+    {
+      "id": 61,
+      "title": "扩展测试 · 红色横线笔记本 14",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 6,
+      "priceFrom": 440.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/61",
+      "publishedAt": "2026-10-01T21:04:39.689Z",
+      "skus": [
+        {
+          "id": 61,
+          "code": "EXP-NOTE-14",
+          "name": "红色 / A5",
+          "price": 440.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 2,
+        "merchantName": "测试商家 A · 轻织",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.687Z",
+        "details": {
+          "color": "红色",
+          "fabric": "纸质内页，硬质纸板封面",
+          "fit": "",
+          "seasons": [],
+          "scenarios": [
+            "会议记录",
+            "学习",
+            "手写"
+          ],
+          "measurementNote": "扩展测试设定，与基础样本共用演示图；未验证钢笔防洇墨。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；规格均为测试设定。",
+          "sizeChart": [],
+          "profile": "GENERAL_PHYSICAL",
+          "specifications": [
+            {
+              "skuCode": "EXP-NOTE-14",
+              "name": "规格",
+              "value": "A5，148 × 210 mm"
+            },
+            {
+              "skuCode": "EXP-NOTE-14",
+              "name": "内页",
+              "value": "横线，80张 / 160页"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 60,
+      "title": "扩展测试 · 绿色帆布文件袋 14",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 5,
+      "priceFrom": 440.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/60",
+      "publishedAt": "2026-10-01T21:04:39.680Z",
+      "skus": [
+        {
+          "id": 60,
+          "code": "EXP-BAG-14",
+          "name": "绿色 / A4",
+          "price": 440.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 2,
+        "merchantName": "测试商家 A · 轻织",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.677Z",
+        "details": {
+          "color": "绿色",
+          "fabric": "100% 棉帆布",
+          "fit": "",
+          "seasons": [],
+          "scenarios": [
+            "通勤",
+            "文件收纳"
+          ],
+          "measurementNote": "扩展测试设定，与基础样本共用演示图；未验证防水或承重。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；规格均为测试设定。",
+          "sizeChart": [],
+          "profile": "GENERAL_PHYSICAL",
+          "specifications": [
+            {
+              "skuCode": "EXP-BAG-14",
+              "name": "适用纸张",
+              "value": "A4文件"
+            },
+            {
+              "skuCode": "EXP-BAG-14",
+              "name": "封口",
+              "value": "开放式袋口，无拉链"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 59,
+      "title": "扩展测试 · 米白针织上衣 14",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 2,
+      "priceFrom": 440.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/59",
+      "publishedAt": "2026-10-01T21:04:39.670Z",
+      "skus": [
+        {
+          "id": 59,
+          "code": "EXP-IVORY-14",
+          "name": "米白 / M",
+          "price": 440.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 2,
+        "merchantName": "测试商家 A · 轻织",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.668Z",
+        "details": {
+          "color": "米白",
+          "fabric": "60% 棉 / 40% 粘纤",
+          "fit": "常规",
+          "seasons": [
+            "春",
+            "秋"
+          ],
+          "scenarios": [
+            "通勤",
+            "日常"
+          ],
+          "measurementNote": "测试设定：平铺测量，胸围为成衣一周长度，误差 ±2 cm；不代表图片实物尺寸。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；属性和尺寸均为测试设定。",
+          "sizeChart": [
+            {
+              "skuCode": "EXP-IVORY-14",
+              "sizeLabel": "M",
+              "chestCm": 96,
+              "lengthCm": 58,
+              "shoulderCm": 38,
+              "sleeveCm": 56
+            }
+          ],
+          "profile": "APPAREL",
+          "specifications": []
+        }
+      }
+    },
+    {
+      "id": 58,
+      "title": "扩展测试 · 浅蓝衬衫 14",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 2,
+      "priceFrom": 440.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/58",
+      "publishedAt": "2026-10-01T21:04:39.661Z",
+      "skus": [
+        {
+          "id": 58,
+          "code": "EXP-BLUE-14",
+          "name": "浅蓝 / M",
+          "price": 440.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 2,
+        "merchantName": "测试商家 A · 轻织",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.658Z",
+        "details": {
+          "color": "浅蓝",
+          "fabric": "100% 棉",
+          "fit": "直筒",
+          "seasons": [
+            "春",
+            "秋"
+          ],
+          "scenarios": [
+            "通勤",
+            "日常"
+          ],
+          "measurementNote": "测试设定：平铺测量，胸围为成衣一周长度，误差 ±2 cm；不代表图片实物尺寸。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；属性和尺寸均为测试设定。",
+          "sizeChart": [
+            {
+              "skuCode": "EXP-BLUE-14",
+              "sizeLabel": "M",
+              "chestCm": 104,
+              "lengthCm": 66,
+              "shoulderCm": 44,
+              "sleeveCm": 58
+            }
+          ],
+          "profile": "APPAREL",
+          "specifications": []
+        }
+      }
+    },
+    {
+      "id": 57,
+      "title": "扩展测试 · 红色横线笔记本 13",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 6,
+      "priceFrom": 430.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/57",
+      "publishedAt": "2026-10-01T21:04:39.649Z",
+      "skus": [
+        {
+          "id": 57,
+          "code": "EXP-NOTE-13",
+          "name": "红色 / A5",
+          "price": 430.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 3,
+        "merchantName": "测试商家 B · 日常",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.647Z",
+        "details": {
+          "color": "红色",
+          "fabric": "纸质内页，硬质纸板封面",
+          "fit": "",
+          "seasons": [],
+          "scenarios": [
+            "会议记录",
+            "学习",
+            "手写"
+          ],
+          "measurementNote": "扩展测试设定，与基础样本共用演示图；未验证钢笔防洇墨。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；规格均为测试设定。",
+          "sizeChart": [],
+          "profile": "GENERAL_PHYSICAL",
+          "specifications": [
+            {
+              "skuCode": "EXP-NOTE-13",
+              "name": "规格",
+              "value": "A5，148 × 210 mm"
+            },
+            {
+              "skuCode": "EXP-NOTE-13",
+              "name": "内页",
+              "value": "横线，80张 / 160页"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 56,
+      "title": "扩展测试 · 绿色帆布文件袋 13",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 5,
+      "priceFrom": 430.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/56",
+      "publishedAt": "2026-10-01T21:04:39.639Z",
+      "skus": [
+        {
+          "id": 56,
+          "code": "EXP-BAG-13",
+          "name": "绿色 / A4",
+          "price": 430.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 3,
+        "merchantName": "测试商家 B · 日常",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.637Z",
+        "details": {
+          "color": "绿色",
+          "fabric": "100% 棉帆布",
+          "fit": "",
+          "seasons": [],
+          "scenarios": [
+            "通勤",
+            "文件收纳"
+          ],
+          "measurementNote": "扩展测试设定，与基础样本共用演示图；未验证防水或承重。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；规格均为测试设定。",
+          "sizeChart": [],
+          "profile": "GENERAL_PHYSICAL",
+          "specifications": [
+            {
+              "skuCode": "EXP-BAG-13",
+              "name": "适用纸张",
+              "value": "A4文件"
+            },
+            {
+              "skuCode": "EXP-BAG-13",
+              "name": "封口",
+              "value": "开放式袋口，无拉链"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 55,
+      "title": "扩展测试 · 米白针织上衣 13",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 2,
+      "priceFrom": 430.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/55",
+      "publishedAt": "2026-10-01T21:04:39.630Z",
+      "skus": [
+        {
+          "id": 55,
+          "code": "EXP-IVORY-13",
+          "name": "米白 / M",
+          "price": 430.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 3,
+        "merchantName": "测试商家 B · 日常",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.628Z",
+        "details": {
+          "color": "米白",
+          "fabric": "60% 棉 / 40% 粘纤",
+          "fit": "常规",
+          "seasons": [
+            "春",
+            "秋"
+          ],
+          "scenarios": [
+            "通勤",
+            "日常"
+          ],
+          "measurementNote": "测试设定：平铺测量，胸围为成衣一周长度，误差 ±2 cm；不代表图片实物尺寸。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；属性和尺寸均为测试设定。",
+          "sizeChart": [
+            {
+              "skuCode": "EXP-IVORY-13",
+              "sizeLabel": "M",
+              "chestCm": 96,
+              "lengthCm": 58,
+              "shoulderCm": 38,
+              "sleeveCm": 56
+            }
+          ],
+          "profile": "APPAREL",
+          "specifications": []
+        }
+      }
+    },
+    {
+      "id": 54,
+      "title": "扩展测试 · 浅蓝衬衫 13",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 2,
+      "priceFrom": 430.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/54",
+      "publishedAt": "2026-10-01T21:04:39.621Z",
+      "skus": [
+        {
+          "id": 54,
+          "code": "EXP-BLUE-13",
+          "name": "浅蓝 / M",
+          "price": 430.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 3,
+        "merchantName": "测试商家 B · 日常",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.619Z",
+        "details": {
+          "color": "浅蓝",
+          "fabric": "100% 棉",
+          "fit": "直筒",
+          "seasons": [
+            "春",
+            "秋"
+          ],
+          "scenarios": [
+            "通勤",
+            "日常"
+          ],
+          "measurementNote": "测试设定：平铺测量，胸围为成衣一周长度，误差 ±2 cm；不代表图片实物尺寸。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；属性和尺寸均为测试设定。",
+          "sizeChart": [
+            {
+              "skuCode": "EXP-BLUE-13",
+              "sizeLabel": "M",
+              "chestCm": 104,
+              "lengthCm": 66,
+              "shoulderCm": 44,
+              "sleeveCm": 58
+            }
+          ],
+          "profile": "APPAREL",
+          "specifications": []
+        }
+      }
+    },
+    {
+      "id": 53,
+      "title": "扩展测试 · 红色横线笔记本 12",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 6,
+      "priceFrom": 420.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/53",
+      "publishedAt": "2026-10-01T21:04:39.612Z",
+      "skus": [
+        {
+          "id": 53,
+          "code": "EXP-NOTE-12",
+          "name": "红色 / A5",
+          "price": 420.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 2,
+        "merchantName": "测试商家 A · 轻织",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.610Z",
+        "details": {
+          "color": "红色",
+          "fabric": "纸质内页，硬质纸板封面",
+          "fit": "",
+          "seasons": [],
+          "scenarios": [
+            "会议记录",
+            "学习",
+            "手写"
+          ],
+          "measurementNote": "扩展测试设定，与基础样本共用演示图；未验证钢笔防洇墨。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；规格均为测试设定。",
+          "sizeChart": [],
+          "profile": "GENERAL_PHYSICAL",
+          "specifications": [
+            {
+              "skuCode": "EXP-NOTE-12",
+              "name": "规格",
+              "value": "A5，148 × 210 mm"
+            },
+            {
+              "skuCode": "EXP-NOTE-12",
+              "name": "内页",
+              "value": "横线，80张 / 160页"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 52,
+      "title": "扩展测试 · 绿色帆布文件袋 12",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 5,
+      "priceFrom": 420.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/52",
+      "publishedAt": "2026-10-01T21:04:39.603Z",
+      "skus": [
+        {
+          "id": 52,
+          "code": "EXP-BAG-12",
+          "name": "绿色 / A4",
+          "price": 420.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 2,
+        "merchantName": "测试商家 A · 轻织",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.601Z",
+        "details": {
+          "color": "绿色",
+          "fabric": "100% 棉帆布",
+          "fit": "",
+          "seasons": [],
+          "scenarios": [
+            "通勤",
+            "文件收纳"
+          ],
+          "measurementNote": "扩展测试设定，与基础样本共用演示图；未验证防水或承重。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；规格均为测试设定。",
+          "sizeChart": [],
+          "profile": "GENERAL_PHYSICAL",
+          "specifications": [
+            {
+              "skuCode": "EXP-BAG-12",
+              "name": "适用纸张",
+              "value": "A4文件"
+            },
+            {
+              "skuCode": "EXP-BAG-12",
+              "name": "封口",
+              "value": "开放式袋口，无拉链"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 51,
+      "title": "扩展测试 · 米白针织上衣 12",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 2,
+      "priceFrom": 420.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/51",
+      "publishedAt": "2026-10-01T21:04:39.593Z",
+      "skus": [
+        {
+          "id": 51,
+          "code": "EXP-IVORY-12",
+          "name": "米白 / M",
+          "price": 420.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 2,
+        "merchantName": "测试商家 A · 轻织",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.591Z",
+        "details": {
+          "color": "米白",
+          "fabric": "60% 棉 / 40% 粘纤",
+          "fit": "常规",
+          "seasons": [
+            "春",
+            "秋"
+          ],
+          "scenarios": [
+            "通勤",
+            "日常"
+          ],
+          "measurementNote": "测试设定：平铺测量，胸围为成衣一周长度，误差 ±2 cm；不代表图片实物尺寸。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；属性和尺寸均为测试设定。",
+          "sizeChart": [
+            {
+              "skuCode": "EXP-IVORY-12",
+              "sizeLabel": "M",
+              "chestCm": 96,
+              "lengthCm": 58,
+              "shoulderCm": 38,
+              "sleeveCm": 56
+            }
+          ],
+          "profile": "APPAREL",
+          "specifications": []
+        }
+      }
+    },
+    {
+      "id": 50,
+      "title": "扩展测试 · 浅蓝衬衫 12",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 2,
+      "priceFrom": 420.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/50",
+      "publishedAt": "2026-10-01T21:04:39.584Z",
+      "skus": [
+        {
+          "id": 50,
+          "code": "EXP-BLUE-12",
+          "name": "浅蓝 / M",
+          "price": 420.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 2,
+        "merchantName": "测试商家 A · 轻织",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.582Z",
+        "details": {
+          "color": "浅蓝",
+          "fabric": "100% 棉",
+          "fit": "直筒",
+          "seasons": [
+            "春",
+            "秋"
+          ],
+          "scenarios": [
+            "通勤",
+            "日常"
+          ],
+          "measurementNote": "测试设定：平铺测量，胸围为成衣一周长度，误差 ±2 cm；不代表图片实物尺寸。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；属性和尺寸均为测试设定。",
+          "sizeChart": [
+            {
+              "skuCode": "EXP-BLUE-12",
+              "sizeLabel": "M",
+              "chestCm": 104,
+              "lengthCm": 66,
+              "shoulderCm": 44,
+              "sleeveCm": 58
+            }
+          ],
+          "profile": "APPAREL",
+          "specifications": []
+        }
+      }
+    },
+    {
+      "id": 49,
+      "title": "扩展测试 · 红色横线笔记本 11",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 6,
+      "priceFrom": 410.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/49",
+      "publishedAt": "2026-10-01T21:04:39.574Z",
+      "skus": [
+        {
+          "id": 49,
+          "code": "EXP-NOTE-11",
+          "name": "红色 / A5",
+          "price": 410.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 3,
+        "merchantName": "测试商家 B · 日常",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.572Z",
+        "details": {
+          "color": "红色",
+          "fabric": "纸质内页，硬质纸板封面",
+          "fit": "",
+          "seasons": [],
+          "scenarios": [
+            "会议记录",
+            "学习",
+            "手写"
+          ],
+          "measurementNote": "扩展测试设定，与基础样本共用演示图；未验证钢笔防洇墨。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；规格均为测试设定。",
+          "sizeChart": [],
+          "profile": "GENERAL_PHYSICAL",
+          "specifications": [
+            {
+              "skuCode": "EXP-NOTE-11",
+              "name": "规格",
+              "value": "A5，148 × 210 mm"
+            },
+            {
+              "skuCode": "EXP-NOTE-11",
+              "name": "内页",
+              "value": "横线，80张 / 160页"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 48,
+      "title": "扩展测试 · 绿色帆布文件袋 11",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 5,
+      "priceFrom": 410.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/48",
+      "publishedAt": "2026-10-01T21:04:39.565Z",
+      "skus": [
+        {
+          "id": 48,
+          "code": "EXP-BAG-11",
+          "name": "绿色 / A4",
+          "price": 410.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 3,
+        "merchantName": "测试商家 B · 日常",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.563Z",
+        "details": {
+          "color": "绿色",
+          "fabric": "100% 棉帆布",
+          "fit": "",
+          "seasons": [],
+          "scenarios": [
+            "通勤",
+            "文件收纳"
+          ],
+          "measurementNote": "扩展测试设定，与基础样本共用演示图；未验证防水或承重。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；规格均为测试设定。",
+          "sizeChart": [],
+          "profile": "GENERAL_PHYSICAL",
+          "specifications": [
+            {
+              "skuCode": "EXP-BAG-11",
+              "name": "适用纸张",
+              "value": "A4文件"
+            },
+            {
+              "skuCode": "EXP-BAG-11",
+              "name": "封口",
+              "value": "开放式袋口，无拉链"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 47,
+      "title": "扩展测试 · 米白针织上衣 11",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 2,
+      "priceFrom": 410.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/47",
+      "publishedAt": "2026-10-01T21:04:39.556Z",
+      "skus": [
+        {
+          "id": 47,
+          "code": "EXP-IVORY-11",
+          "name": "米白 / M",
+          "price": 410.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 3,
+        "merchantName": "测试商家 B · 日常",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.554Z",
+        "details": {
+          "color": "米白",
+          "fabric": "60% 棉 / 40% 粘纤",
+          "fit": "常规",
+          "seasons": [
+            "春",
+            "秋"
+          ],
+          "scenarios": [
+            "通勤",
+            "日常"
+          ],
+          "measurementNote": "测试设定：平铺测量，胸围为成衣一周长度，误差 ±2 cm；不代表图片实物尺寸。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；属性和尺寸均为测试设定。",
+          "sizeChart": [
+            {
+              "skuCode": "EXP-IVORY-11",
+              "sizeLabel": "M",
+              "chestCm": 96,
+              "lengthCm": 58,
+              "shoulderCm": 38,
+              "sleeveCm": 56
+            }
+          ],
+          "profile": "APPAREL",
+          "specifications": []
+        }
+      }
+    },
+    {
+      "id": 46,
+      "title": "扩展测试 · 浅蓝衬衫 11",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 2,
+      "priceFrom": 410.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/46",
+      "publishedAt": "2026-10-01T21:04:39.547Z",
+      "skus": [
+        {
+          "id": 46,
+          "code": "EXP-BLUE-11",
+          "name": "浅蓝 / M",
+          "price": 410.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 3,
+        "merchantName": "测试商家 B · 日常",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.545Z",
+        "details": {
+          "color": "浅蓝",
+          "fabric": "100% 棉",
+          "fit": "直筒",
+          "seasons": [
+            "春",
+            "秋"
+          ],
+          "scenarios": [
+            "通勤",
+            "日常"
+          ],
+          "measurementNote": "测试设定：平铺测量，胸围为成衣一周长度，误差 ±2 cm；不代表图片实物尺寸。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；属性和尺寸均为测试设定。",
+          "sizeChart": [
+            {
+              "skuCode": "EXP-BLUE-11",
+              "sizeLabel": "M",
+              "chestCm": 104,
+              "lengthCm": 66,
+              "shoulderCm": 44,
+              "sleeveCm": 58
+            }
+          ],
+          "profile": "APPAREL",
+          "specifications": []
+        }
+      }
+    },
+    {
+      "id": 44,
+      "title": "扩展测试 · 绿色帆布文件袋 10",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 5,
+      "priceFrom": 400.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/44",
+      "publishedAt": "2026-10-01T21:04:39.530Z",
+      "skus": [
+        {
+          "id": 44,
+          "code": "EXP-BAG-10",
+          "name": "绿色 / A4",
+          "price": 400.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 2,
+        "merchantName": "测试商家 A · 轻织",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.528Z",
+        "details": {
+          "color": "绿色",
+          "fabric": "100% 棉帆布",
+          "fit": "",
+          "seasons": [],
+          "scenarios": [
+            "通勤",
+            "文件收纳"
+          ],
+          "measurementNote": "扩展测试设定，与基础样本共用演示图；未验证防水或承重。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；规格均为测试设定。",
+          "sizeChart": [],
+          "profile": "GENERAL_PHYSICAL",
+          "specifications": [
+            {
+              "skuCode": "EXP-BAG-10",
+              "name": "适用纸张",
+              "value": "A4文件"
+            },
+            {
+              "skuCode": "EXP-BAG-10",
+              "name": "封口",
+              "value": "开放式袋口，无拉链"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 43,
+      "title": "扩展测试 · 米白针织上衣 10",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 2,
+      "priceFrom": 400.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/43",
+      "publishedAt": "2026-10-01T21:04:39.520Z",
+      "skus": [
+        {
+          "id": 43,
+          "code": "EXP-IVORY-10",
+          "name": "米白 / M",
+          "price": 400.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 2,
+        "merchantName": "测试商家 A · 轻织",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.518Z",
+        "details": {
+          "color": "米白",
+          "fabric": "60% 棉 / 40% 粘纤",
+          "fit": "常规",
+          "seasons": [
+            "春",
+            "秋"
+          ],
+          "scenarios": [
+            "通勤",
+            "日常"
+          ],
+          "measurementNote": "测试设定：平铺测量，胸围为成衣一周长度，误差 ±2 cm；不代表图片实物尺寸。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；属性和尺寸均为测试设定。",
+          "sizeChart": [
+            {
+              "skuCode": "EXP-IVORY-10",
+              "sizeLabel": "M",
+              "chestCm": 96,
+              "lengthCm": 58,
+              "shoulderCm": 38,
+              "sleeveCm": 56
+            }
+          ],
+          "profile": "APPAREL",
+          "specifications": []
+        }
+      }
+    },
+    {
+      "id": 42,
+      "title": "扩展测试 · 浅蓝衬衫 10",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 2,
+      "priceFrom": 400.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/42",
+      "publishedAt": "2026-10-01T21:04:39.511Z",
+      "skus": [
+        {
+          "id": 42,
+          "code": "EXP-BLUE-10",
+          "name": "浅蓝 / M",
+          "price": 400.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 2,
+        "merchantName": "测试商家 A · 轻织",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.509Z",
+        "details": {
+          "color": "浅蓝",
+          "fabric": "100% 棉",
+          "fit": "直筒",
+          "seasons": [
+            "春",
+            "秋"
+          ],
+          "scenarios": [
+            "通勤",
+            "日常"
+          ],
+          "measurementNote": "测试设定：平铺测量，胸围为成衣一周长度，误差 ±2 cm；不代表图片实物尺寸。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；属性和尺寸均为测试设定。",
+          "sizeChart": [
+            {
+              "skuCode": "EXP-BLUE-10",
+              "sizeLabel": "M",
+              "chestCm": 104,
+              "lengthCm": 66,
+              "shoulderCm": 44,
+              "sleeveCm": 58
+            }
+          ],
+          "profile": "APPAREL",
+          "specifications": []
+        }
+      }
+    },
+    {
+      "id": 41,
+      "title": "扩展测试 · 红色横线笔记本 09",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 6,
+      "priceFrom": 390.0,
+      "currency": "CNY",
+      "availableStock": 19,
+      "mainImageUrl": "/api/shop/v1/media/41",
+      "publishedAt": "2026-10-01T21:04:39.502Z",
+      "skus": [
+        {
+          "id": 41,
+          "code": "EXP-NOTE-09",
+          "name": "红色 / A5",
+          "price": 390.0,
+          "currency": "CNY",
+          "availableStock": 19
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 3,
+        "merchantName": "测试商家 B · 日常",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.500Z",
+        "details": {
+          "color": "红色",
+          "fabric": "纸质内页，硬质纸板封面",
+          "fit": "",
+          "seasons": [],
+          "scenarios": [
+            "会议记录",
+            "学习",
+            "手写"
+          ],
+          "measurementNote": "扩展测试设定，与基础样本共用演示图；未验证钢笔防洇墨。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；规格均为测试设定。",
+          "sizeChart": [],
+          "profile": "GENERAL_PHYSICAL",
+          "specifications": [
+            {
+              "skuCode": "EXP-NOTE-09",
+              "name": "规格",
+              "value": "A5，148 × 210 mm"
+            },
+            {
+              "skuCode": "EXP-NOTE-09",
+              "name": "内页",
+              "value": "横线，80张 / 160页"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 40,
+      "title": "扩展测试 · 绿色帆布文件袋 09",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 5,
+      "priceFrom": 390.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/40",
+      "publishedAt": "2026-10-01T21:04:39.492Z",
+      "skus": [
+        {
+          "id": 40,
+          "code": "EXP-BAG-09",
+          "name": "绿色 / A4",
+          "price": 390.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 3,
+        "merchantName": "测试商家 B · 日常",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.490Z",
+        "details": {
+          "color": "绿色",
+          "fabric": "100% 棉帆布",
+          "fit": "",
+          "seasons": [],
+          "scenarios": [
+            "通勤",
+            "文件收纳"
+          ],
+          "measurementNote": "扩展测试设定，与基础样本共用演示图；未验证防水或承重。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；规格均为测试设定。",
+          "sizeChart": [],
+          "profile": "GENERAL_PHYSICAL",
+          "specifications": [
+            {
+              "skuCode": "EXP-BAG-09",
+              "name": "适用纸张",
+              "value": "A4文件"
+            },
+            {
+              "skuCode": "EXP-BAG-09",
+              "name": "封口",
+              "value": "开放式袋口，无拉链"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 39,
+      "title": "扩展测试 · 米白针织上衣 09",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 2,
+      "priceFrom": 390.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/39",
+      "publishedAt": "2026-10-01T21:04:39.483Z",
+      "skus": [
+        {
+          "id": 39,
+          "code": "EXP-IVORY-09",
+          "name": "米白 / M",
+          "price": 390.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 3,
+        "merchantName": "测试商家 B · 日常",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.481Z",
+        "details": {
+          "color": "米白",
+          "fabric": "60% 棉 / 40% 粘纤",
+          "fit": "常规",
+          "seasons": [
+            "春",
+            "秋"
+          ],
+          "scenarios": [
+            "通勤",
+            "日常"
+          ],
+          "measurementNote": "测试设定：平铺测量，胸围为成衣一周长度，误差 ±2 cm；不代表图片实物尺寸。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；属性和尺寸均为测试设定。",
+          "sizeChart": [
+            {
+              "skuCode": "EXP-IVORY-09",
+              "sizeLabel": "M",
+              "chestCm": 96,
+              "lengthCm": 58,
+              "shoulderCm": 38,
+              "sleeveCm": 56
+            }
+          ],
+          "profile": "APPAREL",
+          "specifications": []
+        }
+      }
+    },
+    {
+      "id": 38,
+      "title": "扩展测试 · 浅蓝衬衫 09",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 2,
+      "priceFrom": 390.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/38",
+      "publishedAt": "2026-10-01T21:04:39.474Z",
+      "skus": [
+        {
+          "id": 38,
+          "code": "EXP-BLUE-09",
+          "name": "浅蓝 / M",
+          "price": 390.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 3,
+        "merchantName": "测试商家 B · 日常",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.472Z",
+        "details": {
+          "color": "浅蓝",
+          "fabric": "100% 棉",
+          "fit": "直筒",
+          "seasons": [
+            "春",
+            "秋"
+          ],
+          "scenarios": [
+            "通勤",
+            "日常"
+          ],
+          "measurementNote": "测试设定：平铺测量，胸围为成衣一周长度，误差 ±2 cm；不代表图片实物尺寸。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；属性和尺寸均为测试设定。",
+          "sizeChart": [
+            {
+              "skuCode": "EXP-BLUE-09",
+              "sizeLabel": "M",
+              "chestCm": 104,
+              "lengthCm": 66,
+              "shoulderCm": 44,
+              "sleeveCm": 58
+            }
+          ],
+          "profile": "APPAREL",
+          "specifications": []
+        }
+      }
+    },
+    {
+      "id": 37,
+      "title": "扩展测试 · 红色横线笔记本 08",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 6,
+      "priceFrom": 380.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/37",
+      "publishedAt": "2026-10-01T21:04:39.465Z",
+      "skus": [
+        {
+          "id": 37,
+          "code": "EXP-NOTE-08",
+          "name": "红色 / A5",
+          "price": 380.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 2,
+        "merchantName": "测试商家 A · 轻织",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.463Z",
+        "details": {
+          "color": "红色",
+          "fabric": "纸质内页，硬质纸板封面",
+          "fit": "",
+          "seasons": [],
+          "scenarios": [
+            "会议记录",
+            "学习",
+            "手写"
+          ],
+          "measurementNote": "扩展测试设定，与基础样本共用演示图；未验证钢笔防洇墨。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；规格均为测试设定。",
+          "sizeChart": [],
+          "profile": "GENERAL_PHYSICAL",
+          "specifications": [
+            {
+              "skuCode": "EXP-NOTE-08",
+              "name": "规格",
+              "value": "A5，148 × 210 mm"
+            },
+            {
+              "skuCode": "EXP-NOTE-08",
+              "name": "内页",
+              "value": "横线，80张 / 160页"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 36,
+      "title": "扩展测试 · 绿色帆布文件袋 08",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 5,
+      "priceFrom": 380.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/36",
+      "publishedAt": "2026-10-01T21:04:39.456Z",
+      "skus": [
+        {
+          "id": 36,
+          "code": "EXP-BAG-08",
+          "name": "绿色 / A4",
+          "price": 380.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 2,
+        "merchantName": "测试商家 A · 轻织",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.454Z",
+        "details": {
+          "color": "绿色",
+          "fabric": "100% 棉帆布",
+          "fit": "",
+          "seasons": [],
+          "scenarios": [
+            "通勤",
+            "文件收纳"
+          ],
+          "measurementNote": "扩展测试设定，与基础样本共用演示图；未验证防水或承重。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；规格均为测试设定。",
+          "sizeChart": [],
+          "profile": "GENERAL_PHYSICAL",
+          "specifications": [
+            {
+              "skuCode": "EXP-BAG-08",
+              "name": "适用纸张",
+              "value": "A4文件"
+            },
+            {
+              "skuCode": "EXP-BAG-08",
+              "name": "封口",
+              "value": "开放式袋口，无拉链"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 35,
+      "title": "扩展测试 · 米白针织上衣 08",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 2,
+      "priceFrom": 380.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/35",
+      "publishedAt": "2026-10-01T21:04:39.448Z",
+      "skus": [
+        {
+          "id": 35,
+          "code": "EXP-IVORY-08",
+          "name": "米白 / M",
+          "price": 380.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 2,
+        "merchantName": "测试商家 A · 轻织",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.446Z",
+        "details": {
+          "color": "米白",
+          "fabric": "60% 棉 / 40% 粘纤",
+          "fit": "常规",
+          "seasons": [
+            "春",
+            "秋"
+          ],
+          "scenarios": [
+            "通勤",
+            "日常"
+          ],
+          "measurementNote": "测试设定：平铺测量，胸围为成衣一周长度，误差 ±2 cm；不代表图片实物尺寸。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；属性和尺寸均为测试设定。",
+          "sizeChart": [
+            {
+              "skuCode": "EXP-IVORY-08",
+              "sizeLabel": "M",
+              "chestCm": 96,
+              "lengthCm": 58,
+              "shoulderCm": 38,
+              "sleeveCm": 56
+            }
+          ],
+          "profile": "APPAREL",
+          "specifications": []
+        }
+      }
+    },
+    {
+      "id": 34,
+      "title": "扩展测试 · 浅蓝衬衫 08",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 2,
+      "priceFrom": 380.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/34",
+      "publishedAt": "2026-10-01T21:04:39.439Z",
+      "skus": [
+        {
+          "id": 34,
+          "code": "EXP-BLUE-08",
+          "name": "浅蓝 / M",
+          "price": 380.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 2,
+        "merchantName": "测试商家 A · 轻织",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.437Z",
+        "details": {
+          "color": "浅蓝",
+          "fabric": "100% 棉",
+          "fit": "直筒",
+          "seasons": [
+            "春",
+            "秋"
+          ],
+          "scenarios": [
+            "通勤",
+            "日常"
+          ],
+          "measurementNote": "测试设定：平铺测量，胸围为成衣一周长度，误差 ±2 cm；不代表图片实物尺寸。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；属性和尺寸均为测试设定。",
+          "sizeChart": [
+            {
+              "skuCode": "EXP-BLUE-08",
+              "sizeLabel": "M",
+              "chestCm": 104,
+              "lengthCm": 66,
+              "shoulderCm": 44,
+              "sleeveCm": 58
+            }
+          ],
+          "profile": "APPAREL",
+          "specifications": []
+        }
+      }
+    },
+    {
+      "id": 33,
+      "title": "扩展测试 · 红色横线笔记本 07",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 6,
+      "priceFrom": 370.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/33",
+      "publishedAt": "2026-10-01T21:04:39.429Z",
+      "skus": [
+        {
+          "id": 33,
+          "code": "EXP-NOTE-07",
+          "name": "红色 / A5",
+          "price": 370.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 3,
+        "merchantName": "测试商家 B · 日常",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.427Z",
+        "details": {
+          "color": "红色",
+          "fabric": "纸质内页，硬质纸板封面",
+          "fit": "",
+          "seasons": [],
+          "scenarios": [
+            "会议记录",
+            "学习",
+            "手写"
+          ],
+          "measurementNote": "扩展测试设定，与基础样本共用演示图；未验证钢笔防洇墨。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；规格均为测试设定。",
+          "sizeChart": [],
+          "profile": "GENERAL_PHYSICAL",
+          "specifications": [
+            {
+              "skuCode": "EXP-NOTE-07",
+              "name": "规格",
+              "value": "A5，148 × 210 mm"
+            },
+            {
+              "skuCode": "EXP-NOTE-07",
+              "name": "内页",
+              "value": "横线，80张 / 160页"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 32,
+      "title": "扩展测试 · 绿色帆布文件袋 07",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 5,
+      "priceFrom": 370.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/32",
+      "publishedAt": "2026-10-01T21:04:39.417Z",
+      "skus": [
+        {
+          "id": 32,
+          "code": "EXP-BAG-07",
+          "name": "绿色 / A4",
+          "price": 370.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 3,
+        "merchantName": "测试商家 B · 日常",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.415Z",
+        "details": {
+          "color": "绿色",
+          "fabric": "100% 棉帆布",
+          "fit": "",
+          "seasons": [],
+          "scenarios": [
+            "通勤",
+            "文件收纳"
+          ],
+          "measurementNote": "扩展测试设定，与基础样本共用演示图；未验证防水或承重。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；规格均为测试设定。",
+          "sizeChart": [],
+          "profile": "GENERAL_PHYSICAL",
+          "specifications": [
+            {
+              "skuCode": "EXP-BAG-07",
+              "name": "适用纸张",
+              "value": "A4文件"
+            },
+            {
+              "skuCode": "EXP-BAG-07",
+              "name": "封口",
+              "value": "开放式袋口，无拉链"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 31,
+      "title": "扩展测试 · 米白针织上衣 07",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 2,
+      "priceFrom": 370.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/31",
+      "publishedAt": "2026-10-01T21:04:39.408Z",
+      "skus": [
+        {
+          "id": 31,
+          "code": "EXP-IVORY-07",
+          "name": "米白 / M",
+          "price": 370.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 3,
+        "merchantName": "测试商家 B · 日常",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.407Z",
+        "details": {
+          "color": "米白",
+          "fabric": "60% 棉 / 40% 粘纤",
+          "fit": "常规",
+          "seasons": [
+            "春",
+            "秋"
+          ],
+          "scenarios": [
+            "通勤",
+            "日常"
+          ],
+          "measurementNote": "测试设定：平铺测量，胸围为成衣一周长度，误差 ±2 cm；不代表图片实物尺寸。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；属性和尺寸均为测试设定。",
+          "sizeChart": [
+            {
+              "skuCode": "EXP-IVORY-07",
+              "sizeLabel": "M",
+              "chestCm": 96,
+              "lengthCm": 58,
+              "shoulderCm": 38,
+              "sleeveCm": 56
+            }
+          ],
+          "profile": "APPAREL",
+          "specifications": []
+        }
+      }
+    },
+    {
+      "id": 30,
+      "title": "扩展测试 · 浅蓝衬衫 07",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 2,
+      "priceFrom": 370.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/30",
+      "publishedAt": "2026-10-01T21:04:39.401Z",
+      "skus": [
+        {
+          "id": 30,
+          "code": "EXP-BLUE-07",
+          "name": "浅蓝 / M",
+          "price": 370.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 3,
+        "merchantName": "测试商家 B · 日常",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.399Z",
+        "details": {
+          "color": "浅蓝",
+          "fabric": "100% 棉",
+          "fit": "直筒",
+          "seasons": [
+            "春",
+            "秋"
+          ],
+          "scenarios": [
+            "通勤",
+            "日常"
+          ],
+          "measurementNote": "测试设定：平铺测量，胸围为成衣一周长度，误差 ±2 cm；不代表图片实物尺寸。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；属性和尺寸均为测试设定。",
+          "sizeChart": [
+            {
+              "skuCode": "EXP-BLUE-07",
+              "sizeLabel": "M",
+              "chestCm": 104,
+              "lengthCm": 66,
+              "shoulderCm": 44,
+              "sleeveCm": 58
+            }
+          ],
+          "profile": "APPAREL",
+          "specifications": []
+        }
+      }
+    },
+    {
+      "id": 29,
+      "title": "扩展测试 · 红色横线笔记本 06",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 6,
+      "priceFrom": 360.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/29",
+      "publishedAt": "2026-10-01T21:04:39.393Z",
+      "skus": [
+        {
+          "id": 29,
+          "code": "EXP-NOTE-06",
+          "name": "红色 / A5",
+          "price": 360.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 2,
+        "merchantName": "测试商家 A · 轻织",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.391Z",
+        "details": {
+          "color": "红色",
+          "fabric": "纸质内页，硬质纸板封面",
+          "fit": "",
+          "seasons": [],
+          "scenarios": [
+            "会议记录",
+            "学习",
+            "手写"
+          ],
+          "measurementNote": "扩展测试设定，与基础样本共用演示图；未验证钢笔防洇墨。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；规格均为测试设定。",
+          "sizeChart": [],
+          "profile": "GENERAL_PHYSICAL",
+          "specifications": [
+            {
+              "skuCode": "EXP-NOTE-06",
+              "name": "规格",
+              "value": "A5，148 × 210 mm"
+            },
+            {
+              "skuCode": "EXP-NOTE-06",
+              "name": "内页",
+              "value": "横线，80张 / 160页"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 28,
+      "title": "扩展测试 · 绿色帆布文件袋 06",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 5,
+      "priceFrom": 360.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/28",
+      "publishedAt": "2026-10-01T21:04:39.384Z",
+      "skus": [
+        {
+          "id": 28,
+          "code": "EXP-BAG-06",
+          "name": "绿色 / A4",
+          "price": 360.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 2,
+        "merchantName": "测试商家 A · 轻织",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.382Z",
+        "details": {
+          "color": "绿色",
+          "fabric": "100% 棉帆布",
+          "fit": "",
+          "seasons": [],
+          "scenarios": [
+            "通勤",
+            "文件收纳"
+          ],
+          "measurementNote": "扩展测试设定，与基础样本共用演示图；未验证防水或承重。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；规格均为测试设定。",
+          "sizeChart": [],
+          "profile": "GENERAL_PHYSICAL",
+          "specifications": [
+            {
+              "skuCode": "EXP-BAG-06",
+              "name": "适用纸张",
+              "value": "A4文件"
+            },
+            {
+              "skuCode": "EXP-BAG-06",
+              "name": "封口",
+              "value": "开放式袋口，无拉链"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 27,
+      "title": "扩展测试 · 米白针织上衣 06",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 2,
+      "priceFrom": 360.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/27",
+      "publishedAt": "2026-10-01T21:04:39.376Z",
+      "skus": [
+        {
+          "id": 27,
+          "code": "EXP-IVORY-06",
+          "name": "米白 / M",
+          "price": 360.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 2,
+        "merchantName": "测试商家 A · 轻织",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.374Z",
+        "details": {
+          "color": "米白",
+          "fabric": "60% 棉 / 40% 粘纤",
+          "fit": "常规",
+          "seasons": [
+            "春",
+            "秋"
+          ],
+          "scenarios": [
+            "通勤",
+            "日常"
+          ],
+          "measurementNote": "测试设定：平铺测量，胸围为成衣一周长度，误差 ±2 cm；不代表图片实物尺寸。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；属性和尺寸均为测试设定。",
+          "sizeChart": [
+            {
+              "skuCode": "EXP-IVORY-06",
+              "sizeLabel": "M",
+              "chestCm": 96,
+              "lengthCm": 58,
+              "shoulderCm": 38,
+              "sleeveCm": 56
+            }
+          ],
+          "profile": "APPAREL",
+          "specifications": []
+        }
+      }
+    },
+    {
+      "id": 26,
+      "title": "扩展测试 · 浅蓝衬衫 06",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 2,
+      "priceFrom": 360.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/26",
+      "publishedAt": "2026-10-01T21:04:39.367Z",
+      "skus": [
+        {
+          "id": 26,
+          "code": "EXP-BLUE-06",
+          "name": "浅蓝 / M",
+          "price": 360.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 2,
+        "merchantName": "测试商家 A · 轻织",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.364Z",
+        "details": {
+          "color": "浅蓝",
+          "fabric": "100% 棉",
+          "fit": "直筒",
+          "seasons": [
+            "春",
+            "秋"
+          ],
+          "scenarios": [
+            "通勤",
+            "日常"
+          ],
+          "measurementNote": "测试设定：平铺测量，胸围为成衣一周长度，误差 ±2 cm；不代表图片实物尺寸。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；属性和尺寸均为测试设定。",
+          "sizeChart": [
+            {
+              "skuCode": "EXP-BLUE-06",
+              "sizeLabel": "M",
+              "chestCm": 104,
+              "lengthCm": 66,
+              "shoulderCm": 44,
+              "sleeveCm": 58
+            }
+          ],
+          "profile": "APPAREL",
+          "specifications": []
+        }
+      }
+    },
+    {
+      "id": 25,
+      "title": "扩展测试 · 红色横线笔记本 05",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 6,
+      "priceFrom": 350.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/25",
+      "publishedAt": "2026-10-01T21:04:39.356Z",
+      "skus": [
+        {
+          "id": 25,
+          "code": "EXP-NOTE-05",
+          "name": "红色 / A5",
+          "price": 350.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 3,
+        "merchantName": "测试商家 B · 日常",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.349Z",
+        "details": {
+          "color": "红色",
+          "fabric": "纸质内页，硬质纸板封面",
+          "fit": "",
+          "seasons": [],
+          "scenarios": [
+            "会议记录",
+            "学习",
+            "手写"
+          ],
+          "measurementNote": "扩展测试设定，与基础样本共用演示图；未验证钢笔防洇墨。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；规格均为测试设定。",
+          "sizeChart": [],
+          "profile": "GENERAL_PHYSICAL",
+          "specifications": [
+            {
+              "skuCode": "EXP-NOTE-05",
+              "name": "规格",
+              "value": "A5，148 × 210 mm"
+            },
+            {
+              "skuCode": "EXP-NOTE-05",
+              "name": "内页",
+              "value": "横线，80张 / 160页"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 24,
+      "title": "扩展测试 · 绿色帆布文件袋 05",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 5,
+      "priceFrom": 350.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/24",
+      "publishedAt": "2026-10-01T21:04:39.341Z",
+      "skus": [
+        {
+          "id": 24,
+          "code": "EXP-BAG-05",
+          "name": "绿色 / A4",
+          "price": 350.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 3,
+        "merchantName": "测试商家 B · 日常",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.339Z",
+        "details": {
+          "color": "绿色",
+          "fabric": "100% 棉帆布",
+          "fit": "",
+          "seasons": [],
+          "scenarios": [
+            "通勤",
+            "文件收纳"
+          ],
+          "measurementNote": "扩展测试设定，与基础样本共用演示图；未验证防水或承重。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；规格均为测试设定。",
+          "sizeChart": [],
+          "profile": "GENERAL_PHYSICAL",
+          "specifications": [
+            {
+              "skuCode": "EXP-BAG-05",
+              "name": "适用纸张",
+              "value": "A4文件"
+            },
+            {
+              "skuCode": "EXP-BAG-05",
+              "name": "封口",
+              "value": "开放式袋口，无拉链"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 23,
+      "title": "扩展测试 · 米白针织上衣 05",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 2,
+      "priceFrom": 350.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/23",
+      "publishedAt": "2026-10-01T21:04:39.327Z",
+      "skus": [
+        {
+          "id": 23,
+          "code": "EXP-IVORY-05",
+          "name": "米白 / M",
+          "price": 350.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 3,
+        "merchantName": "测试商家 B · 日常",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.325Z",
+        "details": {
+          "color": "米白",
+          "fabric": "60% 棉 / 40% 粘纤",
+          "fit": "常规",
+          "seasons": [
+            "春",
+            "秋"
+          ],
+          "scenarios": [
+            "通勤",
+            "日常"
+          ],
+          "measurementNote": "测试设定：平铺测量，胸围为成衣一周长度，误差 ±2 cm；不代表图片实物尺寸。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；属性和尺寸均为测试设定。",
+          "sizeChart": [
+            {
+              "skuCode": "EXP-IVORY-05",
+              "sizeLabel": "M",
+              "chestCm": 96,
+              "lengthCm": 58,
+              "shoulderCm": 38,
+              "sleeveCm": 56
+            }
+          ],
+          "profile": "APPAREL",
+          "specifications": []
+        }
+      }
+    },
+    {
+      "id": 22,
+      "title": "扩展测试 · 浅蓝衬衫 05",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 2,
+      "priceFrom": 350.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/22",
+      "publishedAt": "2026-10-01T21:04:39.318Z",
+      "skus": [
+        {
+          "id": 22,
+          "code": "EXP-BLUE-05",
+          "name": "浅蓝 / M",
+          "price": 350.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 3,
+        "merchantName": "测试商家 B · 日常",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.315Z",
+        "details": {
+          "color": "浅蓝",
+          "fabric": "100% 棉",
+          "fit": "直筒",
+          "seasons": [
+            "春",
+            "秋"
+          ],
+          "scenarios": [
+            "通勤",
+            "日常"
+          ],
+          "measurementNote": "测试设定：平铺测量，胸围为成衣一周长度，误差 ±2 cm；不代表图片实物尺寸。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；属性和尺寸均为测试设定。",
+          "sizeChart": [
+            {
+              "skuCode": "EXP-BLUE-05",
+              "sizeLabel": "M",
+              "chestCm": 104,
+              "lengthCm": 66,
+              "shoulderCm": 44,
+              "sleeveCm": 58
+            }
+          ],
+          "profile": "APPAREL",
+          "specifications": []
+        }
+      }
+    },
+    {
+      "id": 21,
+      "title": "扩展测试 · 红色横线笔记本 04",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 6,
+      "priceFrom": 340.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/21",
+      "publishedAt": "2026-10-01T21:04:39.307Z",
+      "skus": [
+        {
+          "id": 21,
+          "code": "EXP-NOTE-04",
+          "name": "红色 / A5",
+          "price": 340.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 2,
+        "merchantName": "测试商家 A · 轻织",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.305Z",
+        "details": {
+          "color": "红色",
+          "fabric": "纸质内页，硬质纸板封面",
+          "fit": "",
+          "seasons": [],
+          "scenarios": [
+            "会议记录",
+            "学习",
+            "手写"
+          ],
+          "measurementNote": "扩展测试设定，与基础样本共用演示图；未验证钢笔防洇墨。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；规格均为测试设定。",
+          "sizeChart": [],
+          "profile": "GENERAL_PHYSICAL",
+          "specifications": [
+            {
+              "skuCode": "EXP-NOTE-04",
+              "name": "规格",
+              "value": "A5，148 × 210 mm"
+            },
+            {
+              "skuCode": "EXP-NOTE-04",
+              "name": "内页",
+              "value": "横线，80张 / 160页"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 20,
+      "title": "扩展测试 · 绿色帆布文件袋 04",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 5,
+      "priceFrom": 340.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/20",
+      "publishedAt": "2026-10-01T21:04:39.298Z",
+      "skus": [
+        {
+          "id": 20,
+          "code": "EXP-BAG-04",
+          "name": "绿色 / A4",
+          "price": 340.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 2,
+        "merchantName": "测试商家 A · 轻织",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.296Z",
+        "details": {
+          "color": "绿色",
+          "fabric": "100% 棉帆布",
+          "fit": "",
+          "seasons": [],
+          "scenarios": [
+            "通勤",
+            "文件收纳"
+          ],
+          "measurementNote": "扩展测试设定，与基础样本共用演示图；未验证防水或承重。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；规格均为测试设定。",
+          "sizeChart": [],
+          "profile": "GENERAL_PHYSICAL",
+          "specifications": [
+            {
+              "skuCode": "EXP-BAG-04",
+              "name": "适用纸张",
+              "value": "A4文件"
+            },
+            {
+              "skuCode": "EXP-BAG-04",
+              "name": "封口",
+              "value": "开放式袋口，无拉链"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 19,
+      "title": "扩展测试 · 米白针织上衣 04",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 2,
+      "priceFrom": 340.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/19",
+      "publishedAt": "2026-10-01T21:04:39.288Z",
+      "skus": [
+        {
+          "id": 19,
+          "code": "EXP-IVORY-04",
+          "name": "米白 / M",
+          "price": 340.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 2,
+        "merchantName": "测试商家 A · 轻织",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.285Z",
+        "details": {
+          "color": "米白",
+          "fabric": "60% 棉 / 40% 粘纤",
+          "fit": "常规",
+          "seasons": [
+            "春",
+            "秋"
+          ],
+          "scenarios": [
+            "通勤",
+            "日常"
+          ],
+          "measurementNote": "测试设定：平铺测量，胸围为成衣一周长度，误差 ±2 cm；不代表图片实物尺寸。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；属性和尺寸均为测试设定。",
+          "sizeChart": [
+            {
+              "skuCode": "EXP-IVORY-04",
+              "sizeLabel": "M",
+              "chestCm": 96,
+              "lengthCm": 58,
+              "shoulderCm": 38,
+              "sleeveCm": 56
+            }
+          ],
+          "profile": "APPAREL",
+          "specifications": []
+        }
+      }
+    },
+    {
+      "id": 18,
+      "title": "扩展测试 · 浅蓝衬衫 04",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 2,
+      "priceFrom": 340.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/18",
+      "publishedAt": "2026-10-01T21:04:39.277Z",
+      "skus": [
+        {
+          "id": 18,
+          "code": "EXP-BLUE-04",
+          "name": "浅蓝 / M",
+          "price": 340.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 2,
+        "merchantName": "测试商家 A · 轻织",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.275Z",
+        "details": {
+          "color": "浅蓝",
+          "fabric": "100% 棉",
+          "fit": "直筒",
+          "seasons": [
+            "春",
+            "秋"
+          ],
+          "scenarios": [
+            "通勤",
+            "日常"
+          ],
+          "measurementNote": "测试设定：平铺测量，胸围为成衣一周长度，误差 ±2 cm；不代表图片实物尺寸。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；属性和尺寸均为测试设定。",
+          "sizeChart": [
+            {
+              "skuCode": "EXP-BLUE-04",
+              "sizeLabel": "M",
+              "chestCm": 104,
+              "lengthCm": 66,
+              "shoulderCm": 44,
+              "sleeveCm": 58
+            }
+          ],
+          "profile": "APPAREL",
+          "specifications": []
+        }
+      }
+    },
+    {
+      "id": 17,
+      "title": "扩展测试 · 红色横线笔记本 03",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 6,
+      "priceFrom": 330.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/17",
+      "publishedAt": "2026-10-01T21:04:39.267Z",
+      "skus": [
+        {
+          "id": 17,
+          "code": "EXP-NOTE-03",
+          "name": "红色 / A5",
+          "price": 330.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 3,
+        "merchantName": "测试商家 B · 日常",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.264Z",
+        "details": {
+          "color": "红色",
+          "fabric": "纸质内页，硬质纸板封面",
+          "fit": "",
+          "seasons": [],
+          "scenarios": [
+            "会议记录",
+            "学习",
+            "手写"
+          ],
+          "measurementNote": "扩展测试设定，与基础样本共用演示图；未验证钢笔防洇墨。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；规格均为测试设定。",
+          "sizeChart": [],
+          "profile": "GENERAL_PHYSICAL",
+          "specifications": [
+            {
+              "skuCode": "EXP-NOTE-03",
+              "name": "规格",
+              "value": "A5，148 × 210 mm"
+            },
+            {
+              "skuCode": "EXP-NOTE-03",
+              "name": "内页",
+              "value": "横线，80张 / 160页"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 16,
+      "title": "扩展测试 · 绿色帆布文件袋 03",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 5,
+      "priceFrom": 330.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/16",
+      "publishedAt": "2026-10-01T21:04:39.256Z",
+      "skus": [
+        {
+          "id": 16,
+          "code": "EXP-BAG-03",
+          "name": "绿色 / A4",
+          "price": 330.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 3,
+        "merchantName": "测试商家 B · 日常",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.254Z",
+        "details": {
+          "color": "绿色",
+          "fabric": "100% 棉帆布",
+          "fit": "",
+          "seasons": [],
+          "scenarios": [
+            "通勤",
+            "文件收纳"
+          ],
+          "measurementNote": "扩展测试设定，与基础样本共用演示图；未验证防水或承重。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；规格均为测试设定。",
+          "sizeChart": [],
+          "profile": "GENERAL_PHYSICAL",
+          "specifications": [
+            {
+              "skuCode": "EXP-BAG-03",
+              "name": "适用纸张",
+              "value": "A4文件"
+            },
+            {
+              "skuCode": "EXP-BAG-03",
+              "name": "封口",
+              "value": "开放式袋口，无拉链"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 15,
+      "title": "扩展测试 · 米白针织上衣 03",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 2,
+      "priceFrom": 330.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/15",
+      "publishedAt": "2026-10-01T21:04:39.244Z",
+      "skus": [
+        {
+          "id": 15,
+          "code": "EXP-IVORY-03",
+          "name": "米白 / M",
+          "price": 330.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 3,
+        "merchantName": "测试商家 B · 日常",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.242Z",
+        "details": {
+          "color": "米白",
+          "fabric": "60% 棉 / 40% 粘纤",
+          "fit": "常规",
+          "seasons": [
+            "春",
+            "秋"
+          ],
+          "scenarios": [
+            "通勤",
+            "日常"
+          ],
+          "measurementNote": "测试设定：平铺测量，胸围为成衣一周长度，误差 ±2 cm；不代表图片实物尺寸。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；属性和尺寸均为测试设定。",
+          "sizeChart": [
+            {
+              "skuCode": "EXP-IVORY-03",
+              "sizeLabel": "M",
+              "chestCm": 96,
+              "lengthCm": 58,
+              "shoulderCm": 38,
+              "sleeveCm": 56
+            }
+          ],
+          "profile": "APPAREL",
+          "specifications": []
+        }
+      }
+    },
+    {
+      "id": 14,
+      "title": "扩展测试 · 浅蓝衬衫 03",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 2,
+      "priceFrom": 330.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/14",
+      "publishedAt": "2026-10-01T21:04:39.234Z",
+      "skus": [
+        {
+          "id": 14,
+          "code": "EXP-BLUE-03",
+          "name": "浅蓝 / M",
+          "price": 330.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 3,
+        "merchantName": "测试商家 B · 日常",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.232Z",
+        "details": {
+          "color": "浅蓝",
+          "fabric": "100% 棉",
+          "fit": "直筒",
+          "seasons": [
+            "春",
+            "秋"
+          ],
+          "scenarios": [
+            "通勤",
+            "日常"
+          ],
+          "measurementNote": "测试设定：平铺测量，胸围为成衣一周长度，误差 ±2 cm；不代表图片实物尺寸。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；属性和尺寸均为测试设定。",
+          "sizeChart": [
+            {
+              "skuCode": "EXP-BLUE-03",
+              "sizeLabel": "M",
+              "chestCm": 104,
+              "lengthCm": 66,
+              "shoulderCm": 44,
+              "sleeveCm": 58
+            }
+          ],
+          "profile": "APPAREL",
+          "specifications": []
+        }
+      }
+    },
+    {
+      "id": 13,
+      "title": "扩展测试 · 红色横线笔记本 02",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 6,
+      "priceFrom": 320.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/13",
+      "publishedAt": "2026-10-01T21:04:39.222Z",
+      "skus": [
+        {
+          "id": 13,
+          "code": "EXP-NOTE-02",
+          "name": "红色 / A5",
+          "price": 320.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 2,
+        "merchantName": "测试商家 A · 轻织",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.219Z",
+        "details": {
+          "color": "红色",
+          "fabric": "纸质内页，硬质纸板封面",
+          "fit": "",
+          "seasons": [],
+          "scenarios": [
+            "会议记录",
+            "学习",
+            "手写"
+          ],
+          "measurementNote": "扩展测试设定，与基础样本共用演示图；未验证钢笔防洇墨。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；规格均为测试设定。",
+          "sizeChart": [],
+          "profile": "GENERAL_PHYSICAL",
+          "specifications": [
+            {
+              "skuCode": "EXP-NOTE-02",
+              "name": "规格",
+              "value": "A5，148 × 210 mm"
+            },
+            {
+              "skuCode": "EXP-NOTE-02",
+              "name": "内页",
+              "value": "横线，80张 / 160页"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 12,
+      "title": "扩展测试 · 绿色帆布文件袋 02",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 5,
+      "priceFrom": 320.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/12",
+      "publishedAt": "2026-10-01T21:04:39.208Z",
+      "skus": [
+        {
+          "id": 12,
+          "code": "EXP-BAG-02",
+          "name": "绿色 / A4",
+          "price": 320.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 2,
+        "merchantName": "测试商家 A · 轻织",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.206Z",
+        "details": {
+          "color": "绿色",
+          "fabric": "100% 棉帆布",
+          "fit": "",
+          "seasons": [],
+          "scenarios": [
+            "通勤",
+            "文件收纳"
+          ],
+          "measurementNote": "扩展测试设定，与基础样本共用演示图；未验证防水或承重。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；规格均为测试设定。",
+          "sizeChart": [],
+          "profile": "GENERAL_PHYSICAL",
+          "specifications": [
+            {
+              "skuCode": "EXP-BAG-02",
+              "name": "适用纸张",
+              "value": "A4文件"
+            },
+            {
+              "skuCode": "EXP-BAG-02",
+              "name": "封口",
+              "value": "开放式袋口，无拉链"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 11,
+      "title": "扩展测试 · 米白针织上衣 02",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 2,
+      "priceFrom": 320.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/11",
+      "publishedAt": "2026-10-01T21:04:39.197Z",
+      "skus": [
+        {
+          "id": 11,
+          "code": "EXP-IVORY-02",
+          "name": "米白 / M",
+          "price": 320.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 2,
+        "merchantName": "测试商家 A · 轻织",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.194Z",
+        "details": {
+          "color": "米白",
+          "fabric": "60% 棉 / 40% 粘纤",
+          "fit": "常规",
+          "seasons": [
+            "春",
+            "秋"
+          ],
+          "scenarios": [
+            "通勤",
+            "日常"
+          ],
+          "measurementNote": "测试设定：平铺测量，胸围为成衣一周长度，误差 ±2 cm；不代表图片实物尺寸。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；属性和尺寸均为测试设定。",
+          "sizeChart": [
+            {
+              "skuCode": "EXP-IVORY-02",
+              "sizeLabel": "M",
+              "chestCm": 96,
+              "lengthCm": 58,
+              "shoulderCm": 38,
+              "sleeveCm": 56
+            }
+          ],
+          "profile": "APPAREL",
+          "specifications": []
+        }
+      }
+    },
+    {
+      "id": 10,
+      "title": "扩展测试 · 浅蓝衬衫 02",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 2,
+      "priceFrom": 320.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/10",
+      "publishedAt": "2026-10-01T21:04:39.184Z",
+      "skus": [
+        {
+          "id": 10,
+          "code": "EXP-BLUE-02",
+          "name": "浅蓝 / M",
+          "price": 320.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 2,
+        "merchantName": "测试商家 A · 轻织",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.181Z",
+        "details": {
+          "color": "浅蓝",
+          "fabric": "100% 棉",
+          "fit": "直筒",
+          "seasons": [
+            "春",
+            "秋"
+          ],
+          "scenarios": [
+            "通勤",
+            "日常"
+          ],
+          "measurementNote": "测试设定：平铺测量，胸围为成衣一周长度，误差 ±2 cm；不代表图片实物尺寸。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；属性和尺寸均为测试设定。",
+          "sizeChart": [
+            {
+              "skuCode": "EXP-BLUE-02",
+              "sizeLabel": "M",
+              "chestCm": 104,
+              "lengthCm": 66,
+              "shoulderCm": 44,
+              "sleeveCm": 58
+            }
+          ],
+          "profile": "APPAREL",
+          "specifications": []
+        }
+      }
+    },
+    {
+      "id": 9,
+      "title": "扩展测试 · 红色横线笔记本 01",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 6,
+      "priceFrom": 310.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/9",
+      "publishedAt": "2026-10-01T21:04:39.171Z",
+      "skus": [
+        {
+          "id": 9,
+          "code": "EXP-NOTE-01",
+          "name": "红色 / A5",
+          "price": 310.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 3,
+        "merchantName": "测试商家 B · 日常",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.169Z",
+        "details": {
+          "color": "红色",
+          "fabric": "纸质内页，硬质纸板封面",
+          "fit": "",
+          "seasons": [],
+          "scenarios": [
+            "会议记录",
+            "学习",
+            "手写"
+          ],
+          "measurementNote": "扩展测试设定，与基础样本共用演示图；未验证钢笔防洇墨。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；规格均为测试设定。",
+          "sizeChart": [],
+          "profile": "GENERAL_PHYSICAL",
+          "specifications": [
+            {
+              "skuCode": "EXP-NOTE-01",
+              "name": "规格",
+              "value": "A5，148 × 210 mm"
+            },
+            {
+              "skuCode": "EXP-NOTE-01",
+              "name": "内页",
+              "value": "横线，80张 / 160页"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 8,
+      "title": "扩展测试 · 绿色帆布文件袋 01",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 5,
+      "priceFrom": 310.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/8",
+      "publishedAt": "2026-10-01T21:04:39.158Z",
+      "skus": [
+        {
+          "id": 8,
+          "code": "EXP-BAG-01",
+          "name": "绿色 / A4",
+          "price": 310.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 3,
+        "merchantName": "测试商家 B · 日常",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.155Z",
+        "details": {
+          "color": "绿色",
+          "fabric": "100% 棉帆布",
+          "fit": "",
+          "seasons": [],
+          "scenarios": [
+            "通勤",
+            "文件收纳"
+          ],
+          "measurementNote": "扩展测试设定，与基础样本共用演示图；未验证防水或承重。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；规格均为测试设定。",
+          "sizeChart": [],
+          "profile": "GENERAL_PHYSICAL",
+          "specifications": [
+            {
+              "skuCode": "EXP-BAG-01",
+              "name": "适用纸张",
+              "value": "A4文件"
+            },
+            {
+              "skuCode": "EXP-BAG-01",
+              "name": "封口",
+              "value": "开放式袋口，无拉链"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 7,
+      "title": "扩展测试 · 米白针织上衣 01",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 2,
+      "priceFrom": 310.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/7",
+      "publishedAt": "2026-10-01T21:04:39.144Z",
+      "skus": [
+        {
+          "id": 7,
+          "code": "EXP-IVORY-01",
+          "name": "米白 / M",
+          "price": 310.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 3,
+        "merchantName": "测试商家 B · 日常",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.141Z",
+        "details": {
+          "color": "米白",
+          "fabric": "60% 棉 / 40% 粘纤",
+          "fit": "常规",
+          "seasons": [
+            "春",
+            "秋"
+          ],
+          "scenarios": [
+            "通勤",
+            "日常"
+          ],
+          "measurementNote": "测试设定：平铺测量，胸围为成衣一周长度，误差 ±2 cm；不代表图片实物尺寸。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；属性和尺寸均为测试设定。",
+          "sizeChart": [
+            {
+              "skuCode": "EXP-IVORY-01",
+              "sizeLabel": "M",
+              "chestCm": 96,
+              "lengthCm": 58,
+              "shoulderCm": 38,
+              "sleeveCm": 56
+            }
+          ],
+          "profile": "APPAREL",
+          "specifications": []
+        }
+      }
+    },
+    {
+      "id": 6,
+      "title": "扩展测试 · 浅蓝衬衫 01",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 2,
+      "priceFrom": 310.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/6",
+      "publishedAt": "2026-10-01T21:04:39.130Z",
+      "skus": [
+        {
+          "id": 6,
+          "code": "EXP-BLUE-01",
+          "name": "浅蓝 / M",
+          "price": 310.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 3,
+        "merchantName": "测试商家 B · 日常",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.126Z",
+        "details": {
+          "color": "浅蓝",
+          "fabric": "100% 棉",
+          "fit": "直筒",
+          "seasons": [
+            "春",
+            "秋"
+          ],
+          "scenarios": [
+            "通勤",
+            "日常"
+          ],
+          "measurementNote": "测试设定：平铺测量，胸围为成衣一周长度，误差 ±2 cm；不代表图片实物尺寸。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；属性和尺寸均为测试设定。",
+          "sizeChart": [
+            {
+              "skuCode": "EXP-BLUE-01",
+              "sizeLabel": "M",
+              "chestCm": 104,
+              "lengthCm": 66,
+              "shoulderCm": 44,
+              "sleeveCm": 58
+            }
+          ],
+          "profile": "APPAREL",
+          "specifications": []
+        }
+      }
+    },
+    {
+      "id": 5,
+      "title": "测试 · 红色横线笔记本",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 6,
+      "priceFrom": 29.0,
+      "currency": "CNY",
+      "availableStock": 16,
+      "mainImageUrl": "/api/shop/v1/media/5",
+      "publishedAt": "2026-10-01T21:04:39.113Z",
+      "skus": [
+        {
+          "id": 5,
+          "code": "TEST-NOTE-A5",
+          "name": "红色 / A5",
+          "price": 29.0,
+          "currency": "CNY",
+          "availableStock": 16
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 3,
+        "merchantName": "测试商家 B · 日常",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.110Z",
+        "details": {
+          "color": "红色",
+          "fabric": "纸质内页，硬质纸板封面",
+          "fit": "",
+          "seasons": [],
+          "scenarios": [
+            "会议记录",
+            "学习",
+            "手写"
+          ],
+          "measurementNote": "规格均为测试设定；未验证钢笔防洇墨或数码功能。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；规格均为测试设定。",
+          "sizeChart": [],
+          "profile": "GENERAL_PHYSICAL",
+          "specifications": [
+            {
+              "skuCode": "TEST-NOTE-A5",
+              "name": "规格",
+              "value": "A5，148 × 210 mm"
+            },
+            {
+              "skuCode": "TEST-NOTE-A5",
+              "name": "内页",
+              "value": "横线，80张 / 160页"
+            },
+            {
+              "skuCode": "TEST-NOTE-A5",
+              "name": "装订",
+              "value": "精装硬壳"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "测试 · 绿色帆布文件袋",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 5,
+      "priceFrom": 79.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/4",
+      "publishedAt": "2026-10-01T21:04:39.097Z",
+      "skus": [
+        {
+          "id": 4,
+          "code": "TEST-BAG-A4",
+          "name": "绿色 / A4",
+          "price": 79.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 2,
+        "merchantName": "测试商家 A · 轻织",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.093Z",
+        "details": {
+          "color": "绿色",
+          "fabric": "100% 棉帆布",
+          "fit": "",
+          "seasons": [],
+          "scenarios": [
+            "通勤",
+            "文件收纳"
+          ],
+          "measurementNote": "测试设定：袋身平铺外尺寸约36 × 32 × 8 cm，误差±1 cm；未验证防水或承重。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；规格均为测试设定。",
+          "sizeChart": [],
+          "profile": "GENERAL_PHYSICAL",
+          "specifications": [
+            {
+              "skuCode": "TEST-BAG-A4",
+              "name": "适用纸张",
+              "value": "A4文件"
+            },
+            {
+              "skuCode": "TEST-BAG-A4",
+              "name": "袋身外尺寸",
+              "value": "约36 × 32 × 8 cm"
+            },
+            {
+              "skuCode": "TEST-BAG-A4",
+              "name": "封口",
+              "value": "开放式袋口，无拉链"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "测试 · 灰色开衫",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 2,
+      "priceFrom": 229.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/3",
+      "publishedAt": "2026-10-01T21:04:39.076Z",
+      "skus": [
+        {
+          "id": 3,
+          "code": "TEST-GRAY-M",
+          "name": "灰色 / M",
+          "price": 229.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 2,
+        "merchantName": "测试商家 A · 轻织",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.071Z",
+        "details": {
+          "color": "灰色",
+          "fabric": "100% 棉",
+          "fit": "宽松",
+          "seasons": [
+            "春",
+            "秋"
+          ],
+          "scenarios": [
+            "通勤",
+            "日常"
+          ],
+          "measurementNote": "测试设定：平铺测量，胸围为成衣一周长度，误差 ±2 cm；不代表图片实物尺寸。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；属性和尺寸均为测试设定。",
+          "sizeChart": [
+            {
+              "skuCode": "TEST-GRAY-M",
+              "sizeLabel": "M",
+              "chestCm": 110,
+              "lengthCm": 62,
+              "shoulderCm": 46,
+              "sleeveCm": 57
+            }
+          ],
+          "profile": "APPAREL",
+          "specifications": []
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "测试 · 米白针织上衣",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 2,
+      "priceFrom": 169.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/2",
+      "publishedAt": "2026-10-01T21:04:39.058Z",
+      "skus": [
+        {
+          "id": 2,
+          "code": "TEST-IVORY-M",
+          "name": "米白 / M",
+          "price": 169.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 3,
+        "merchantName": "测试商家 B · 日常",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.054Z",
+        "details": {
+          "color": "米白",
+          "fabric": "60% 棉 / 40% 粘纤",
+          "fit": "常规",
+          "seasons": [
+            "春",
+            "秋"
+          ],
+          "scenarios": [
+            "通勤",
+            "日常"
+          ],
+          "measurementNote": "测试设定：平铺测量，胸围为成衣一周长度，误差 ±2 cm；不代表图片实物尺寸。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；属性和尺寸均为测试设定。",
+          "sizeChart": [
+            {
+              "skuCode": "TEST-IVORY-M",
+              "sizeLabel": "M",
+              "chestCm": 96,
+              "lengthCm": 58,
+              "shoulderCm": 38,
+              "sleeveCm": 56
+            }
+          ],
+          "profile": "APPAREL",
+          "specifications": []
+        }
+      }
+    },
+    {
+      "id": 1,
+      "title": "测试 · 浅蓝衬衫",
+      "subtitle": "仅用于本地流程验证，不是真实商家供给",
+      "categoryId": 2,
+      "priceFrom": 199.0,
+      "currency": "CNY",
+      "availableStock": 20,
+      "mainImageUrl": "/api/shop/v1/media/1",
+      "publishedAt": "2026-10-01T21:04:39.035Z",
+      "skus": [
+        {
+          "id": 1,
+          "code": "TEST-BLUE-M",
+          "name": "浅蓝 / M",
+          "price": 199.0,
+          "currency": "CNY",
+          "availableStock": 20
+        }
+      ],
+      "evidence": {
+        "productVersion": 3,
+        "merchantId": 2,
+        "merchantName": "测试商家 A · 轻织",
+        "deliveryType": "PHYSICAL",
+        "dataOrigin": "LOCAL_TEST",
+        "confirmationStatus": "TEST_CONFIRMED",
+        "confirmedAt": "2026-10-01T21:04:39.029Z",
+        "details": {
+          "color": "浅蓝",
+          "fabric": "100% 棉",
+          "fit": "直筒",
+          "seasons": [
+            "春",
+            "秋"
+          ],
+          "scenarios": [
+            "通勤",
+            "日常"
+          ],
+          "measurementNote": "测试设定：平铺测量，胸围为成衣一周长度，误差 ±2 cm；不代表图片实物尺寸。",
+          "imageSourceNote": "AI 生成的本地演示图，非真实商家拍摄；属性和尺寸均为测试设定。",
+          "sizeChart": [
+            {
+              "skuCode": "TEST-BLUE-M",
+              "sizeLabel": "M",
+              "chestCm": 104,
+              "lengthCm": 66,
+              "shoulderCm": 44,
+              "sleeveCm": 58
+            }
+          ],
+          "profile": "APPAREL",
+          "specifications": []
+        }
+      }
+    }
+  ]
+}

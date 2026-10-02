@@ -1,0 +1,647 @@
+{
+  "version": "phase4-engineering-v1",
+  "frozenBeforeFirstRun": true,
+  "queryOrigin": "QA-created fixed engineering probes; no real user requests",
+  "k": 5,
+  "candidateLimit": 20,
+  "offlineP95MsBudget": 200,
+  "projectionExtraMsBudget": 150,
+  "heldoutMinimumRecallDelta": 0.1,
+  "heldoutMinimumNdcgDelta": 0.05,
+  "independentRepeatsRequired": 3,
+  "queries": [
+    {
+      "id": "d01",
+      "split": "development",
+      "engineeringText": "200内浅蓝衬衫M",
+      "intent": {
+        "deliveryType": "PHYSICAL",
+        "maxPrice": "200",
+        "currency": "CNY",
+        "searchTerms": [],
+        "categoryKeywords": [
+          "衬衫"
+        ],
+        "requiredColors": [
+          "浅蓝"
+        ],
+        "excludedColors": [],
+        "requiredFabrics": [],
+        "excludedFabrics": [],
+        "requiredSize": "M",
+        "needsClarification": false
+      },
+      "relevanceBySkuCode": {
+        "TEST-BLUE-M": 2
+      },
+      "expectedEmpty": false,
+      "annotationNote": "根据已确认测试资料与请求硬约束，所列SKU为二级相关；其余为0。"
+    },
+    {
+      "id": "d02",
+      "split": "development",
+      "engineeringText": "180内米白针织M",
+      "intent": {
+        "deliveryType": "PHYSICAL",
+        "maxPrice": "180",
+        "currency": "CNY",
+        "searchTerms": [],
+        "categoryKeywords": [
+          "针织衫"
+        ],
+        "requiredColors": [
+          "米白"
+        ],
+        "excludedColors": [],
+        "requiredFabrics": [],
+        "excludedFabrics": [],
+        "requiredSize": "M",
+        "needsClarification": false
+      },
+      "relevanceBySkuCode": {
+        "TEST-IVORY-M": 2
+      },
+      "expectedEmpty": false,
+      "annotationNote": "根据已确认测试资料与请求硬约束，所列SKU为二级相关；其余为0。"
+    },
+    {
+      "id": "d03",
+      "split": "development",
+      "engineeringText": "230内灰开衫M",
+      "intent": {
+        "deliveryType": "PHYSICAL",
+        "maxPrice": "230",
+        "currency": "CNY",
+        "searchTerms": [],
+        "categoryKeywords": [
+          "开衫"
+        ],
+        "requiredColors": [],
+        "excludedColors": [],
+        "requiredFabrics": [],
+        "excludedFabrics": [],
+        "requiredSize": "M",
+        "needsClarification": false
+      },
+      "relevanceBySkuCode": {
+        "TEST-GRAY-M": 2
+      },
+      "expectedEmpty": false,
+      "annotationNote": "根据已确认测试资料与请求硬约束，所列SKU为二级相关；其余为0。"
+    },
+    {
+      "id": "d04",
+      "split": "development",
+      "engineeringText": "100内A4文件袋",
+      "intent": {
+        "deliveryType": "PHYSICAL",
+        "maxPrice": "100",
+        "currency": "CNY",
+        "searchTerms": [],
+        "categoryKeywords": [
+          "文件袋"
+        ],
+        "requiredColors": [],
+        "excludedColors": [],
+        "requiredFabrics": [],
+        "excludedFabrics": [],
+        "requiredSize": "A4",
+        "needsClarification": false
+      },
+      "relevanceBySkuCode": {
+        "TEST-BAG-A4": 2
+      },
+      "expectedEmpty": false,
+      "annotationNote": "根据已确认测试资料与请求硬约束，所列SKU为二级相关；其余为0。"
+    },
+    {
+      "id": "d05",
+      "split": "development",
+      "engineeringText": "30内A5会议记录本",
+      "intent": {
+        "deliveryType": "PHYSICAL",
+        "maxPrice": "30",
+        "currency": "CNY",
+        "searchTerms": [
+          "会议记录"
+        ],
+        "categoryKeywords": [
+          "纸质笔记本"
+        ],
+        "requiredColors": [],
+        "excludedColors": [],
+        "requiredFabrics": [],
+        "excludedFabrics": [],
+        "requiredSize": "A5",
+        "needsClarification": false
+      },
+      "relevanceBySkuCode": {
+        "TEST-NOTE-A5": 2
+      },
+      "expectedEmpty": false,
+      "annotationNote": "根据已确认测试资料与请求硬约束，所列SKU为二级相关；其余为0。"
+    },
+    {
+      "id": "d06",
+      "split": "development",
+      "engineeringText": "200内100%棉上衣",
+      "intent": {
+        "deliveryType": "PHYSICAL",
+        "maxPrice": "200",
+        "currency": "CNY",
+        "searchTerms": [],
+        "categoryKeywords": [
+          "上衣"
+        ],
+        "requiredColors": [],
+        "excludedColors": [],
+        "requiredFabrics": [
+          "纯棉"
+        ],
+        "excludedFabrics": [],
+        "requiredSize": "",
+        "needsClarification": false
+      },
+      "relevanceBySkuCode": {
+        "TEST-BLUE-M": 2
+      },
+      "expectedEmpty": false,
+      "annotationNote": "根据已确认测试资料与请求硬约束，所列SKU为二级相关；其余为0。"
+    },
+    {
+      "id": "d07",
+      "split": "development",
+      "engineeringText": "180内白色服饰不要蓝",
+      "intent": {
+        "deliveryType": "PHYSICAL",
+        "maxPrice": "180",
+        "currency": "CNY",
+        "searchTerms": [],
+        "categoryKeywords": [
+          "上衣"
+        ],
+        "requiredColors": [
+          "白"
+        ],
+        "excludedColors": [
+          "蓝"
+        ],
+        "requiredFabrics": [],
+        "excludedFabrics": [],
+        "requiredSize": "",
+        "needsClarification": false
+      },
+      "relevanceBySkuCode": {
+        "TEST-IVORY-M": 2
+      },
+      "expectedEmpty": false,
+      "annotationNote": "根据已确认测试资料与请求硬约束，所列SKU为二级相关；其余为0。"
+    },
+    {
+      "id": "d08",
+      "split": "development",
+      "engineeringText": "100内会议记录用途",
+      "intent": {
+        "deliveryType": "PHYSICAL",
+        "maxPrice": "100",
+        "currency": "CNY",
+        "searchTerms": [
+          "会议记录"
+        ],
+        "categoryKeywords": [],
+        "requiredColors": [],
+        "excludedColors": [],
+        "requiredFabrics": [],
+        "excludedFabrics": [],
+        "requiredSize": "",
+        "needsClarification": false
+      },
+      "relevanceBySkuCode": {
+        "TEST-NOTE-A5": 2
+      },
+      "expectedEmpty": false,
+      "annotationNote": "根据已确认测试资料与请求硬约束，所列SKU为二级相关；其余为0。"
+    },
+    {
+      "id": "d09",
+      "split": "development",
+      "engineeringText": "100内开会时记下要点",
+      "intent": {
+        "deliveryType": "PHYSICAL",
+        "maxPrice": "100",
+        "currency": "CNY",
+        "searchTerms": [
+          "开会时记下要点"
+        ],
+        "categoryKeywords": [],
+        "requiredColors": [],
+        "excludedColors": [],
+        "requiredFabrics": [],
+        "excludedFabrics": [],
+        "requiredSize": "",
+        "needsClarification": false
+      },
+      "relevanceBySkuCode": {
+        "TEST-NOTE-A5": 2
+      },
+      "expectedEmpty": false,
+      "annotationNote": "工程语义表达探针：标注依据笔记本资料“会议记录/手写”，不是实际用户问题；硬约束没有指定品类。"
+    },
+    {
+      "id": "d10",
+      "split": "development",
+      "engineeringText": "100内云端下载文件",
+      "intent": {
+        "deliveryType": "DIGITAL",
+        "maxPrice": "100",
+        "currency": "CNY",
+        "searchTerms": [],
+        "categoryKeywords": [],
+        "requiredColors": [],
+        "excludedColors": [],
+        "requiredFabrics": [],
+        "excludedFabrics": [],
+        "requiredSize": "",
+        "needsClarification": false
+      },
+      "relevanceBySkuCode": {},
+      "expectedEmpty": true,
+      "annotationNote": "根据已确认测试资料与请求硬约束，所列SKU为二级相关；其余为0。"
+    },
+    {
+      "id": "d11",
+      "split": "development",
+      "engineeringText": "100内预约咨询",
+      "intent": {
+        "deliveryType": "SERVICE",
+        "maxPrice": "100",
+        "currency": "CNY",
+        "searchTerms": [],
+        "categoryKeywords": [],
+        "requiredColors": [],
+        "excludedColors": [],
+        "requiredFabrics": [],
+        "excludedFabrics": [],
+        "requiredSize": "",
+        "needsClarification": false
+      },
+      "relevanceBySkuCode": {},
+      "expectedEmpty": true,
+      "annotationNote": "根据已确认测试资料与请求硬约束，所列SKU为二级相关；其余为0。"
+    },
+    {
+      "id": "d12",
+      "split": "development",
+      "engineeringText": "要手机",
+      "intent": {
+        "deliveryType": "PHYSICAL",
+        "maxPrice": null,
+        "currency": "CNY",
+        "searchTerms": [],
+        "categoryKeywords": [
+          "手机"
+        ],
+        "requiredColors": [],
+        "excludedColors": [],
+        "requiredFabrics": [],
+        "excludedFabrics": [],
+        "requiredSize": "",
+        "needsClarification": false
+      },
+      "relevanceBySkuCode": {},
+      "expectedEmpty": true,
+      "annotationNote": "根据已确认测试资料与请求硬约束，所列SKU为二级相关；其余为0。"
+    },
+    {
+      "id": "h01",
+      "split": "heldout",
+      "engineeringText": "199内纯棉衬衫M",
+      "intent": {
+        "deliveryType": "PHYSICAL",
+        "maxPrice": "199",
+        "currency": "CNY",
+        "searchTerms": [],
+        "categoryKeywords": [
+          "衬衫"
+        ],
+        "requiredColors": [],
+        "excludedColors": [],
+        "requiredFabrics": [
+          "100%棉"
+        ],
+        "excludedFabrics": [],
+        "requiredSize": "M",
+        "needsClarification": false
+      },
+      "relevanceBySkuCode": {
+        "TEST-BLUE-M": 2
+      },
+      "expectedEmpty": false,
+      "annotationNote": "根据已确认测试资料与请求硬约束，所列SKU为二级相关；其余为0。"
+    },
+    {
+      "id": "h02",
+      "split": "heldout",
+      "engineeringText": "169内针织上衣M",
+      "intent": {
+        "deliveryType": "PHYSICAL",
+        "maxPrice": "169",
+        "currency": "CNY",
+        "searchTerms": [],
+        "categoryKeywords": [
+          "针织上衣"
+        ],
+        "requiredColors": [],
+        "excludedColors": [],
+        "requiredFabrics": [],
+        "excludedFabrics": [],
+        "requiredSize": "M",
+        "needsClarification": false
+      },
+      "relevanceBySkuCode": {
+        "TEST-IVORY-M": 2
+      },
+      "expectedEmpty": false,
+      "annotationNote": "根据已确认测试资料与请求硬约束，所列SKU为二级相关；其余为0。"
+    },
+    {
+      "id": "h03",
+      "split": "heldout",
+      "engineeringText": "229内灰色开衫",
+      "intent": {
+        "deliveryType": "PHYSICAL",
+        "maxPrice": "229",
+        "currency": "CNY",
+        "searchTerms": [],
+        "categoryKeywords": [
+          "开衫"
+        ],
+        "requiredColors": [
+          "灰色"
+        ],
+        "excludedColors": [],
+        "requiredFabrics": [],
+        "excludedFabrics": [],
+        "requiredSize": "",
+        "needsClarification": false
+      },
+      "relevanceBySkuCode": {
+        "TEST-GRAY-M": 2
+      },
+      "expectedEmpty": false,
+      "annotationNote": "根据已确认测试资料与请求硬约束，所列SKU为二级相关；其余为0。"
+    },
+    {
+      "id": "h04",
+      "split": "heldout",
+      "engineeringText": "79内绿色袋装A4",
+      "intent": {
+        "deliveryType": "PHYSICAL",
+        "maxPrice": "79",
+        "currency": "CNY",
+        "searchTerms": [],
+        "categoryKeywords": [
+          "文件袋"
+        ],
+        "requiredColors": [
+          "绿色"
+        ],
+        "excludedColors": [],
+        "requiredFabrics": [],
+        "excludedFabrics": [],
+        "requiredSize": "A4",
+        "needsClarification": false
+      },
+      "relevanceBySkuCode": {
+        "TEST-BAG-A4": 2
+      },
+      "expectedEmpty": false,
+      "annotationNote": "根据已确认测试资料与请求硬约束，所列SKU为二级相关；其余为0。"
+    },
+    {
+      "id": "h05",
+      "split": "heldout",
+      "engineeringText": "29内红色A5笔记本",
+      "intent": {
+        "deliveryType": "PHYSICAL",
+        "maxPrice": "29",
+        "currency": "CNY",
+        "searchTerms": [],
+        "categoryKeywords": [
+          "纸质笔记本"
+        ],
+        "requiredColors": [
+          "红色"
+        ],
+        "excludedColors": [],
+        "requiredFabrics": [],
+        "excludedFabrics": [],
+        "requiredSize": "A5",
+        "needsClarification": false
+      },
+      "relevanceBySkuCode": {
+        "TEST-NOTE-A5": 2
+      },
+      "expectedEmpty": false,
+      "annotationNote": "根据已确认测试资料与请求硬约束，所列SKU为二级相关；其余为0。"
+    },
+    {
+      "id": "h06",
+      "split": "heldout",
+      "engineeringText": "400内A5会议记录纸本",
+      "intent": {
+        "deliveryType": "PHYSICAL",
+        "maxPrice": "400",
+        "currency": "CNY",
+        "searchTerms": [
+          "会议记录"
+        ],
+        "categoryKeywords": [
+          "纸质笔记本"
+        ],
+        "requiredColors": [],
+        "excludedColors": [],
+        "requiredFabrics": [],
+        "excludedFabrics": [],
+        "requiredSize": "A5",
+        "needsClarification": false
+      },
+      "relevanceBySkuCode": {
+        "TEST-NOTE-A5": 2,
+        "EXP-NOTE-01": 2,
+        "EXP-NOTE-02": 2,
+        "EXP-NOTE-03": 2,
+        "EXP-NOTE-04": 2,
+        "EXP-NOTE-05": 2,
+        "EXP-NOTE-06": 2,
+        "EXP-NOTE-07": 2,
+        "EXP-NOTE-08": 2,
+        "EXP-NOTE-09": 2,
+        "EXP-NOTE-10": 2
+      },
+      "expectedEmpty": false,
+      "annotationNote": "根据已确认测试资料与请求硬约束，所列SKU为二级相关；其余为0。"
+    },
+    {
+      "id": "h07",
+      "split": "heldout",
+      "engineeringText": "400内拿来整理纸质材料",
+      "intent": {
+        "deliveryType": "PHYSICAL",
+        "maxPrice": "400",
+        "currency": "CNY",
+        "searchTerms": [
+          "整理纸质材料"
+        ],
+        "categoryKeywords": [],
+        "requiredColors": [],
+        "excludedColors": [],
+        "requiredFabrics": [],
+        "excludedFabrics": [],
+        "requiredSize": "",
+        "needsClarification": false
+      },
+      "relevanceBySkuCode": {
+        "TEST-BAG-A4": 2,
+        "EXP-BAG-01": 2,
+        "EXP-BAG-02": 2,
+        "EXP-BAG-03": 2,
+        "EXP-BAG-04": 2,
+        "EXP-BAG-05": 2,
+        "EXP-BAG-06": 2,
+        "EXP-BAG-07": 2,
+        "EXP-BAG-08": 2,
+        "EXP-BAG-09": 2,
+        "EXP-BAG-10": 2
+      },
+      "expectedEmpty": false,
+      "annotationNote": "工程语义探针，相关性仅依据测试资料“文件收纳/A4文件”；11件同级相关，Recall@5上限5/11。"
+    },
+    {
+      "id": "h08",
+      "split": "heldout",
+      "engineeringText": "400内开会时记下要点",
+      "intent": {
+        "deliveryType": "PHYSICAL",
+        "maxPrice": "400",
+        "currency": "CNY",
+        "searchTerms": [
+          "开会时记下要点"
+        ],
+        "categoryKeywords": [],
+        "requiredColors": [],
+        "excludedColors": [],
+        "requiredFabrics": [],
+        "excludedFabrics": [],
+        "requiredSize": "",
+        "needsClarification": false
+      },
+      "relevanceBySkuCode": {
+        "TEST-NOTE-A5": 2,
+        "EXP-NOTE-01": 2,
+        "EXP-NOTE-02": 2,
+        "EXP-NOTE-03": 2,
+        "EXP-NOTE-04": 2,
+        "EXP-NOTE-05": 2,
+        "EXP-NOTE-06": 2,
+        "EXP-NOTE-07": 2,
+        "EXP-NOTE-08": 2,
+        "EXP-NOTE-09": 2,
+        "EXP-NOTE-10": 2
+      },
+      "expectedEmpty": false,
+      "annotationNote": "工程语义探针，相关性仅依据测试资料“会议记录/手写”；11件同级相关，Recall@5上限5/11。"
+    },
+    {
+      "id": "h09",
+      "split": "heldout",
+      "engineeringText": "100内手写学习用品",
+      "intent": {
+        "deliveryType": "PHYSICAL",
+        "maxPrice": "100",
+        "currency": "CNY",
+        "searchTerms": [
+          "手写",
+          "学习"
+        ],
+        "categoryKeywords": [],
+        "requiredColors": [],
+        "excludedColors": [],
+        "requiredFabrics": [],
+        "excludedFabrics": [],
+        "requiredSize": "",
+        "needsClarification": false
+      },
+      "relevanceBySkuCode": {
+        "TEST-NOTE-A5": 2
+      },
+      "expectedEmpty": false,
+      "annotationNote": "根据已确认测试资料与请求硬约束，所列SKU为二级相关；其余为0。"
+    },
+    {
+      "id": "h10",
+      "split": "heldout",
+      "engineeringText": "100内电子下载",
+      "intent": {
+        "deliveryType": "DIGITAL",
+        "maxPrice": "100",
+        "currency": "CNY",
+        "searchTerms": [],
+        "categoryKeywords": [],
+        "requiredColors": [],
+        "excludedColors": [],
+        "requiredFabrics": [],
+        "excludedFabrics": [],
+        "requiredSize": "",
+        "needsClarification": false
+      },
+      "relevanceBySkuCode": {},
+      "expectedEmpty": true,
+      "annotationNote": "根据已确认测试资料与请求硬约束，所列SKU为二级相关；其余为0。"
+    },
+    {
+      "id": "h11",
+      "split": "heldout",
+      "engineeringText": "100内纸本但要M",
+      "intent": {
+        "deliveryType": "PHYSICAL",
+        "maxPrice": "100",
+        "currency": "CNY",
+        "searchTerms": [],
+        "categoryKeywords": [
+          "纸质笔记本"
+        ],
+        "requiredColors": [],
+        "excludedColors": [],
+        "requiredFabrics": [],
+        "excludedFabrics": [],
+        "requiredSize": "M",
+        "needsClarification": false
+      },
+      "relevanceBySkuCode": {},
+      "expectedEmpty": true,
+      "annotationNote": "根据已确认测试资料与请求硬约束，所列SKU为二级相关；其余为0。"
+    },
+    {
+      "id": "h12",
+      "split": "heldout",
+      "engineeringText": "需求不明先追问",
+      "intent": {
+        "deliveryType": "UNKNOWN",
+        "maxPrice": null,
+        "currency": "CNY",
+        "searchTerms": [],
+        "categoryKeywords": [],
+        "requiredColors": [],
+        "excludedColors": [],
+        "requiredFabrics": [],
+        "excludedFabrics": [],
+        "requiredSize": "",
+        "needsClarification": true
+      },
+      "relevanceBySkuCode": {},
+      "expectedEmpty": true,
+      "annotationNote": "根据已确认测试资料与请求硬约束，所列SKU为二级相关；其余为0。"
+    }
+  ]
+}
