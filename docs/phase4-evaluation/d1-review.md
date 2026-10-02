@@ -76,3 +76,5 @@ InnoDB 明确记录 `WE ROLL BACK TRANSACTION (1)`。这证明互等为 user →
 5. Outbox 故障回滚与先建立旧 RR snapshot 的测试仍须通过；不得降隔离级别、关闭外键或删除竞争用例规避本次真实失败。
 
 本节覆盖此前“没有已知未修阻断”的中间判断：目前 D1 有已证实的 MySQL 阻断，Backend 正在修复，尚无修复后运行结论。
+
+QA 随后只读 Backend 当前修复 diff：claim 调整为 order → app_user → 当前权益/支付/售后，再操作领取键；并未删除账户级幂等互斥。新定序 FK 测试先由退款事务持有 order，再等待领取进入 order 锁查询，最后插入售后；旧实现在这一时刻已经持有 user X，可触发原循环，新顺序则没有提前持 user。测试仍只把业务 Conflict 视为败方，不捕获数据库锁错误。同账号两不同订单同 key 竞争断言最终键记录 1、CLAIMED 权益 1。以上说明修复方向与新增覆盖符合不变量；最终提交和真实 MySQL 复验结果仍待 Lead，不以静态 diff 宣称修复通过。
