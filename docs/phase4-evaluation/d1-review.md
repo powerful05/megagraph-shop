@@ -1,6 +1,6 @@
 # 4D1 数字文件纵切片独立审查
 
-状态：冻结合同已读，旧链路风险准备完成；新实现与验收尚未得出结论。
+状态：真实 MySQL 专项出现领取/退款申请死锁，D1 未验收；等待锁顺序修复及相称复验。此前 H2 通过不能替代本次失败。
 
 审查依据是 Lead integration 的 `docs/PHASE_4_D1_CONTRACT.md` v1 与真实源码。本文区分静态判断、自动化运行证据和 Lead 执行的 MySQL/浏览器证据，不将计划或测试方法名算作验收通过。
 
@@ -53,3 +53,26 @@ Backend `d768099` 最新专项报告为 15 tests、0 failures、0 errors、0 ski
 ## 结论
 
 尚不能宣布 D1 通过。当前产出为旧领域边界核实与具体审查入口；待 Backend/Frontend 的实现与运行证据到位后更新。本次准备不运行付费模型、修改业务或重复充分完成的 4A/B/C 验证。
+
+## 真实 MySQL 失败与独立锁诊断
+
+Lead 的 `apps/backend/var/phase4-evidence/mg_p4_digital_20261002_204903_225214.log`：`MySqlDigitalDeliveryTest` 共 20 tests、0 failures、1 error、0 skipped，失败方法 `concurrentPurchaseIdempotencyAndClaimRefundSerialize`。日志 SQL Error 1213 / SQLState 40001，领取在取得 `sales_order FOR UPDATE` 时收到 CannotAcquireLockException。原始失败请求 dump 属于受保护中间日志，本文只保存无认证头的诊断事实。
+
+QA 随后只读 `SHOW ENGINE INNODB STATUS`，验证 latest deadlock 仍属于同一 schema，并提取锁类型。没有创建、重置或写入数据库，没有运行 Maven。
+
+| 2026-10-02 20:49:30 UTC，schema mg_p4_digital_20261002_204903_225214 | 已持有 | 等待 | 直接证据 |
+| --- | --- | --- | --- |
+| 领取 tx 80896 | app_user PRIMARY X record lock | sales_order PRIMARY X record lock，订单 #21 | 当前 SQL `SELECT ... FROM sales_order WHERE id=21 FOR UPDATE` |
+| 退款申请 tx 80897 | sales_order PRIMARY X record lock，订单 #21 | app_user PRIMARY S record lock | 当前 SQL `INSERT INTO after_sale_request ... order_id=21,user_id=2` |
+
+InnoDB 明确记录 `WE ROLL BACK TRANSACTION (1)`。这证明互等为 user → order 与 order → user，并非仅凭 Java 可见的 entitlement/payment 顺序推测。源码中 `claim` 显式先锁 app_user；`AfterSaleService.request` 先锁 order 后插入售后。V4 的 `fk_after_sale_user` 要检查 app_user，加入隐式 S record lock；此规则与 [MySQL 8.4 官方锁说明](https://dev.mysql.com/doc/refman/8.4/en/innodb-locks-set.html) 一致。
+
+修复核对不变量：
+
+1. 破除上述循环；如果保留 claim 的账户互斥，所有相关取得已有订单的路径不能 user → order 与 order → user 混用。也可去除此广域账户锁，但要依赖领取键唯一约束并正确处理并发失败，不能丢掉账号级幂等。
+2. claim 与退款申请仍在同一个 order 写锁内验证 current entitlement/current售后，成功结果只允许 CLAIMED 且无阻塞售后，或 AVAILABLE 且 REQUESTED；不得同时 CLAIMED 与 REQUESTED。
+3. 同账号不同订单使用同一 claim key 只允许一份键记录和相应领取，败方明确冲突并完整回滚；同订单同键重放不重复权益事件或延长 expiresAt。
+4. CannotAcquireLockException/Deadlock 不能被改成业务 Conflict 以使既有 XOR 断言表面通过；需要实际无数据库锁错误，并检查最终权益、售后、领取键及 Outbox。
+5. Outbox 故障回滚与先建立旧 RR snapshot 的测试仍须通过；不得降隔离级别、关闭外键或删除竞争用例规避本次真实失败。
+
+本节覆盖此前“没有已知未修阻断”的中间判断：目前 D1 有已证实的 MySQL 阻断，Backend 正在修复，尚无修复后运行结论。
