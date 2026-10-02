@@ -37,3 +37,8 @@ B/C离线K5候选20仅评测参数，消费者既有结果上限3/候选50不无
 
 4A Frontend Worker edfeeca已review并cherry-pick为fe01fe6；7文件均在批准目录。Worker typecheck/build及domain-types7项通过，待最终组合browser。后端compile/lifecycle兼容测试通过，Lead审查发现租约耗尽DEAD_LETTER缺Outbox，已通知Worker补充及配置guard/回滚证据。目录所有权仍在各Worker，Lead不改apps/backend/frontend。
 4D1预备契约已归档PHASE_4_D1_CONTRACT.md，仅准备未实施；4A验收与B/C裁决后推进。
+
+4A审核修复：租约耗尽DEAD_LETTER与领取RUNNING写对应Outbox；不支持真实视觉Provider配置明确拒绝。MediaCleanup改独立JDBC/LocalMediaStorage，不初始化HTTP/seed/调度任务。Frontend83bd394已集成为fc404a3，未知耗时null显示未提供；全attempt历史UI补充进行中。
+MySQL preview底库8.4.11，V9基线users2/products65/orders0/sessions2/outbox65；安全统计保存demo-v9-before-upgrade.txt。新的MySqlIngestionTest与MySqlPhase4UpgradeTest由Backend编写，Lead待交接执行，不将条件skip当通过。
+
+Frontend ff8dd1f全attempt历史按需查看已集成为0350290；typecheck/build通过（Worker）。QA 9bccb7评测14文件已review集成为eaf6edc，查询/快照/基线摘要永久保存docs/phase4-evaluation。B/C分别输入不足商业准入待验证，非Milvus/Neo4j实现验收。保留Recall0.747475/NDCG0.853817；三MySQL JVM稳定，207当前GET回查无过滤；内核与目录HTTP延迟分开。v1标注Recall提升理论上限0.070707低于冻结0.10，样本不适合准入比较，保留门槛不改/不造v2。第三方模型0新增调用。
