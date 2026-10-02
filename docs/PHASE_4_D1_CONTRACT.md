@@ -31,3 +31,5 @@ ShopCapabilities新增digitalDeliveryAvailable，真实guideAvailable仅文本�
 ## DTO批准补充
 
 DeliveryOfferResponse含merchantName（当前商家事实）；status DRAFT/PUBLISHED/OFF_SHELF、confirmedVersion nullable、testOnly=true、availabilityHours=24。OrderResponse.delivery含offerId/offerVersion/title/description/unitPrice/currency/assetVersion/assetHash/deliveryTerms/refundPolicy/availabilityHours，entitlement nullable {id,status AVAILABLE/CLAIMED/REVOKED,availableAt,expiresAt,claimedAt nullable,revokedAt nullable}；服务端可增加claimAvailable/downloadAvailable实时资格字段，不能仅客户端决定。Claim返回OrderResponse。
+
+GuideChatResult.responseSource追加TEXT_MODEL/JAVA_DIGITAL/NO_MODEL，旧历史null默认TEXT_MODEL；无offer数字回复仍JAVA_DIGITAL。前端按每条回复来源显示真实状态，不凭返回供给数量或全局模型可用性推断本次调用。

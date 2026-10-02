@@ -62,3 +62,5 @@ Frontend ff8dd1f全attempt历史按需查看已集成为0350290；typecheck/buil
 D1契约补充：items.expectedOfferVersion必填，服务端锁当前offer后版本不符409要求重新确认；避免顾客看到旧价却被新价下单。幂等hash含展示版本，同载荷重放维持原快照。Backend采用JDBC数字表参与既有JPA事务，必须故障回滚证明；QA已指出MySQL RR下旧快照问题，锁ID后普通查询不能当current-read，领取/售后写守卫与购价读取须锁查询当前行。
 
 4A独立维护CLI实跑：隔离synthetic fixture schema mg_p4_cleanup_20261002_203225_085303，仅两张测试引用表与专属测试目录；打包PropertiesLauncher实际执行exit0，旧孤立文件删除1，job引用/product引用及24h内无引用文件保留。没有读取/删除Demo媒体，未启HTTP/Flyway/seed。4a-cleanup-cli.json归档；此不是全迁移验收。浏览器重开时账号连续对话和两单终态仍从MySQL恢复，补4a-physical-orders-refresh.jpg；无新增模型调用。
+
+D1前端aa298a2已审阅集成为a5608ce；消费者/商家typecheck与productionbuild通过，旧shared7项未冒称数字领域验收。网络下单未知保存原account+offer key/payload，先重放核对而不换键重复购买。来源修复9604b08单独集成：GuideReply.responseSource TEXT_MODEL/JAVA_DIGITAL/NO_MODEL兼容旧历史，数字空结果仍不误标文本模型；真实模型能力徽标和实际回复来源分开。后端首轮H2数字10项通过，正在补MySQL定序竞争/Outbox完整回滚并交接；尚不标D1验收完成。
