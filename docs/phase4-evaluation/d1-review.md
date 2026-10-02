@@ -1,6 +1,6 @@
 # 4D1 数字文件纵切片独立审查
 
-状态：真实 MySQL 专项出现领取/退款申请死锁，D1 未验收；等待锁顺序修复及相称复验。此前 H2 通过不能替代本次失败。
+状态：领取/退款申请死锁已修复，真实 MySQL 数字专项 22/22 通过，根 pnpm verify 通过。桌面浏览器到领取/实际下载与正常 Session 隔离已复核；浏览器未领取退款/刷新恢复、小屏及减少动态仍待 Lead 完成，D1 尚未整体验收。下文早期审查与失败保留为历史证据，当前结论以“修复后证据”节为准。
 
 审查依据是 Lead integration 的 `docs/PHASE_4_D1_CONTRACT.md` v1 与真实源码。本文区分静态判断、自动化运行证据和 Lead 执行的 MySQL/浏览器证据，不将计划或测试方法名算作验收通过。
 
@@ -8,7 +8,7 @@
 
 基线 `b53f578`：`ChannelEventService.processPayment` 的锁顺序为 payment → order，成功后在同事务更新支付、订单、库存预留和 Outbox；`processRefund` 为 payment → refund → order → afterSale，成功后同事务更新这些聚合。`AfterSaleService.approve` 为 payment → order → afterSale；`request`、`reject` 以 order 锁串行。`OrderMapper` 分别读取库存、订单行、物流、退款，数字订单必须明确 deliveryType 与 purchase，不能用无库存的实物订单行表达。
 
-claim 应使用 order → entitlement，并普通读取 payment 的当前状态；不要在持有 order 后再获取 payment 写锁。request 在相同 order 写锁内拒绝已领取权益；claim 在此锁内拒绝 REQUESTED、REFUND_PROCESSING、REFUND_FAILED。这样领取和退款申请只有一个可获准，不会同时下载与退款。拒绝售后后可恢复领取，但不能延长 24 小时期限。
+基于旧锁顺序，首轮曾建议 claim 只以 order 串行且避免反向获取 payment；最终实现选择将付款/退款/取消/超时统一 order 优先，再锁其资源，避免混用。request 在相同 order 写锁内拒绝已领取权益；claim 在此锁内拒绝 REQUESTED、REFUND_PROCESSING、REFUND_FAILED。这样领取和退款申请只有一个可获准，不会同时下载与退款。拒绝售后后可恢复领取，但不能延长 24 小时期限。
 
 `InventoryReservationService` 对无 stock_reservation 的订单为空操作，数字订单应断言根本不新增 SKU、库存预留或物流。现有订单有用户与幂等键唯一约束，数字创建要处理同用户同键与已有实物订单的冲突，不能误返回另一个交付类型。
 
@@ -16,17 +16,17 @@ claim 应使用 order → entitlement，并普通读取 payment 的当前状态�
 
 | 范围 | 必须确认的行为 | 足以证明的证据 | 当前结果 |
 | --- | --- | --- | --- |
-| 供给隔离 | OWNER/EDITOR 编辑，发布角色明确；跨商家拒绝 | Controller/权限源码 + Session 测试 | 待实现审查 |
-| 公开事实 | 确认版本、正价、商家 ACTIVE、asset 有效；编辑撤销确认 | Guard 源码 + 上下架/编辑测试 | 待实现审查 |
-| 创建幂等 | 用户级键与载荷 hash；并发仅一 order/payment/purchase，异载荷明确冲突 | 唯一索引与事务边界 + MySQL 并发测试 | 待实现审查 |
-| 快照 | 价格、offer/asset 版本/hash、退款与期限约定冻结；资产归属不可穿透 | purchase 内容 + 改价/换版本后下载旧快照测试 | 待实现审查 |
-| 支付权益 | 同回调事务仅一 AVAILABLE；失败/取消/过期不产生 | 回调源码 + 重复/乱序/异常 Outbox 回滚断言 | 待实现审查 |
-| 领取退款互斥 | CLAIMED 拒退款；阻塞售后拒领；拒绝后恢复 | 统一 order 锁 + MySQL 竞争，且完整终态断言 | 待实现审查 |
-| 下载权限 | 匿名/他人/未领/过期/撤销拒绝；已领所属用户按快照读取 | HTTP Session 测试 + header/bytes/hash 断言 | 待实现审查 |
-| 回滚 | 创建/领取/支付/退款事件写失败不留下业务半态 | fault injection + DB 状态及 Outbox 计数断言 | 待实现审查 |
-| 导购事实 | 仅当前公开数字 offer；数字意图没有供给不捏造；旧历史兼容 | Java 当前重查源码 + GuideChatResult 历史读取测试 | 待实现审查 |
-| 浏览器 | 对话卡片→详情→显式购买→Mock支付→领取→下载/刷新；待退款禁领 | Lead 真实 MySQL 浏览器记录/截图/下载 hash | 待 Lead 验证 |
-| 实物回归 | 原购物袋、跨商家拆单、支付/退款不变 | 相称现有自动化与真实浏览器 | 待 Lead 验证 |
+| 供给隔离 | OWNER/EDITOR 编辑，发布角色明确；跨商家拒绝 | Controller/权限源码 + 身份测试 | MySQL rolesAndMerchantIsolation 已过 |
+| 公开事实 | 确认版本、正价、商家 ACTIVE、asset 有效；编辑撤销确认 | Guard 源码 + 上下架/编辑测试 | MySQL 版本/公开专项与商家发布浏览器已过 |
+| 创建幂等 | 用户级键与载荷 hash；并发仅一 order/payment/purchase，异载荷明确冲突 | 唯一索引与事务边界 + MySQL 并发测试 | MySQL 并发、双向类型冲突、canonical hash 已过 |
+| 快照 | 价格、offer/asset 版本/hash、退款与期限约定冻结；资产归属不可穿透 | purchase 内容 + 改价/换版本后下载旧快照测试 | MySQL 快照与 RR 当前资产已过；Session 实际 bytes 匹配；变更后旧单下载直接证据待补 |
+| 支付权益 | 同回调事务仅一 AVAILABLE；失败/取消/过期不产生 | 回调源码 + 重复/乱序/异常 Outbox 回滚断言 | MySQL 不同事件重复/终态不发/回滚已过 |
+| 领取退款互斥 | CLAIMED 拒退款；阻塞售后拒领；拒绝后恢复 | 统一 order 锁 + MySQL 竞争，且完整终态断言 | MySQL FK 定序/旧快照/退款各态已过；浏览器未领退款恢复待补 |
+| 下载权限 | 匿名/他人/未领/过期/撤销拒绝；已领所属用户按快照读取 | HTTP Session 测试 + header/bytes/hash 断言 | MySQL 已过；正常 Session owner200/他人404/匿名401、bytes/hash/header 已核 |
+| 回滚 | 创建/领取/支付/退款事件写失败不留下业务半态 | fault injection + DB 状态及 Outbox 计数断言 | MySQL 五类 Outbox 回滚与败方键/事件零已过 |
+| 导购事实 | 仅当前公开数字 offer；数字意图没有供给不捏造；旧历史兼容 | Java 当前重查源码 + GuideChatResult 历史读取测试 | MySQL 历史/NO_MODEL 已过；无模型统一数字对话 Lead 浏览器记录已查 |
+| 浏览器 | 对话卡片→详情→显式购买→Mock支付→领取→下载/刷新；待退款禁领 | Lead 真实 MySQL 浏览器记录/截图/下载 hash | 领取/实际下载桌面证据已查；退款、恢复、小屏/减少动态待 Lead |
+| 实物回归 | 原购物袋、跨商家拆单、支付/退款不变 | 相称现有自动化与真实浏览器 | 根 verify Commerce15/CrossMerchant6 已过；4A 实物浏览器已有独立证据 |
 
 ## 首轮代码审查反馈（正在实现，尚未定最终缺陷）
 
@@ -52,7 +52,7 @@ Backend `d768099` 最新专项报告为 15 tests、0 failures、0 errors、0 ski
 
 ## 结论
 
-尚不能宣布 D1 通过。当前产出为旧领域边界核实与具体审查入口；待 Backend/Frontend 的实现与运行证据到位后更新。本次准备不运行付费模型、修改业务或重复充分完成的 4A/B/C 验证。
+尚不能宣布 D1 整体通过：MySQL 与根构建已过，已核桌面领取下载，浏览器退款恢复、小屏/减少动态及变更后旧单下载直接证据尚待补。本次 QA 只读取源码、报告、截图与本地实际下载文件，不运行模型、数据库写或 Maven。
 
 ## 真实 MySQL 失败与独立锁诊断
 
@@ -75,6 +75,18 @@ InnoDB 明确记录 `WE ROLL BACK TRANSACTION (1)`。这证明互等为 user →
 4. CannotAcquireLockException/Deadlock 不能被改成业务 Conflict 以使既有 XOR 断言表面通过；需要实际无数据库锁错误，并检查最终权益、售后、领取键及 Outbox。
 5. Outbox 故障回滚与先建立旧 RR snapshot 的测试仍须通过；不得降隔离级别、关闭外键或删除竞争用例规避本次真实失败。
 
-本节覆盖此前“没有已知未修阻断”的中间判断：目前 D1 有已证实的 MySQL 阻断，Backend 正在修复，尚无修复后运行结论。
+本节曾覆盖此前“没有已知未修阻断”的中间判断；该 MySQL 阻断随后按下节证据修复，失败记录继续保留。
 
 QA 随后只读 Backend 当前修复 diff：claim 调整为 order → app_user → 当前权益/支付/售后，再操作领取键；并未删除账户级幂等互斥。新定序 FK 测试先由退款事务持有 order，再等待领取进入 order 锁查询，最后插入售后；旧实现在这一时刻已经持有 user X，可触发原循环，新顺序则没有提前持 user。测试仍只把业务 Conflict 视为败方，不捕获数据库锁错误。同账号两不同订单同 key 竞争断言最终键记录 1、CLAIMED 权益 1。以上说明修复方向与新增覆盖符合不变量；最终提交和真实 MySQL 复验结果仍待 Lead，不以静态 diff 宣称修复通过。
+
+## 修复后证据（已独立读取）
+
+Backend 修复 `f5225a3` 集成为 `563f571`。固定日志 `apps/backend/var/phase4-evidence/mg_p4_digital_20261002_205905_451630.log` 证明 MySQL 8.4.11、空 schema V1–V11 全迁移、MySqlDigitalDeliveryTest 22 tests/0 failures/0 errors/0 skipped、BUILD SUCCESS，结束 2026-10-02 20:59:35 UTC。已读新增 FK 定序测试真实 repository delegate、败方领取键与 CLAIMED Outbox 均零，和不同订单同 key 仅一份权益的断言；没有吞数据库异常或降隔离。
+
+根 `pnpm verify` 固定日志 `d1-integration-verify.log` 的命令链为 typecheck → build → test:backend → package:backend；商家与消费者类型检查和 production build 完成，后端共 239 tests，180 执行通过、59 条件跳过、0 failures/errors，测试与打包分别 BUILD SUCCESS。59 跳过包含未设置 MySQL 环境的专项，不能算作真实 MySQL 通过；当前 target Surefire XML 已被这个普通轮次覆盖为条件 skip，真实 MySQL 应引用前述固定 schema 日志。
+
+正常 Session 摘要 `d1-download-session-check.json`：order #3、offer #1/v2、12.90 CNY、asset v1、权益 #1 CLAIMED。QA 实读 Downloads 中 `megagraph-test-file-order-3.txt` 与第二次保存的 `(1)` 文件，均为 248 bytes，均含自建测试标识；实际 SHA-256 均为 `3fe446074ea9314be1e9776e88c5eb1fdff616dcd8fce05462d142b6adecaf1a`，与 purchase.assetHash 一致。HTTP header 为 text/plain;charset=UTF-8、private/no-store、attachment 安全文件名、nosniff；owner200、他人404、匿名401、已领退款409。repeatBefore/AfterFirst/AfterSecond 三份 id/expiresAt/claimedAt 完全相同，两次重领200，期限没有延长。
+
+QA 还实际查看 `d1-claimed-digital-order.jpg`：数字权益已领取、文件 v1、购买快照 v2、12.9 CNY、截止 2026/10/04 04:55 北京时间与 UTC expiresAt 对应、可下载、下载请求提示。统一 JAVA_DIGITAL 对话→显式买→Mock 支付→键盘 Enter 领取由 Lead 操作记录提供，QA 没有自行控制浏览器或重复执行。无模型能力文案修复 `1bee724` 和 digital server hint/售后/到期守卫已静态复核。
+
+当前范围结论：本次已证 MySQL 死锁阻断修复，数字核心、根构建与桌面实际下载已过；不冒称浏览器退款恢复、小屏/减少动态或 D1 整体完成。变更 offer 后旧单下载原 hash 的直接 Session 证据已请求 Lead 补充，避免只凭两个不同测试方法推断完整快照行为。
