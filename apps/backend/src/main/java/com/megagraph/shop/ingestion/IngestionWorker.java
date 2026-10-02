@@ -12,6 +12,8 @@ public class IngestionWorker {
  private final MediaStorage storage;
  private final boolean enabled;
  private final long timeoutMs;
+ private final java.util.concurrent.atomic.AtomicBoolean scanning=new java.util.concurrent.atomic.AtomicBoolean();
+ private final ExecutorService scans=Executors.newSingleThreadExecutor(Thread.ofPlatform().daemon().name("ingestion-scan").factory());
  private final ExecutorService calls=new ThreadPoolExecutor(2,2,0,TimeUnit.MILLISECONDS,new ArrayBlockingQueue<>(2),Thread.ofPlatform().daemon().name("ingestion-provider-",0).factory(),new ThreadPoolExecutor.AbortPolicy());
  public IngestionWorker(IngestionService service,DraftGenerator generator,MediaStorage storage,
   @Value("${app.ingestion.worker-enabled:true}") boolean enabled,
@@ -22,7 +24,18 @@ public class IngestionWorker {
   this.service=service;this.generator=generator;this.storage=storage;this.enabled=enabled;this.timeoutMs=timeoutMs;
  }
  @Scheduled(fixedDelayString="${app.ingestion.scan-ms:500}",initialDelayString="${app.ingestion.initial-delay-ms:1000}")
- public void scheduled() { if(enabled) runOnce(); }
+ public void scheduled() {
+  // Dispatch promptly: the application's existing payment/expiry scheduler must never wait for AI.
+  if(enabled && scanning.compareAndSet(false,true)) {
+   try {
+    scans.execute(() -> {
+     try { runOnce(); }
+     catch(RuntimeException e) { org.slf4j.LoggerFactory.getLogger(IngestionWorker.class).warn("Ingestion scan unavailable; persisted jobs remain recoverable"); }
+     finally { scanning.set(false); }
+    });
+   } catch(RejectedExecutionException e) { scanning.set(false); }
+  }
+ }
  public boolean runOnce() {
   var claim=service.claim(); if(claim==null)return false;
   long start=System.nanoTime();
@@ -49,5 +62,5 @@ public class IngestionWorker {
   return true;
  }
  private long elapsed(long start){return TimeUnit.NANOSECONDS.toMillis(System.nanoTime()-start);}
- @PreDestroy void close(){calls.shutdownNow();}
+ @PreDestroy public void close(){scans.shutdownNow();calls.shutdownNow();}
 }

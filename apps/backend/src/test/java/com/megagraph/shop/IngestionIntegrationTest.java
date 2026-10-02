@@ -79,6 +79,20 @@ class IngestionIntegrationTest {
   assertThat(worker.runOnce()).isFalse();
   assertThatThrownBy(()->service.retry(actor,q.id(),done.version())).isInstanceOf(ConflictException.class);
  }
+ @Test void scheduledDispatchDoesNotBlockExistingBusinessScheduler() throws Exception {
+  var q=create("success");var started=new CountDownLatch(1);var release=new CountDownLatch(1);
+  org.mockito.Mockito.doAnswer(call -> {
+   started.countDown();if(!release.await(10,TimeUnit.SECONDS))throw new IllegalStateException("Test provider latch expired");return call.callRealMethod();
+  }).when(generator).generate(org.mockito.ArgumentMatchers.any(DraftInput.class));
+  var isolated=new IngestionWorker(service,generator,storage,true,5000,"mock");var caller=Executors.newSingleThreadExecutor();
+  try {
+   var dispatched=caller.submit(()->isolated.scheduled());assertThat(started.await(5,TimeUnit.SECONDS)).isTrue();
+   dispatched.get(1,TimeUnit.SECONDS); // The provider is still blocked; scheduler invocation has returned.
+   assertThat(state(q.id()).status()).isEqualTo("RUNNING");
+   isolated.scheduled();assertThat(state(q.id()).attempt()).isEqualTo(1);
+   release.countDown();org.awaitility.Awaitility.await().atMost(Duration.ofSeconds(3)).until(()->state(q.id()).status().equals("SUCCEEDED"));
+  } finally {release.countDown();isolated.close();caller.shutdownNow();}
+ }
  @Test void concurrentSameKeyHasOneJobAndOneStoredInputWhileDifferentPayloadConflicts() throws Exception {
   Set<String> filesBefore=new HashSet<>(storage.keysOlderThan(Instant.now().plusSeconds(1)));
   String key=UUID.randomUUID().toString(); var pool=Executors.newFixedThreadPool(6);var latch=new CountDownLatch(1);
