@@ -8,6 +8,9 @@ import com.megagraph.shop.api.ReservationResponse;
 import com.megagraph.shop.api.RefundResponse;
 import com.megagraph.shop.api.ShipmentResponse;
 import org.springframework.stereotype.Component;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.megagraph.shop.api.SupplyDetails;
 
 @Component
 public class OrderMapper {
@@ -18,6 +21,7 @@ public class OrderMapper {
     private final ShipmentRepository shipments;
     private final AfterSaleRequestRepository afterSales;
     private final RefundOrderRepository refunds;
+    private final ObjectMapper json;
 
     public OrderMapper(
             SalesOrderItemRepository items,
@@ -25,7 +29,8 @@ public class OrderMapper {
             StockReservationRepository reservations,
             ShipmentRepository shipments,
             AfterSaleRequestRepository afterSales,
-            RefundOrderRepository refunds
+            RefundOrderRepository refunds,
+            ObjectMapper json
     ) {
         this.items = items;
         this.payments = payments;
@@ -33,6 +38,7 @@ public class OrderMapper {
         this.shipments = shipments;
         this.afterSales = afterSales;
         this.refunds = refunds;
+        this.json = json;
     }
 
     public OrderResponse toResponse(SalesOrder order) {
@@ -102,7 +108,9 @@ public class OrderMapper {
                                 value.getUnitPrice(),
                                 value.getCurrency(),
                                 value.getQuantity(),
-                                value.getLineAmount()
+                                value.getLineAmount(),
+                                value.getProductVersion(),
+                                readSupply(value.getSupplyDetails())
                         ))
                         .toList(),
                 reservations.findByOrderIdOrderByIdAsc(order.getId()).stream()
@@ -111,7 +119,15 @@ public class OrderMapper {
                                 value.getQuantity(),
                                 value.getStatus().name()
                         ))
-                        .toList()
+                        .toList(),
+                order.getCheckoutGroupId(),
+                order.isTestOrder()
         );
+    }
+
+    private SupplyDetails readSupply(String value) {
+        if (value == null) return null;
+        try { return json.readValue(value, SupplyDetails.class); }
+        catch (JsonProcessingException exception) { throw new IllegalStateException("Invalid order supply snapshot", exception); }
     }
 }

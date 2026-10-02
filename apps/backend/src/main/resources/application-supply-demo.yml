@@ -1,0 +1,4 @@
+app:
+  test-supply:
+    enabled: true
+    asset-dir: ${APP_TEST_SUPPLY_ASSET_DIR}

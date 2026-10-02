@@ -1,4 +1,4 @@
-import type { AuthMe, Category, IngestionJob, MerchantProduct, SalesOrder } from '@megagraph/domain-types'
+import type { AuthMe, Category, IngestionJob, MerchantProduct, SalesOrder, SupplyDetails } from '@megagraph/domain-types'
 
 const API_BASE = ''
 
@@ -157,6 +157,7 @@ export const merchantApi = {
     credentials: Credentials,
     product: MerchantProduct,
     form: { title: string; subtitle: string; categoryId: number; code: string; name: string; price: number; stock: number },
+    supplyDetails: SupplyDetails | null,
   ) {
     return request<MerchantProduct>(`/api/merchant/v1/products/${product.id}/draft`, credentials, {
       method: 'PATCH',
@@ -166,6 +167,7 @@ export const merchantApi = {
         subtitle: form.subtitle,
         categoryId: form.categoryId,
         sku: { code: form.code, name: form.name, price: form.price, stock: form.stock },
+        supplyDetails,
       }),
     })
   },

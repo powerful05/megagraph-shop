@@ -40,6 +40,14 @@ public class MediaService {
 
     @Transactional(readOnly = true)
     public MediaPayload loadPublicMedia(Long imageId) {
+        return loadPublicMedia(imageId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public MediaPayload loadPublicMedia(Long imageId, Integer width) {
+        if (width != null && width != 320 && width != 640 && width != 960) {
+            throw new com.megagraph.shop.shared.ValidationException("MEDIA_WIDTH_INVALID", "图片宽度须为320、640或960");
+        }
         ProductImage image = images.findById(imageId)
                 .orElseThrow(() -> new NotFoundException("MEDIA_NOT_FOUND", "图片不存在"));
         Product product = products.findById(image.getProductId())
@@ -49,7 +57,8 @@ public class MediaService {
         if (product.getPublishStatus() != com.megagraph.shop.catalog.PublishStatus.PUBLISHED) {
             throw new NotFoundException("MEDIA_NOT_FOUND", "图片不存在");
         }
-        return payload(image);
+        MediaPayload original = payload(image);
+        return width == null ? original : MediaPreview.resize(original, width);
     }
 
     private MediaPayload payload(ProductImage image) {

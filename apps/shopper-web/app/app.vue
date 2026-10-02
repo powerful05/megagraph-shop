@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { Plus, RefreshCw } from 'lucide-vue-next'
+import ProductImage from './components/ProductImage.vue'
 import type {
   MockPaymentResult,
+  OrderItem,
   PublicProduct,
   PublicSku,
   SalesOrder,
@@ -23,7 +26,7 @@ const { data: products, pending, error: catalogError, refresh } = await useFetch
   `${apiBase}/api/shop/v1/products`,
   { default: () => [] },
 )
-const { data: capabilities } = await useFetch<ShopCapabilities>(`${apiBase}/api/shop/v1/capabilities`, {
+const { data: capabilities, refresh: refreshCapabilities } = await useFetch<ShopCapabilities>(`${apiBase}/api/shop/v1/capabilities`, {
   default: () => ({ mockPaymentAvailable: false }),
 })
 const mockPaymentAvailable = computed(() => capabilities.value?.mockPaymentAvailable === true)
@@ -35,16 +38,20 @@ const credentials = reactive<ShopperCredentials>({
 const inviteCode = ref('')
 const displayName = ref('')
 const registering = ref(false)
-const chatDraft = ref('')
-const chatNotice = ref('')
+const catalogOpen = ref(false)
+const manualReduceMotion = ref(false)
+const systemReduceMotion = ref(false)
+const reduceMotion = computed(() => manualReduceMotion.value || systemReduceMotion.value)
+let motionPreference: MediaQueryList | null = null
+function syncMotionPreference() { systemReduceMotion.value = motionPreference?.matches ?? false }
 const checkout = reactive({
   recipientName: isDevelopment ? '示例顾客' : '',
   recipientPhone: isDevelopment ? '13800138000' : '',
   shippingAddress: isDevelopment ? '深圳市盐田区海景路 1 号' : '',
 })
 const connected = ref(false)
+const accountUserId = ref<number | null>(null)
 const loginOpen = ref(false)
-const reduceMotion = ref(false)
 const loginDialog = ref<HTMLElement | null>(null)
 const commerceDialog = ref<HTMLElement | null>(null)
 let dialogTrigger: HTMLElement | null = null
@@ -53,11 +60,31 @@ const busyAction = ref('')
 const ordersRefreshBusy = ref(false)
 const errorMessage = ref('')
 const notice = ref('')
+let noticeTimer: ReturnType<typeof setTimeout> | null = null
+watch(notice, value => {
+  if (noticeTimer) clearTimeout(noticeTimer)
+  noticeTimer = value ? setTimeout(() => { notice.value = ''; noticeTimer = null }, 6000) : null
+})
 const pollingMessage = ref('')
 const pollingTimedOut = ref(false)
 const cart = ref<ShoppingCart>({ cartId: 0, currency: null, estimatedTotal: 0, items: [] })
 const orders = ref<SalesOrder[]>([])
 const selectedSkuByProduct = reactive<Record<number, number>>({})
+const pendingGuideCart = ref<{ productId: number; skuId: number } | null>(null)
+watch(loginOpen, value => { if (!value && !connected.value) pendingGuideCart.value = null })
+const checkoutKey = ref<string | null>(null)
+watch(connected, value => { if (!value) checkoutKey.value = null })
+watch(() => JSON.stringify(checkout), () => { checkoutKey.value = null })
+const cartMerchantGroups = computed(() => [...new Set(cart.value.items.map(item => item.merchantId))].map(merchantId => {
+  const items = cart.value.items.filter(item => item.merchantId === merchantId)
+  return { merchantId, name: products.value.find(product => product.evidence.merchantId === merchantId)?.evidence.merchantName ?? `商家 #${merchantId}`,
+    items, total: items.reduce((sum, item) => sum + item.lineAmount, 0) }
+}))
+function merchantName(merchantId: number) {
+  return products.value.find(product => product.evidence.merchantId === merchantId)?.evidence.merchantName ?? `商家 #${merchantId}`
+}
+function orderSupplyItems(order: SalesOrder) { return order.items.filter(item => item.supplyDetails) }
+function sizeRowsForItem(item: OrderItem) { return item.supplyDetails?.sizeChart.filter(row => row.skuCode === item.skuCode) ?? [] }
 const refundReasons = reactive<Record<number, string>>({})
 const submittedPayments = reactive<Record<number, boolean>>({})
 
@@ -178,21 +205,29 @@ async function connectShopper() {
   await execute('login', async () => {
     await shopperApi.login(apiBase, credentials)
     credentials.password = ''
-    await loadPrivateState()
+    await loadPrivateState(true)
     notice.value = '顾客会话已建立'
+    const pending = pendingGuideCart.value
+    pendingGuideCart.value = null
+    if (pending) {
+      const current = await shopperApi.product(apiBase, pending.productId)
+      await addToCart(current, pending.skuId)
+    }
   })
 }
 
-async function loadPrivateState() {
-    const [nextCart, nextOrders] = await Promise.all([
+async function loadPrivateState(openCart = false) {
+    const [nextCart, nextOrders, me] = await Promise.all([
       shopperApi.cart(apiBase, credentials),
       shopperApi.orders(apiBase, credentials),
+      shopperApi.me(apiBase),
     ])
     cart.value = nextCart
     setOrders(nextOrders)
     connected.value = true
+    accountUserId.value = me.userId
     loginOpen.value = false
-    activePanel.value = nextCart.items.length > 0 ? 'cart' : null
+    activePanel.value = openCart && nextCart.items.length > 0 ? 'cart' : null
     schedulePolling(true)
 }
 
@@ -213,17 +248,14 @@ async function logoutShopper() {
     orderMutationVersion += 1
     ordersRequest = null
     connected.value = false
+    accountUserId.value = null
+    pendingGuideCart.value = null
     cart.value = { cartId: 0, currency: null, estimatedTotal: 0, items: [] }
     orders.value = []
     activePanel.value = null
     credentials.password = ''
     notice.value = '已退出登录'
   })
-}
-
-function submitChat() {
-  if (!chatDraft.value.trim()) return
-  chatNotice.value = '对话导购仍在开发中。这里不会生成模拟 AI 回答；你可以先浏览下方已公开商品。'
 }
 
 function openPanel(panel: CommercePanel) {
@@ -235,48 +267,63 @@ function openPanel(panel: CommercePanel) {
   if (panel === 'orders') void recoverOrderState()
 }
 
-async function addToCart(product: PublicProduct) {
+async function addToCart(product: PublicProduct, skuId?: number) {
   if (!connected.value) {
     loginOpen.value = true
     return
   }
-  const sku = chosenSku(product)
-  if (!sku) return
+  const sku = skuId === undefined ? chosenSku(product) : product.skus.find(item => item.id === skuId)
+  if (!sku) { errorMessage.value = '所选规格当前不可售，请重新查询'; return }
   const existing = cart.value.items.find(item => item.skuId === sku.id)
   const nextQuantity = (existing?.quantity ?? 0) + 1
   await execute(`add-${sku.id}`, async () => {
     cart.value = await shopperApi.setCartItem(apiBase, credentials, sku.id, nextQuantity)
+    checkoutKey.value = null
     activePanel.value = 'cart'
     notice.value = `${product.title} 已加入购物车`
   })
+}
+
+function addGuideProduct(product: PublicProduct, skuId: number) {
+  if (busyAction.value) return
+  if (!connected.value) {
+    pendingGuideCart.value = { productId: product.id, skuId }
+    loginOpen.value = true
+    return
+  }
+  void addToCart(product, skuId)
 }
 
 async function changeQuantity(skuId: number, quantity: number) {
   if (quantity < 1) return removeCartItem(skuId)
   await execute(`quantity-${skuId}`, async () => {
     cart.value = await shopperApi.setCartItem(apiBase, credentials, skuId, quantity)
+    checkoutKey.value = null
   })
 }
 
 async function removeCartItem(skuId: number) {
   await execute(`remove-${skuId}`, async () => {
     cart.value = await shopperApi.removeCartItem(apiBase, credentials, skuId)
+    checkoutKey.value = null
   })
 }
 
 async function createOrder() {
   await execute('checkout', async () => {
-    const order = await shopperApi.createOrder(
+    checkoutKey.value ??= crypto.randomUUID()
+    const group = await shopperApi.createCheckout(
       apiBase,
       credentials,
-      crypto.randomUUID(),
+      checkoutKey.value,
       checkout,
     )
     orderMutationVersion += 1
-    orders.value = [order, ...orders.value.filter(item => item.id !== order.id)]
+    orders.value = [...group.orders, ...orders.value.filter(item => !group.orders.some(order => order.id === item.id))]
+    checkoutKey.value = null
     cart.value = await shopperApi.cart(apiBase, credentials)
     activePanel.value = 'orders'
-    notice.value = `订单 ${order.orderNo} 已创建，库存已预占`
+    notice.value = `下单组 ${group.groupNo} 已创建，共 ${group.orders.length} 个试用子订单，库存分别预占`
     await refresh()
     schedulePolling(true)
   })
@@ -506,6 +553,9 @@ function handleDialogKeydown(event: KeyboardEvent) {
 }
 
 onMounted(() => {
+  motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)')
+  syncMotionPreference()
+  motionPreference.addEventListener('change', syncMotionPreference)
   shopperApi.onSessionExpired(() => {
     if (!connected.value) return
     cancelShopperRequests()
@@ -513,6 +563,7 @@ onMounted(() => {
     orderMutationVersion += 1
     ordersRequest = null
     connected.value = false
+    accountUserId.value = null
     activePanel.value = null
     orders.value = []
     cart.value = { cartId: 0, currency: null, estimatedTotal: 0, items: [] }
@@ -524,6 +575,8 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  motionPreference?.removeEventListener('change', syncMotionPreference)
+  if (noticeTimer) clearTimeout(noticeTimer)
   shopperApi.onSessionExpired(null)
   clearPollTimer()
   document.removeEventListener('visibilitychange', handleVisibilityChange)
@@ -533,63 +586,48 @@ onBeforeUnmount(() => {
 
 <template>
   <main :class="{ 'reduce-motion': reduceMotion }">
-    <nav class="nav-shell">
+    <nav class="nav-shell agent-nav">
       <a class="brand" href="#top" aria-label="MegaGraph Shop 首页">
         <span class="brand-mark" />
         MEGAGRAPH
       </a>
       <div class="nav-links">
-        <a href="#collection">新品</a>
-        <a href="#principle">原则</a>
+        <button type="button" :aria-pressed="catalogOpen" @click="catalogOpen = !catalogOpen">
+          {{ catalogOpen ? '返回对话' : '商品目录' }}
+        </button>
         <button type="button" @click="openPanel('orders')">
           订单<span v-if="actionableOrderCount">{{ actionableOrderCount }}</span>
         </button>
         <button class="cart-trigger" type="button" @click="openPanel('cart')">
           购物袋<span>{{ cartCount }}</span>
         </button>
+        <button class="account-trigger" type="button" @click="connected ? logoutShopper() : (loginOpen = true)">
+          {{ connected ? '退出' : '登录' }}
+        </button>
       </div>
     </nav>
 
-    <section id="top" class="hero">
-      <div class="hero-copy">
-        <p class="eyebrow">MEGAGRAPH / AI SUPERMARKET</p>
-        <h1>说出你想要的<br><em>穿搭感觉。</em></h1>
-        <p class="lede">一个入口，发现不同商家的女装基础款。AI 对话导购仍在开发中；现在可以先浏览已公开的商品。</p>
-        <form class="conversation-entry" @submit.prevent="submitChat">
-          <label for="style-prompt">描述你的需求</label>
-          <div class="conversation-input">
-            <input id="style-prompt" v-model="chatDraft" placeholder="例如：想找适合通勤的简约基础款" autocomplete="off" />
-            <button type="submit" aria-label="了解对话导购进度">↗</button>
-          </div>
-          <p v-if="chatNotice" class="conversation-notice" role="status">{{ chatNotice }}</p>
-          <p v-else class="conversation-hint">示例：周末咖啡馆穿搭 · 春秋通勤基础款 · 低饱和色系</p>
-        </form>
-        <div class="hero-actions">
-          <a class="primary-link" href="#collection">开始选购 <span>↘</span></a>
-          <button type="button" @click="connected ? openPanel('orders') : (loginOpen = true)">
-            {{ connected ? '查看我的订单' : '连接顾客账户' }}
-          </button>
-          <button v-if="connected" type="button" @click="logoutShopper">退出</button>
-          <button type="button" :aria-pressed="reduceMotion" @click="reduceMotion = !reduceMotion">
-            {{ reduceMotion ? '恢复动态效果' : '减少动态效果' }}
-          </button>
-        </div>
-      </div>
-      <div class="hero-object" aria-hidden="true">
-        <div class="orb orb-a" />
-        <div class="orb orb-b" />
-        <div class="wireframe" />
-        <span class="object-label">COMMERCE OBJECT / 002</span>
-      </div>
-    </section>
+    <AgentExperience
+      v-show="!catalogOpen"
+      id="top"
+      :model-available="capabilities?.guideAvailable === true"
+      :demo-catalog-available="capabilities?.demoCatalogAvailable === true"
+      :model-name="capabilities?.guideModelName ?? ''"
+      :cart-busy="Boolean(busyAction)"
+      :account-user-id="accountUserId"
+      :reduce-motion="reduceMotion"
+      :system-reduce-motion="systemReduceMotion"
+      @update:reduce-motion="manualReduceMotion = $event"
+      @add-to-cart="addGuideProduct"
+      @refresh-capabilities="refreshCapabilities()"
+    />
 
-    <section id="collection" class="collection-section">
+    <section v-if="catalogOpen" id="collection" class="collection-section live-catalog">
       <header class="section-header">
         <div>
-          <p class="eyebrow">LIVE CATALOG</p>
-          <h2>当前可售</h2>
+          <h2>商品目录 <span class="catalog-count">{{ products.length }} 件</span></h2>
         </div>
-        <button type="button" :disabled="pending" @click="refresh">{{ pending ? '同步中' : '刷新商品' }}</button>
+        <button type="button" :disabled="pending" @click="refresh"><RefreshCw :size="15" aria-hidden="true" />{{ pending ? '同步中' : '刷新商品' }}</button>
       </header>
 
       <div v-if="catalogError" class="state-panel">
@@ -605,14 +643,12 @@ onBeforeUnmount(() => {
       <div v-else class="product-grid">
         <article v-for="(product, index) in products" :key="product.id" class="product-card">
           <div class="product-media">
-            <img v-if="product.mainImageUrl" :src="imageUrl(product.mainImageUrl)" :alt="product.title" />
-            <div v-else class="image-placeholder">NO IMAGE</div>
+            <ProductImage :src="product.mainImageUrl ? imageUrl(product.mainImageUrl) : null" :alt="product.title" contain sizes="(max-width: 640px) 50vw, (max-width: 1100px) 33vw, 260px" />
             <span class="index">{{ String(index + 1).padStart(2, '0') }}</span>
-            <span class="stock-chip">{{ product.availableStock }} READY</span>
           </div>
           <div class="product-meta">
             <div>
-              <h3>{{ product.title }}</h3>
+              <h3 :title="product.title">{{ product.title }}</h3>
               <p>{{ product.subtitle }}</p>
             </div>
             <div class="price-block">
@@ -638,23 +674,11 @@ onBeforeUnmount(() => {
               :disabled="!product.skus.length || busyAction === `add-${chosenSku(product)?.id}`"
               @click="addToCart(product)"
             >
-              {{ busyAction === `add-${chosenSku(product)?.id}` ? '加入中…' : '加入购物袋' }}
-              <span>＋</span>
+              <Plus :size="16" aria-hidden="true" />{{ busyAction === `add-${chosenSku(product)?.id}` ? '加入中…' : '加购' }}
             </button>
           </div>
+          <details class="product-evidence-details"><summary>商品资料与规格</summary><ProductSupplyEvidence :product="product" /></details>
         </article>
-      </div>
-    </section>
-
-    <section id="principle" class="principle-section">
-      <p class="eyebrow">SYSTEM PRINCIPLE</p>
-      <p class="manifesto">AI 可以组织语言，<br>但价格、库存与订单状态<br><em>只相信交易事实。</em></p>
-      <div class="principle-grid">
-        <span>01 / VERIFIED CATALOG</span>
-        <span>02 / SERVER-SIDE PRICING</span>
-        <span>03 / RESERVED INVENTORY</span>
-        <span>04 / TRACEABLE FULFILLMENT</span>
-        <span>05 / REVERSIBLE TRANSACTION</span>
       </div>
     </section>
 
@@ -701,10 +725,12 @@ onBeforeUnmount(() => {
             <div v-if="cart.items.length === 0" class="drawer-empty">
               <span>EMPTY / 00</span>
               <h3>购物袋还是空的</h3>
-              <p>从当前可售商品中选择一件。当前购物袋仍限同一商家，跨商家拆单会在 3A 开放。</p>
+              <p>还没有选中的商品。</p>
             </div>
             <template v-else>
-              <article v-for="item in cart.items" :key="item.skuId" class="cart-line">
+              <section v-for="group in cartMerchantGroups" :key="group.merchantId" class="cart-merchant-group">
+                <h3>{{ group.name }} <small>{{ formatPrice(group.total, cart.currency ?? 'CNY') }}</small></h3>
+              <article v-for="item in group.items" :key="item.skuId" class="cart-line">
                 <div>
                   <span>{{ item.skuCode }}</span>
                   <h3>{{ item.productTitle }}</h3>
@@ -718,10 +744,11 @@ onBeforeUnmount(() => {
                 <strong>{{ formatPrice(item.lineAmount, item.currency) }}</strong>
                 <button class="text-button" type="button" @click="removeCartItem(item.skuId)">移除</button>
               </article>
+              </section>
               <footer class="cart-summary">
                 <div><span>预计合计</span><strong>{{ formatPrice(cart.estimatedTotal, cart.currency ?? 'CNY') }}</strong></div>
                 <p>提交订单时，后端会重新读取价格和库存；这里的金额不是交易事实。</p>
-                <p>当前仍是单商家购物袋；跨商家组合与拆单尚未开放。</p>
+                <p>{{ cartMerchantGroups.length }} 家商家，各自生成独立试用订单。</p>
               <button v-if="mockPaymentAvailable" type="button" @click="activePanel = 'checkout'">进入结算 <span>→</span></button>
               <p v-else>当前环境只开放选品与购物袋；订单提交和 Mock 支付暂未开放。</p>
               </footer>
@@ -734,6 +761,11 @@ onBeforeUnmount(() => {
               <span>{{ cartCount }} 件商品</span>
               <strong>{{ formatPrice(cart.estimatedTotal, cart.currency ?? 'CNY') }}</strong>
             </div>
+            <section v-for="group in cartMerchantGroups" :key="group.merchantId" class="checkout-merchant-group">
+              <h3>{{ group.name }} <small>{{ formatPrice(group.total, cart.currency ?? 'CNY') }}</small></h3>
+              <p v-for="item in group.items" :key="item.skuId">{{ item.productTitle }} · {{ item.skuName }} × {{ item.quantity }}</p>
+              <small>实物 · 独立子订单 · Mock 支付 · 不发货</small>
+            </section>
             <form @submit.prevent="createOrder">
               <label>收件人<input v-model="checkout.recipientName" required maxlength="80" /></label>
               <label>联系电话<input v-model="checkout.recipientPhone" required maxlength="32" /></label>
@@ -743,7 +775,7 @@ onBeforeUnmount(() => {
                 <p>此阶段不会调用真实支付渠道。仅在本地 Mock 环境可以创建订单并模拟支付结果。</p>
               </div>
               <button type="submit" :disabled="!mockPaymentAvailable || busyAction === 'checkout' || cart.items.length === 0">
-                {{ busyAction === 'checkout' ? '正在锁定库存…' : '创建订单并预占库存' }}
+                {{ busyAction === 'checkout' ? '正在锁定库存…' : `创建 ${cartMerchantGroups.length} 个试用子订单` }}
               </button>
             </form>
           </section>
@@ -770,8 +802,9 @@ onBeforeUnmount(() => {
                 <div>
                   <span>{{ order.orderNo }}</span>
                   <small>{{ formatDate(order.createdAt) }}</small>
+                  <small>{{ merchantName(order.merchantId) }}<template v-if="order.checkoutGroupId"> · 下单组 #{{ order.checkoutGroupId }}</template><template v-if="order.testOrder"> · 试用子订单</template></small>
                 </div>
-                <strong :class="`status-${order.status.toLowerCase()}`">{{ orderStatusLabel(order.status) }}</strong>
+                <strong :class="`status-${order.status.toLowerCase()}`">{{ order.testOrder && order.status === 'PAID' ? '模拟支付成功 · 不发货' : orderStatusLabel(order.status) }}</strong>
               </header>
               <div class="order-items">
                 <p v-for="item in order.items" :key="item.skuId">
@@ -779,6 +812,12 @@ onBeforeUnmount(() => {
                   <strong>{{ formatPrice(item.lineAmount, item.currency) }}</strong>
                 </p>
               </div>
+              <details v-for="item in orderSupplyItems(order)" :key="`evidence-${item.skuId}`" class="order-supply-snapshot">
+                <summary>{{ item.productTitle }} · 下单资料版本 {{ item.productVersion }}</summary>
+                <p>{{ item.supplyDetails?.color }} · {{ item.supplyDetails?.fabric }} · {{ item.supplyDetails?.fit }}</p>
+                <p v-for="row in sizeRowsForItem(item)" :key="row.skuCode">{{ row.sizeLabel }} · 成衣胸围 {{ row.chestCm }} cm · 衣长 {{ row.lengthCm }} cm</p>
+                <p>{{ item.supplyDetails?.measurementNote }}</p>
+              </details>
               <div class="order-facts">
                 <span>支付 / {{ paymentStatusLabel(order) }}</span>
                 <span>库存 / {{ reservationSummary(order) }}</span>

@@ -21,6 +21,8 @@ public record OrderResponse(
         ShipmentResponse shipment,
         AfterSaleResponse afterSale,
         List<OrderItemResponse> items,
-        List<ReservationResponse> reservations
+        List<ReservationResponse> reservations,
+        Long checkoutGroupId,
+        boolean testOrder
 ) {
 }

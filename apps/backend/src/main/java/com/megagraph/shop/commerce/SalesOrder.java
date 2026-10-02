@@ -26,6 +26,8 @@ public class SalesOrder {
     private Long userId;
     private Long merchantId;
     private String idempotencyKey;
+    private Long checkoutGroupId;
+    private boolean testOrder;
 
     @Enumerated(EnumType.STRING)
     private OrderStatus status;
@@ -83,6 +85,13 @@ public class SalesOrder {
         this.status = OrderStatus.PAID;
         this.paidAt = Instant.now();
     }
+
+    public void assignCheckout(Long groupId, boolean testOrder) {
+        this.checkoutGroupId = groupId;
+        this.testOrder = testOrder;
+    }
+    public Long getCheckoutGroupId() { return checkoutGroupId; }
+    public boolean isTestOrder() { return testOrder; }
 
     public void markShipped() {
         if (status != OrderStatus.PAID) {

@@ -11,10 +11,12 @@ public class ProductMapper {
 
     private final ProductImageRepository images;
     private final ProductSkuRepository skus;
+    private final ProductEvidenceMapper evidence;
 
-    public ProductMapper(ProductImageRepository images, ProductSkuRepository skus) {
+    public ProductMapper(ProductImageRepository images, ProductSkuRepository skus, ProductEvidenceMapper evidence) {
         this.images = images;
         this.skus = skus;
+        this.evidence = evidence;
     }
 
     public ProductResponse toMerchantResponse(Product product) {
@@ -48,8 +50,8 @@ public class ProductMapper {
                 product.getPublishStatus().name(),
                 product.getPublishedAt(),
                 imageResponses,
-                skuResponses
+                skuResponses,
+                evidence.map(product)
         );
     }
 }
-

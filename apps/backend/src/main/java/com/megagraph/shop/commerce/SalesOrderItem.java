@@ -24,6 +24,9 @@ public class SalesOrderItem {
     private String productTitle;
     private String skuCode;
     private String skuName;
+    private Long productVersion;
+    @Column(columnDefinition = "TEXT")
+    private String supplyDetails;
     private BigDecimal unitPrice;
 
     @Column(columnDefinition = "CHAR(3)", length = 3)
@@ -65,6 +68,13 @@ public class SalesOrderItem {
     public Long getId() {
         return id;
     }
+
+    public void captureSupply(com.megagraph.shop.catalog.Product product) {
+        this.productVersion = product.getVersion();
+        this.supplyDetails = product.getSupplyDetails();
+    }
+    public Long getProductVersion() { return productVersion; }
+    public String getSupplyDetails() { return supplyDetails; }
 
     public Long getProductId() {
         return productId;

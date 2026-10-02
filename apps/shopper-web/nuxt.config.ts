@@ -1,8 +1,9 @@
 const apiUpstream = process.env.NUXT_API_UPSTREAM ?? 'http://127.0.0.1:8080'
 
 export default defineNuxtConfig({
+  buildDir: process.env.NUXT_BUILD_DIR ?? '.nuxt',
   compatibilityDate: '2026-09-01',
-  devtools: { enabled: true },
+  devtools: { enabled: false },
   css: ['~/assets/main.css'],
   routeRules: {
     '/api/**': { proxy: `${apiUpstream}/api/**` },
@@ -15,9 +16,9 @@ export default defineNuxtConfig({
   app: {
     head: {
       htmlAttrs: { lang: 'zh-CN' },
-      title: 'MegaGraph Shop — 一个入口，发现适合你的穿搭',
+      title: 'MegaGraph Shop — AI 超市',
       meta: [
-        { name: 'description', content: '从一个对话入口发现不同商家的女装基础款。AI 导购仍在开发中，当前可浏览已公开商品。' },
+        { name: 'description', content: '从自然语言开始，与 MegaGraph AI 超市一起寻找适合的商品。' },
       ],
     },
   },

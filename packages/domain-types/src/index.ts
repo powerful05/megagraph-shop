@@ -12,6 +12,57 @@ export interface AuthMe {
 
 export interface ShopCapabilities {
   mockPaymentAvailable: boolean
+  guideAvailable?: boolean
+  demoCatalogAvailable?: boolean
+  guideModelName?: string
+}
+
+export interface GuideMessage {
+  role: 'user' | 'assistant'
+  content: string
+  displayedProductIds?: number[]
+}
+
+export type GuideDemoProductId = 'blue-shirt' | 'ivory-knit' | 'gray-cardigan'
+
+export interface GuideRecommendationBasis {
+  productId: number
+  productVersion: number | null
+  dataOrigin: 'MERCHANT' | 'LOCAL_TEST' | 'UNKNOWN'
+  facts: { key: string; label: string; value: string }[]
+  limitations: string[]
+}
+
+export interface GuideReply {
+  answer: string
+  products: PublicProduct[]
+  demoProductIds: GuideDemoProductId[]
+  advice: string
+  recommendationBasis: GuideRecommendationBasis[]
+}
+
+export interface GuideConversationSummary {
+  id: string
+  title: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface GuideTurnRequest {
+  requestId: string
+  conversationId: string
+  sequence: number
+  content: string
+  status: 'PENDING' | 'COMPLETED' | 'FAILED'
+  attempt: number
+  result: GuideReply | null
+  error: { code: string; message: string } | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface GuideConversationDetail extends GuideConversationSummary {
+  requests: GuideTurnRequest[]
 }
 
 export interface Category {
@@ -38,6 +89,39 @@ export interface ProductSku {
   status: 'ENABLED' | 'DISABLED'
 }
 
+export interface SupplySizeRow {
+  skuCode: string
+  sizeLabel: string
+  chestCm: number
+  lengthCm: number
+  shoulderCm: number | null
+  sleeveCm: number | null
+}
+
+export interface SupplyDetails {
+  profile: 'APPAREL' | 'GENERAL_PHYSICAL'
+  color: string
+  fabric: string
+  fit: string
+  seasons: string[]
+  scenarios: string[]
+  measurementNote: string
+  imageSourceNote: string
+  sizeChart: SupplySizeRow[]
+  specifications: { skuCode: string; name: string; value: string }[]
+}
+
+export interface ProductEvidence {
+  productVersion: number
+  merchantId: number
+  merchantName: string
+  deliveryType: 'PHYSICAL'
+  dataOrigin: 'MERCHANT' | 'LOCAL_TEST'
+  confirmationStatus: 'MISSING' | 'UNCONFIRMED' | 'MERCHANT_CONFIRMED' | 'TEST_CONFIRMED'
+  confirmedAt: string | null
+  details: SupplyDetails | null
+}
+
 export interface MerchantProduct {
   id: number
   version: number
@@ -49,6 +133,7 @@ export interface MerchantProduct {
   publishedAt: string | null
   images: ProductImage[]
   skus: ProductSku[]
+  evidence: ProductEvidence
 }
 
 export interface PublicProduct {
@@ -62,6 +147,7 @@ export interface PublicProduct {
   mainImageUrl: string | null
   publishedAt: string
   skus: PublicSku[]
+  evidence: ProductEvidence
 }
 
 export interface PublicSku {
@@ -131,6 +217,8 @@ export interface OrderItem {
   currency: string
   quantity: number
   lineAmount: number
+  productVersion: number | null
+  supplyDetails: SupplyDetails | null
 }
 
 export interface PaymentSummary {
@@ -183,6 +271,8 @@ export interface SalesOrder {
   orderNo: string
   userId: number
   merchantId: number
+  checkoutGroupId: number | null
+  testOrder: boolean
   status: OrderStatus
   totalAmount: number
   currency: string
@@ -196,6 +286,15 @@ export interface SalesOrder {
   afterSale: AfterSaleSummary | null
   items: OrderItem[]
   reservations: StockReservation[]
+}
+
+export interface CheckoutGroup {
+  id: number
+  groupNo: string
+  currency: string
+  totalAmount: number
+  createdAt: string
+  orders: SalesOrder[]
 }
 
 export interface IngestionJob {

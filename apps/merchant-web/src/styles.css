@@ -79,6 +79,8 @@ h2 { margin: 0; font-size: 24px; letter-spacing: -.03em; }
 .media-frame > span { position: absolute; right: 12px; bottom: 12px; padding: 6px 8px; border-radius: 999px; color: white; background: rgba(0,0,0,.55); font-size: 9px; letter-spacing: .12em; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
 .full-width { width: 100%; }
+.test-supply-note { padding: 10px 12px; border-left: 2px solid #da9575; color: #f0c8b5; background: rgba(100, 55, 35, .2); font-size: 13px; line-height: 1.6; }
+.specification-remove { width: 32px; height: 32px; padding: 0; justify-self: end; align-self: center; }
 .action-row { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 8px; }
 .status-stack { display: flex; gap: 8px; }
 .error-banner { position: fixed; right: 24px; bottom: 24px; max-width: min(520px, calc(100vw - 48px)); margin: 0; padding: 14px 18px; border: 1px solid rgba(255,115,115,.4); border-radius: 14px; color: #ffd6d6; background: rgba(79,18,24,.94); box-shadow: 0 14px 50px rgba(0,0,0,.35); }

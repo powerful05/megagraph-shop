@@ -131,6 +131,9 @@ public class OrderService {
         SalesOrder order = orders.findByIdForUpdate(orderId)
                 .filter(value -> value.getMerchantId().equals(merchantId))
                 .orElseThrow(() -> new NotFoundException("ORDER_NOT_FOUND", "订单不存在"));
+        if (order.isTestOrder()) {
+            throw new ValidationException("TEST_ORDER_FULFILLMENT_BLOCKED", "试用订单不允许创建真实物流或发货记录");
+        }
 
         Shipment existing = shipments.findByOrderId(orderId).orElse(null);
         if (existing != null) {
@@ -301,12 +304,18 @@ public class OrderService {
     }
 
     private OrderResponse createNew(Long userId, String idempotencyKey, CreateOrderRequest request) {
-        ShoppingCart cart = carts.findByUserId(userId)
+        ShoppingCart cart = carts.findByUserIdForUpdate(userId)
                 .orElseThrow(() -> new ValidationException("CART_EMPTY", "购物车为空"));
         List<ShoppingCartItem> requestedItems = cartItems.findByCartIdOrderByIdAsc(cart.getId());
         if (requestedItems.isEmpty()) {
             throw new ValidationException("CART_EMPTY", "购物车为空");
         }
+        return createForItems(userId, idempotencyKey, request, requestedItems, null, false);
+    }
+
+    @Transactional
+    public OrderResponse createForItems(Long userId, String idempotencyKey, CreateOrderRequest request,
+            List<ShoppingCartItem> requestedItems, Long checkoutGroupId, boolean testOrder) {
 
         List<Long> skuIds = requestedItems.stream()
                 .map(ShoppingCartItem::getSkuId)
@@ -351,12 +360,13 @@ public class OrderService {
                 request.shippingAddress().trim(),
                 expiresAt
         ));
+        order.assignCheckout(checkoutGroupId, testOrder || productsBySku.values().stream().anyMatch(Product::isTestSupply));
 
         for (ShoppingCartItem item : requestedItems) {
             ProductSku sku = lockedSkus.get(item.getSkuId());
             Product product = productsBySku.get(sku.getId());
             sku.reserve(item.getQuantity());
-            orderItems.save(new SalesOrderItem(
+            SalesOrderItem snapshot = new SalesOrderItem(
                     order.getId(),
                     product.getId(),
                     sku.getId(),
@@ -367,7 +377,9 @@ public class OrderService {
                     sku.getPrice(),
                     sku.getCurrency(),
                     item.getQuantity()
-            ));
+            );
+            snapshot.captureSupply(product);
+            orderItems.save(snapshot);
             reservations.save(new StockReservation(order.getId(), sku.getId(), item.getQuantity(), expiresAt));
         }
 

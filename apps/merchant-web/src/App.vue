@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import type { AuthMe, Category, MerchantProduct, SalesOrder } from '@megagraph/domain-types'
+import type { AuthMe, Category, MerchantProduct, SalesOrder, SupplyDetails } from '@megagraph/domain-types'
 import {
   isAfterSaleBlockingShipment,
   needsMerchantOrderPolling,
@@ -34,6 +34,36 @@ const activeProduct = ref<MerchantProduct | null>(null)
 const selectedFile = ref<File | null>(null)
 const localPreviewUrl = ref('')
 const storedPreviewUrl = ref('')
+const supplyDraft = ref<SupplyDetails | null>(null)
+const scenarioText = ref('')
+
+function addSupplyDetails() {
+  supplyDraft.value = {
+    profile: 'APPAREL', specifications: [],
+    color: '', fabric: '', fit: '', seasons: [], scenarios: [], measurementNote: '', imageSourceNote: '',
+    sizeChart: (activeProduct.value?.skus.length ? activeProduct.value.skus : [{ code: form.code, name: form.name }])
+      .map(sku => ({ skuCode: sku.code, sizeLabel: sku.name, chestCm: 0, lengthCm: 0, shoulderCm: null, sleeveCm: null })),
+  }
+  scenarioText.value = ''
+}
+
+function changeSupplyProfile() {
+  const details = supplyDraft.value
+  if (!details) return
+  const skus = activeProduct.value?.skus.length ? activeProduct.value.skus : [{ code: form.code, name: form.name }]
+  details.fit = ''
+  details.seasons = []
+  details.measurementNote = ''
+  details.sizeChart = details.profile === 'APPAREL'
+    ? skus.map(sku => ({ skuCode: sku.code, sizeLabel: sku.name, chestCm: 0, lengthCm: 0, shoulderCm: null, sleeveCm: null })) : []
+  details.specifications = details.profile === 'GENERAL_PHYSICAL'
+    ? skus.map(sku => ({ skuCode: sku.code, name: '规格', value: '' })) : []
+}
+
+function addSpecification() {
+  if (!supplyDraft.value || supplyDraft.value.specifications.length >= 30) return
+  supplyDraft.value.specifications.push({ skuCode: activeProduct.value?.skus[0]?.code ?? form.code, name: '', value: '' })
+}
 
 let pollTimer: ReturnType<typeof setTimeout> | null = null
 let pollStartedAt: number | null = null
@@ -51,12 +81,23 @@ const form = reactive({
 })
 
 const leafCategories = computed(() => categories.value.filter((category) => category.level > 1))
+const hasUnsavedDraft = computed(() => {
+  const product = activeProduct.value
+  if (!product) return false
+  const sku = product.skus[0]
+  const normalizedDetails = supplyDraft.value ? { ...supplyDraft.value,
+    scenarios: scenarioText.value.split(/[,，]/).map(value => value.trim()).filter(Boolean) } : null
+  return form.title !== product.title || form.subtitle !== (product.subtitle ?? '')
+    || form.categoryId !== product.categoryId || form.code !== sku?.code || form.name !== sku?.name
+    || form.price !== sku?.price || form.stock !== sku?.stock
+    || JSON.stringify(normalizedDetails) !== JSON.stringify(product.evidence.details)
+})
 const canEdit = computed(() => merchantRole.value === 'OWNER' || merchantRole.value === 'EDITOR')
 const canConfirm = computed(() => ['OWNER', 'EDITOR', 'PUBLISHER'].includes(merchantRole.value)
-  && activeProduct.value?.draftStatus !== 'CONFIRMED')
+  && activeProduct.value?.draftStatus !== 'CONFIRMED' && !hasUnsavedDraft.value)
 const canPublish = computed(() => ['OWNER', 'PUBLISHER'].includes(merchantRole.value)
   && activeProduct.value?.draftStatus === 'CONFIRMED'
-  && activeProduct.value.publishStatus !== 'PUBLISHED')
+  && activeProduct.value.publishStatus !== 'PUBLISHED' && !hasUnsavedDraft.value)
 const canOffShelf = computed(() => ['OWNER', 'PUBLISHER'].includes(merchantRole.value)
   && activeProduct.value?.publishStatus === 'PUBLISHED')
 const readyToShipOrders = computed(() => orders.value.filter(canShipOrder).length)
@@ -67,9 +108,9 @@ const refundReviewOrders = computed(() => orders.value
     || order.afterSale?.status === 'REFUND_FAILED').length)
 const hasPollingOrders = computed(() => orders.value.some(needsMerchantOrderPolling))
 const revenueStatuses: SalesOrder['status'][] = ['PAID', 'SHIPPED', 'COMPLETED']
-const paidOrders = computed(() => orders.value.filter(order => revenueStatuses.includes(order.status)).length)
+const paidOrders = computed(() => orders.value.filter(order => !order.testOrder && revenueStatuses.includes(order.status)).length)
 const paidRevenue = computed(() => orders.value
-  .filter(order => revenueStatuses.includes(order.status))
+  .filter(order => !order.testOrder && revenueStatuses.includes(order.status))
   .reduce((total, order) => total + order.totalAmount, 0))
 
 async function execute(action: () => Promise<void>) {
@@ -188,6 +229,8 @@ async function setActiveProduct(product: MerchantProduct) {
   form.name = sku?.name ?? '默认规格'
   form.price = sku?.price ?? 0
   form.stock = sku?.stock ?? 0
+  supplyDraft.value = product.evidence.details ? JSON.parse(JSON.stringify(product.evidence.details)) : null
+  scenarioText.value = supplyDraft.value?.scenarios.join('，') ?? ''
 
   if (storedPreviewUrl.value) URL.revokeObjectURL(storedPreviewUrl.value)
   storedPreviewUrl.value = ''
@@ -228,7 +271,7 @@ function replaceOrder(updated: SalesOrder) {
 }
 
 function canShipOrder(order: SalesOrder): boolean {
-  return canEdit.value && order.status === 'PAID' && !isAfterSaleBlockingShipment(order.afterSale?.status)
+  return canEdit.value && !order.testOrder && order.status === 'PAID' && !isAfterSaleBlockingShipment(order.afterSale?.status)
 }
 
 function canRetryRefund(order: SalesOrder): boolean {
@@ -374,7 +417,8 @@ function refundStatusLabel(order: SalesOrder): string {
 async function saveDraft() {
   if (!activeProduct.value) return
   await execute(async () => {
-    const updated = await merchantApi.updateProduct(credentials, activeProduct.value!, form)
+    if (supplyDraft.value) supplyDraft.value.scenarios = scenarioText.value.split(/[,，]/).map(value => value.trim()).filter(Boolean)
+    const updated = await merchantApi.updateProduct(credentials, activeProduct.value!, form, supplyDraft.value)
     await setActiveProduct(updated)
     await refreshProducts()
     ElMessage.success('草稿已保存')
@@ -685,12 +729,51 @@ onBeforeUnmount(() => {
                   </el-form-item>
                 </div>
 
+                <h3>商品资料与规格依据</h3>
+                <p v-if="activeProduct.evidence.dataOrigin === 'LOCAL_TEST'" class="test-supply-note">本地测试供给，图片为生成素材，属性和规格均为测试数据。</p>
+                <p v-if="!supplyDraft">尚未填写已确认的商品资料。</p>
+                <el-button v-if="!supplyDraft" :disabled="!canEdit || activeProduct.publishStatus === 'PUBLISHED'" @click="addSupplyDetails">添加商品资料</el-button>
+                <template v-if="supplyDraft">
+                  <el-form-item label="资料类型"><el-select v-model="supplyDraft.profile" :disabled="!canEdit || activeProduct.publishStatus === 'PUBLISHED'" class="full-width" @change="changeSupplyProfile"><el-option label="服饰" value="APPAREL" /><el-option label="通用实物" value="GENERAL_PHYSICAL" /></el-select></el-form-item>
+                  <el-form-item label="颜色"><el-input v-model="supplyDraft.color" maxlength="80" /></el-form-item>
+                  <el-form-item :label="supplyDraft.profile === 'GENERAL_PHYSICAL' ? '材质与成分' : '面料与成分'"><el-input v-model="supplyDraft.fabric" maxlength="200" /></el-form-item>
+                  <template v-if="supplyDraft.profile === 'APPAREL'">
+                  <el-form-item label="版型"><el-input v-model="supplyDraft.fit" maxlength="80" /></el-form-item>
+                  <el-form-item label="季节">
+                    <el-select v-model="supplyDraft.seasons" multiple class="full-width">
+                      <el-option v-for="season in ['春', '夏', '秋', '冬']" :key="season" :label="season" :value="season" />
+                    </el-select>
+                  </el-form-item>
+                  </template>
+                  <el-form-item label="适用场景（逗号分隔）"><el-input v-model="scenarioText" maxlength="300" /></el-form-item>
+                  <el-form-item label="图片来源声明"><el-input v-model="supplyDraft.imageSourceNote" maxlength="300" /></el-form-item>
+                  <el-form-item label="测量方法与误差"><el-input v-model="supplyDraft.measurementNote" maxlength="300" /></el-form-item>
+                  <div v-for="(row, rowIndex) in supplyDraft.sizeChart" :key="rowIndex" class="form-grid">
+                    <el-form-item label="尺码对应 SKU"><el-input v-model="row.skuCode" /></el-form-item>
+                    <el-form-item label="尺码名称"><el-input v-model="row.sizeLabel" /></el-form-item>
+                    <el-form-item label="成衣胸围 / cm"><el-input-number v-model="row.chestCm" :min="1" :max="400" :precision="1" class="full-width" /></el-form-item>
+                    <el-form-item label="衣长 / cm"><el-input-number v-model="row.lengthCm" :min="1" :max="300" :precision="1" class="full-width" /></el-form-item>
+                    <el-form-item label="肩宽 / cm"><el-input-number v-model="row.shoulderCm" :min="1" :max="200" :precision="1" class="full-width" /></el-form-item>
+                    <el-form-item label="袖长 / cm"><el-input-number v-model="row.sleeveCm" :min="1" :max="200" :precision="1" class="full-width" /></el-form-item>
+                  </div>
+                  <template v-if="supplyDraft.profile === 'GENERAL_PHYSICAL'">
+                    <div v-for="(row, rowIndex) in supplyDraft.specifications" :key="rowIndex" class="form-grid">
+                      <el-form-item label="规格对应 SKU"><el-input v-model="row.skuCode" maxlength="100" /></el-form-item>
+                      <el-form-item label="规格项"><el-input v-model="row.name" maxlength="40" /></el-form-item>
+                      <el-form-item label="规格值"><el-input v-model="row.value" maxlength="200" /></el-form-item>
+                      <el-button class="specification-remove" :disabled="!canEdit || activeProduct.publishStatus === 'PUBLISHED'" :aria-label="`删除规格 ${rowIndex + 1}`" title="删除规格" @click="supplyDraft.specifications.splice(rowIndex, 1)">×</el-button>
+                    </div>
+                    <el-button :disabled="!canEdit || activeProduct.publishStatus === 'PUBLISHED' || supplyDraft.specifications.length >= 30" @click="addSpecification">添加规格资料</el-button>
+                  </template>
+                </template>
+
                 <div class="action-row">
                   <el-button :disabled="!canEdit" :loading="busy" @click="saveDraft">保存草稿</el-button>
                   <el-button :disabled="!canConfirm" :loading="busy" @click="confirmDraft">确认当前版本</el-button>
                   <el-button type="primary" :disabled="!canPublish" :loading="busy" @click="publishProduct">发布商品</el-button>
                   <el-button type="danger" plain :disabled="!canOffShelf" :loading="busy" @click="offShelfProduct">下架</el-button>
                 </div>
+                <p v-if="hasUnsavedDraft">有未保存的修改，请先保存草稿。</p>
               </el-form>
             </div>
           </template>
@@ -756,6 +839,7 @@ onBeforeUnmount(() => {
                   <span>#{{ order.id }}</span>
                   <strong>{{ order.orderNo }}</strong>
                   <small>{{ formatDate(order.createdAt) }}</small>
+                  <small v-if="order.testOrder">试用子订单 · 下单组 #{{ order.checkoutGroupId }} · 不发货、不结算</small>
                 </div>
                 <div class="order-statuses">
                   <span :class="`order-status ${order.status.toLowerCase()}`">{{ orderStatusLabel(order.status) }}</span>

@@ -1,6 +1,7 @@
 package com.megagraph.shop.catalog;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.Column;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
@@ -23,6 +24,9 @@ public class Product {
     private Long categoryId;
     private String title;
     private String subtitle;
+    @Column(columnDefinition = "TEXT")
+    private String supplyDetails;
+    private boolean testSupply;
 
     @Enumerated(EnumType.STRING)
     private DraftStatus draftStatus;
@@ -72,6 +76,24 @@ public class Product {
         this.confirmedBy = userId;
         this.confirmedAt = Instant.now();
     }
+
+    public void reviseSupplyDetails(String supplyDetails) {
+        if (publishStatus == PublishStatus.PUBLISHED) {
+            throw new IllegalStateException("Published supply details are immutable");
+        }
+        this.supplyDetails = supplyDetails;
+        this.draftStatus = DraftStatus.READY_FOR_CONFIRMATION;
+        this.confirmedBy = null;
+        this.confirmedAt = null;
+    }
+
+    public void markTestSupply() {
+        this.testSupply = true;
+    }
+
+    public String getSupplyDetails() { return supplyDetails; }
+    public boolean isTestSupply() { return testSupply; }
+    public Instant getConfirmedAt() { return confirmedAt; }
 
     public void publish() {
         this.publishStatus = PublishStatus.PUBLISHED;
@@ -129,4 +151,3 @@ public class Product {
         return deletedAt;
     }
 }
-

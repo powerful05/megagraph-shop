@@ -10,7 +10,7 @@ public record ProductDraftUpdateRequest(
         @NotBlank @Size(max = 200) String title,
         @Size(max = 300) String subtitle,
         @NotNull Long categoryId,
-        @NotNull @Valid SkuDraftRequest sku
+        @NotNull @Valid SkuDraftRequest sku,
+        @Valid SupplyDetails supplyDetails
 ) {
 }
-

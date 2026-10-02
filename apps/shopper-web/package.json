@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@megagraph/domain-types": "workspace:*",
+    "lucide-vue-next": "1.0.0",
     "nuxt": "4.5.2"
   }
 }
-

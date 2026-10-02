@@ -2,6 +2,7 @@ package com.megagraph.shop.api;
 
 import com.megagraph.shop.commerce.AfterSaleService;
 import com.megagraph.shop.commerce.CartService;
+import com.megagraph.shop.commerce.CheckoutService;
 import com.megagraph.shop.commerce.OrderService;
 import com.megagraph.shop.identity.UserAccount;
 import com.megagraph.shop.security.CurrentUser;
@@ -31,19 +32,22 @@ public class CommerceController {
     private final OrderService orders;
     private final AfterSaleService afterSales;
     private final Environment environment;
+    private final CheckoutService checkouts;
 
     public CommerceController(
             CurrentUser currentUser,
             CartService carts,
             OrderService orders,
             AfterSaleService afterSales,
-            Environment environment
+            Environment environment,
+            CheckoutService checkouts
     ) {
         this.currentUser = currentUser;
         this.carts = carts;
         this.orders = orders;
         this.afterSales = afterSales;
         this.environment = environment;
+        this.checkouts = checkouts;
     }
 
     @GetMapping("/cart")
@@ -80,6 +84,20 @@ public class CommerceController {
     @GetMapping("/orders")
     List<OrderResponse> orders(Authentication authentication) {
         return orders.listForUser(account(authentication).getId());
+    }
+
+    @PostMapping("/checkouts")
+    CheckoutGroupResponse createCheckout(Authentication authentication,
+            @RequestHeader("Idempotency-Key") String key, @Valid @RequestBody CreateOrderRequest request) {
+        if (!environment.acceptsProfiles(Profiles.of("local", "test"))) {
+            throw new DomainException(HttpStatus.SERVICE_UNAVAILABLE, "CHECKOUT_UNAVAILABLE", "当前环境尚未开放结算");
+        }
+        return checkouts.create(account(authentication).getId(), key, request);
+    }
+
+    @GetMapping("/checkouts/{groupId}")
+    CheckoutGroupResponse checkout(Authentication authentication, @PathVariable Long groupId) {
+        return checkouts.get(account(authentication).getId(), groupId);
     }
 
     @GetMapping("/orders/{orderId}")

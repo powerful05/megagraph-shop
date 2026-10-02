@@ -29,12 +29,16 @@ public class ShopController {
         this.environment = environment;
     }
 
-    public record ShopCapabilities(boolean mockPaymentAvailable) {
+    public record ShopCapabilities(boolean mockPaymentAvailable, boolean guideAvailable,
+                                   boolean demoCatalogAvailable, String guideModelName) {
     }
 
     @GetMapping("/capabilities")
     ShopCapabilities capabilities() {
-        return new ShopCapabilities(environment.acceptsProfiles(Profiles.of("local", "test")));
+        boolean guide = environment.acceptsProfiles(Profiles.of("guide"));
+        return new ShopCapabilities(environment.acceptsProfiles(Profiles.of("local", "test")), guide,
+                guide && environment.acceptsProfiles(Profiles.of("local")),
+                guide ? environment.getProperty("spring.ai.openai.chat.options.model", "") : "");
     }
 
     @GetMapping("/products")
@@ -48,8 +52,8 @@ public class ShopController {
     }
 
     @GetMapping("/media/{imageId}")
-    ResponseEntity<Resource> media(@PathVariable Long imageId) {
-        MediaPayload media = mediaService.loadPublicMedia(imageId);
+    ResponseEntity<Resource> media(@PathVariable Long imageId, @org.springframework.web.bind.annotation.RequestParam(required = false) Integer width) {
+        MediaPayload media = mediaService.loadPublicMedia(imageId, width);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CACHE_CONTROL, "public, max-age=3600")
                 .contentType(MediaType.parseMediaType(media.contentType()))

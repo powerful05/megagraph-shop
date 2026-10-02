@@ -40,6 +40,12 @@ class MySqlMigrationSmokeTest {
 
         try (Connection connection = DriverManager.getConnection(url, username, password)) {
             assertNullable(connection, "refund_order", "provider_refund_id", true);
+            assertNullable(connection, "product", "supply_details", true);
+            assertNullable(connection, "product", "test_supply", false);
+            assertNullable(connection, "sales_order", "checkout_group_id", true);
+            assertNullable(connection, "sales_order", "test_order", false);
+            assertNullable(connection, "sales_order_item", "product_version", true);
+            assertNullable(connection, "sales_order_item", "supply_details", true);
             assertNullable(connection, "refund_order", "refunded_at", true);
             assertUniqueConstraint(connection, "payment_channel_event", "uk_payment_channel_event");
             assertUniqueConstraint(connection, "payment_order", "uk_payment_provider_id");
@@ -48,6 +54,8 @@ class MySqlMigrationSmokeTest {
             assertUniqueConstraint(connection, "trial_invite", "uk_trial_invite_code_hash");
             assertUniqueConstraint(connection, "app_user", "uk_app_user_username_normalized");
             assertUniqueConstraint(connection, "SPRING_SESSION", "SPRING_SESSION_IX1");
+            assertUniqueConstraint(connection, "checkout_group", "uk_checkout_group_no");
+            assertUniqueConstraint(connection, "checkout_group", "uk_checkout_user_key");
             insertInbox(connection, "mysql-smoke-event");
             assertThatThrownBy(() -> insertInbox(connection, "mysql-smoke-event"))
                     .isInstanceOf(SQLException.class);

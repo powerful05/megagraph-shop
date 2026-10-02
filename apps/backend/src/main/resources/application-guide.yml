@@ -9,4 +9,8 @@ spring:
         options:
           model: ${GUIDE_MODEL_NAME}
     retry:
-      max-attempts: 2
+      max-attempts: 1
+
+app:
+  guide:
+    disable-thinking: ${GUIDE_MODEL_DISABLE_THINKING:false}
