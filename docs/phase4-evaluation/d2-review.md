@@ -42,3 +42,21 @@ QA 提出的 close 重放与时间界点歧义已由 Lead 明确：now==startAt 
 | 浏览器 | 对话→试购→取消再购/付款/退款/显式完成→重新打开恢复 | Lead真实浏览器、稳定390px/键盘/减少动态图像 | 待实现/执行 |
 
 当前 Backend/Frontend 仍处于新D2基线开工，QA 尚无最终实现提交或 D2 测试执行证据。本轮风险已发 Lead 和两位实现者；只有新的源码、实际报告或状态变化才继续评审，不无变化忙轮询，不重复 D1 已充分通过检查。
+
+## 首轮开发树 SQL 与输入边界复核
+
+以下是 Backend 未提交开发树的静态证据，不能替代最终 SHA 或运行测试。初轮 QA 文档 `89ec0be` 已由 Lead 集成为 `9376a27`，本节仅补新增发现与修订。
+
+Lead 先发现 `currentOffer` 的 offer join merchant `FOR UPDATE` 可能连带锁 merchant X，使购买 merchant→slot 与售后 slot→插入merchant FK形成循环。QA 随后读到修订：offer 单表 FOR UPDATE 取全部当前事实，merchant 单独在 MySQL 使用 LOCK IN SHARE MODE，H2兼容分支 FOR UPDATE；发布资格也使用此共享 current-read，未退回普通 RR ACTIVE 查询。slot锁内 `used(...,true)` 对预约行 current-read，再计数有效 HELD、CONFIRMED与FULFILLED；已过期HELD不计可用容量。当前预约写路径通过 lockReservation 先 slot 后 reservation，没有看到反向获取已有order的新路径。`appointment_purchase`中的slot/start普通查询读取的是创建后不可修改的快照，不能与可变资格的普通旧读混为一谈。
+
+超时修订已经读到：外层 `expireOverdueOrders` 取消 @Transactional并查询 scalar ID；每ID通过 TransactionTemplate PROPAGATION_REQUIRES_NEW执行 expireOne，真实事务边界不依赖同Bean自调用注解。每单锁当前order/payment，重查状态与expires，再释放预约、订单及支付Outbox。付款回调在预约不能合法确认时，cancel payment、expire order、RELEASED、对应Outbox后才标LATE_PAYMENT_SUCCESS review，扫描前迟到成功不再只留下review。这些是静态已落实，尚待原先提出的定序MySQL测试证明。
+
+QA 新发现的输入风险与后续修订：
+
+- 首轮slot使用普通Integer/Long和Instant DTO，未见全局禁小数转整数配置。Jackson默认允许小数截断为整数，Instant默认也接数字/数字字符串时间戳，不能仅因Java类型是Instant就宣称只接受带offset ISO。此判断对照 [Jackson整数转换官方源码](https://raw.githubusercontent.com/FasterXML/jackson-databind/2.19/src/main/java/com/fasterxml/jackson/databind/DeserializationFeature.java) 与 [InstantDeserializer官方源码](https://raw.githubusercontent.com/FasterXML/jackson-modules-java8/2.19/datetime/src/main/java/com/fasterxml/jackson/datatype/jsr310/deser/InstantDeserializer.java)。购买Map中的Double也可能先把`1.00000000000000001`舍入1.0，再longValueExact通过。已要求实际请求覆盖这些风险，而非只测明显0.5。
+- 随后已读 StrictLong/StrictInteger只允许整数token并做exact范围判断；StrictInstant只允许string并用OffsetDateTime.parse；AppointmentOffer/Version/Slot均局部使用strict。StrictAppointmentOrder逐token限制root/items白名单、拒重复字段和非整数token，保留BigInteger原精度，避免先转Double。业务服务仍检查数量1、单items、必填字段与long范围。没有影响旧类型的全局coercion变更。
+- 首轮纳秒Instant直接持久TIMESTAMP(3)可能使合法的不足1ms区间落库start==end，触发DATA_CONFLICT/SKU提示409而非明确时段输入错误（全局handler实际处理，未执行API）。当前AppointmentSlotRequest构造器先截到毫秒，再参与hash/时间验证/持久化，小于1ms区间会在业务校验拒绝；UTC/+08等价也规范成同Instant。仍需请求/落库roundtrip与时间边界测试。
+
+新Controller角色静态核对：OWNER/EDITOR创建、编辑、确认、添加/关闭时段；OWNER/PUBLISHER发布下架；OWNER完成。完成先order/payment，再独立merchant mutex，再slot/reservation与当前阻塞售后/核查守卫，同键重放优先原hash。实际merchant/account404、CSRF、相同完成键跨订单竞争、退款与完成互斥仍必须执行，不以Controller角色枚举算验收通过。
+
+当前结论：以上新发现均已告实现者并看到对应修订方向，未发现剩余明确的SQL反锁order路径。该开发树仍未提交、未有D2 H2/真实MySQL执行证据，不能宣称修复实证或D2通过。
