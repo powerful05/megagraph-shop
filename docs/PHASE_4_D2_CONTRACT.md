@@ -6,7 +6,7 @@
 
 商家OWNER/EDITOR编辑、确认；OWNER/PUBLISHER发布下架，OWNER显式模拟完成。标题含测试、描述明确不实际预约或线下履约，正价BigDecimal/CNY，所有供给与订单testOnly/testOrder=true。确认与发布核对version，修改资料或新增时段使确认失效、回DRAFT；已购买资料/金额/时段保持快照。
 
-时段为商家专属固定startAt/endAt，UTC Instant事实、前端明确Asia/Shanghai北京时间。创建只接收带offset的ISO时间，拒绝无时区/past/start>=end、时长>4小时或开始>30天；容量整数1–50，独立于实物库存。时段日期/容量创建后不可修改或删除，以避免改动现有预约约定；可显式关闭阻止新购，已预占/已确认订单仍按原约定处理。不支持复杂排班、订阅或部分退款。startAt与expiresAt均为排他边界：now恰好相等也拒绝新购或付款确认。
+时段为商家专属固定startAt/endAt，UTC Instant事实、前端明确Asia/Shanghai北京时间。创建只接收带offset的ISO时间，拒绝数字时间戳与无时区字符串；解析后先截到毫秒精度，再进行幂等hash、时段校验与TIMESTAMP(3)持久化。拒绝past/start>=end、时长>4小时或开始>30天，截断后不足1ms的区间也明确400拒绝；容量整数token 1–50，独立于实物库存。时段日期/容量创建后不可修改或删除，以避免改动现有预约约定；可显式关闭阻止新购，已预占/已确认订单仍按原约定处理。不支持复杂排班、订阅或部分退款。startAt与expiresAt均为排他边界：now恰好相等也拒绝新购或付款确认。
 
 购买仅当前ACTIVE商家、PUBLISHED且当前确认、OPEN未来slot与剩余容量>0。订单预占HELD，expiresAt=min(now+15分钟,startAt)；支付成功回调在同事务HELD→CONFIRMED，支付成功不是履行完成。失败/渠道取消/主动取消/超时将HELD→RELEASED并释放名额。以服务器now<expiresAt且now<startAt作为确认边界；到界后的成功回调不能预约，记录既有REVIEW_REQUIRED/LATE_PAYMENT_SUCCESS，过期订单与释放事实在同事务保存，不凭渠道occurredAt回填过去名额。
 
