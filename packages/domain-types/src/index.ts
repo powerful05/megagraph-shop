@@ -77,6 +77,7 @@ export interface DigitalDelivery {
 }
 
 export interface GuideReply {
+  responseSource?: 'TEXT_MODEL' | 'JAVA_DIGITAL' | 'NO_MODEL' | null
   answer: string
   products: PublicProduct[]
   deliveryOffers?: DeliveryOffer[]

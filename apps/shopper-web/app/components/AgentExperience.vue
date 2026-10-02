@@ -327,7 +327,7 @@ onBeforeUnmount(() => {
             <article v-else class="assistant-row">
               <div class="assistant-avatar" aria-hidden="true">✳</div>
               <div class="assistant-content">
-                <div class="assistant-name">MegaGraph <span>{{ message.error ? '回复失败' : message.modelReply ? (message.deliveryOffers?.length ? '已核验测试文件' : modelAvailable ? modelName : '已核验测试资料') : '演示回复' }}</span></div>
+                <div class="assistant-name">MegaGraph <span>{{ message.error ? '回复失败' : message.modelReply ? (message.responseSource === 'JAVA_DIGITAL' ? '已核验测试资料' : message.responseSource === 'NO_MODEL' ? '模型未启用' : modelName || '文本模型回复') : '演示回复' }}</span></div>
                 <p>{{ message.text }}</p>
                 <div v-if="message.advice" class="model-advice"><span>选购建议</span><p>{{ message.advice }}</p></div>
                 <button v-if="message.error && message === activeConversation.messages.at(-1)" class="retry-reply" type="button" :disabled="!canRetry" @click="retryReply">重试</button>

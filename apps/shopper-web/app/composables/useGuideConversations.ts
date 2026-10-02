@@ -13,6 +13,7 @@ export interface AgentMessage {
   liveProducts?: PublicProduct[]
   deliveryOffers?: DeliveryOffer[]
   modelReply?: boolean
+  responseSource?: GuideReply['responseSource']
   error?: boolean
   requestId?: string
 }
@@ -61,6 +62,7 @@ export function useGuideConversations(apiBase: string, owner: Ref<number | null>
   function assistant(reply: GuideReply, requestId: string): AgentMessage {
     return { id: `${requestId}-assistant`, requestId, role: 'assistant', text: reply.answer, advice: reply.advice,
       liveProducts: reply.products, deliveryOffers: reply.deliveryOffers ?? [], recommendationBasis: reply.recommendationBasis, modelReply: true,
+      responseSource: reply.responseSource ?? 'TEXT_MODEL',
       showProducts: reply.demoProductIds.length > 0, demoIds: reply.demoProductIds }
   }
 
