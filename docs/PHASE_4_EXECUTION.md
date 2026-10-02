@@ -22,3 +22,13 @@ QA：只读审查/评测设计，不改业务实现；评测文档临时提交�
 待做：4A MySQL/浏览器→B/C→4D1→4D2→全验收→本地main→私有远端。
 
 Codex额度由Goal跟踪；第三方AI调用尚无，费用0新增；未知历史费用不编造。不购买或重置额度。
+
+## 环境恢复与已发现问题
+
+主目录原7个文件已完整备份至apps/backend/var/phase4-evidence/baseline-preserved，manifest包含SHA256，binary patch和授权附件保留且忽略。远端fetch成功仍是9625916（阶段2C）。
+专用MySQL预览schema mg_p4_demo_20261003，8084；启动器var/phase4-tooling/run-preview.py读取既有受保护文本guide配置与现有容器凭据，不打印/落盘密钥。首次启动失败因supply-expanded profile默认H2 URL覆盖mysql，已显式SPRING_DATASOURCE_URL修复后重启。
+MySQL专项运行器var/phase4-tooling/mysql-run.py <MYSQL_PREFIX> <TestClass>每次创建新独立schema，日志在phase4-evidence，不重置任何旧库。
+
+专用MySQL预览已启动8084（baseline c7ccb1d），首次curl受代理返回502，--noproxy '*'后200/65件；数据库URL修正后成功。商家5176、消费者3004 dev预览由Lead启动，session IDs 20291/73079；backend session15924。只结束这些本轮进程，旧Demo保持。
+脚本scripts/phase4-preview.sh提供无密钥Mock默认启动以及显式DB变量/受保护导购配置，所有进程仅127.0.0.1监听。最终组合验收后更新入口状态。
+B/C离线K5候选20仅评测参数，消费者既有结果上限3/候选50不无依据改动。
