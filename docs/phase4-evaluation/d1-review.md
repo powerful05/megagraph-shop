@@ -1,6 +1,6 @@
 # 4D1 数字文件纵切片独立审查
 
-状态：领取/退款申请死锁已修复，真实 MySQL 数字专项 22/22 通过，根 pnpm verify 通过。桌面浏览器到领取/实际下载与正常 Session 隔离已复核；浏览器未领取退款/刷新恢复、小屏及减少动态仍待 Lead 完成，D1 尚未整体验收。下文早期审查与失败保留为历史证据，当前结论以“修复后证据”节为准。
+状态：D1 受控数字文件 Demo 通过独立 QA 复核。领取/退款申请死锁已修复，真实 MySQL 数字专项 22/22 通过，根 pnpm verify 通过。浏览器实际领取下载、未领取退款终态、正常 Session 隔离，以及变价换文件后的旧单快照均已复核；最后退款文案修订的两端 typecheck/production build 也已通过。390px 商家、消费者对话、稳定订单终态及减少动态已勾选截图均已实际查看。下文早期审查与失败保留为历史证据，当前结论以“最新退款、快照与最终前端证据”节为准。此结论不代表 D2 或整个阶段4完成。
 
 审查依据是 Lead integration 的 `docs/PHASE_4_D1_CONTRACT.md` v1 与真实源码。本文区分静态判断、自动化运行证据和 Lead 执行的 MySQL/浏览器证据，不将计划或测试方法名算作验收通过。
 
@@ -19,16 +19,16 @@
 | 供给隔离 | OWNER/EDITOR 编辑，发布角色明确；跨商家拒绝 | Controller/权限源码 + 身份测试 | MySQL rolesAndMerchantIsolation 已过 |
 | 公开事实 | 确认版本、正价、商家 ACTIVE、asset 有效；编辑撤销确认 | Guard 源码 + 上下架/编辑测试 | MySQL 版本/公开专项与商家发布浏览器已过 |
 | 创建幂等 | 用户级键与载荷 hash；并发仅一 order/payment/purchase，异载荷明确冲突 | 唯一索引与事务边界 + MySQL 并发测试 | MySQL 并发、双向类型冲突、canonical hash 已过 |
-| 快照 | 价格、offer/asset 版本/hash、退款与期限约定冻结；资产归属不可穿透 | purchase 内容 + 改价/换版本后下载旧快照测试 | MySQL 快照与 RR 当前资产已过；Session 实际 bytes 匹配；变更后旧单下载直接证据待补 |
+| 快照 | 价格、offer/asset 版本/hash、退款与期限约定冻结；资产归属不可穿透 | purchase 内容 + 改价/换版本后下载旧快照测试 | MySQL 快照与 RR 当前资产已过；浏览器变价/换文件后旧单实际下载 248 bytes 原 hash，旧版本新购409 |
 | 支付权益 | 同回调事务仅一 AVAILABLE；失败/取消/过期不产生 | 回调源码 + 重复/乱序/异常 Outbox 回滚断言 | MySQL 不同事件重复/终态不发/回滚已过 |
-| 领取退款互斥 | CLAIMED 拒退款；阻塞售后拒领；拒绝后恢复 | 统一 order 锁 + MySQL 竞争，且完整终态断言 | MySQL FK 定序/旧快照/退款各态已过；浏览器未领退款恢复待补 |
+| 领取退款互斥 | CLAIMED 拒退款；阻塞售后拒领；拒绝后恢复 | 统一 order 锁 + MySQL 竞争，且完整终态断言 | MySQL FK 定序/旧快照/退款各态已过；浏览器未领退款、手动刷新后 REFUNDED/REVOKED，各接口409 |
 | 下载权限 | 匿名/他人/未领/过期/撤销拒绝；已领所属用户按快照读取 | HTTP Session 测试 + header/bytes/hash 断言 | MySQL 已过；正常 Session owner200/他人404/匿名401、bytes/hash/header 已核 |
 | 回滚 | 创建/领取/支付/退款事件写失败不留下业务半态 | fault injection + DB 状态及 Outbox 计数断言 | MySQL 五类 Outbox 回滚与败方键/事件零已过 |
 | 导购事实 | 仅当前公开数字 offer；数字意图没有供给不捏造；旧历史兼容 | Java 当前重查源码 + GuideChatResult 历史读取测试 | MySQL 历史/NO_MODEL 已过；无模型统一数字对话 Lead 浏览器记录已查 |
-| 浏览器 | 对话卡片→详情→显式购买→Mock支付→领取→下载/刷新；待退款禁领 | Lead 真实 MySQL 浏览器记录/截图/下载 hash | 领取/实际下载桌面证据已查；退款、恢复、小屏/减少动态待 Lead |
+| 浏览器 | 对话卡片→详情→显式购买→Mock支付→领取→下载/刷新；待退款禁领 | Lead 真实 MySQL 浏览器记录/截图/下载 hash | 领取/下载/退款刷新、390px商家/对话/稳定订单及减少动态勾选已查，Enter交互由Lead实际操作记录 |
 | 实物回归 | 原购物袋、跨商家拆单、支付/退款不变 | 相称现有自动化与真实浏览器 | 根 verify Commerce15/CrossMerchant6 已过；4A 实物浏览器已有独立证据 |
 
-## 首轮代码审查反馈（正在实现，尚未定最终缺陷）
+## 首轮代码审查反馈（历史，已修订）
 
 - MySQL REPEATABLE READ：购买先普通查询幂等订单，再锁 offer id，然后普通查询公开资料，可能沿用首次普通读的旧快照。锁查询必须直接取得当前 version/price/可售事实，并验证必填 `expectedOfferVersion`；同键重放仍应返回先前购买快照。缺失版本与并发改价窗口需要独立断言。
 - 同源风险出现在旧 `AfterSaleService.request`：锁 order 前普通查询售后幂等，等待 claim 提交后，普通 entitlement 读仍可能见旧 AVAILABLE。写守卫应在已经持有 order 后使用 entitlement current-read，例如 `FOR UPDATE`，从而拒绝真正已 CLAIMED 的权益。竞争测试应定序到旧快照窗口。
@@ -38,7 +38,7 @@
 
 上述反馈已发 Lead 与实现者，最终结果需要检查修订后的代码及运行测试，本文不以中间实现宣判交付失败。
 
-## 修订静态复核
+## 首轮修订静态复核（历史）
 
 Frontend `aa298a20a920dfbff804e94271bef9798d36ff00`：已核对 PATCH 带 DIGITAL_FILE、购买前当前详情与 price/hash/version 核验、server expectedOfferVersion、账号与商家组件 key 隔离、账号 owner fence、下载会话 abort、安全固定文件名。未知下单结果按账号与 offer 保存原 key/offerId/expectedOfferVersion，重试优先原载荷；明确 4xx 清 pending。数字订单独立展示交付快照与权益，不显示库存或物流按钮；到期、撤销及阻塞售后禁领下载，CLAIMED 禁退款。商家 panel 改为浅字深底。以上是代码事实，尚不能代替真实浏览器视觉与交互证据。
 
@@ -52,7 +52,7 @@ Backend `d768099` 最新专项报告为 15 tests、0 failures、0 errors、0 ski
 
 ## 结论
 
-尚不能宣布 D1 整体通过：MySQL 与根构建已过，已核桌面领取下载，浏览器退款恢复、小屏/减少动态及变更后旧单下载直接证据尚待补。本次 QA 只读取源码、报告、截图与本地实际下载文件，不运行模型、数据库写或 Maven。
+数字购买、支付权益、领取下载、快照、退款、权限、真实 MySQL 竞争及冻结浏览器范围已具备通过证据，没有已知未修的业务阻断，D1 受控 Demo 可判为通过。QA 只读取源码、报告、截图与本地实际下载文件，不运行模型、数据库写或 Maven；数据库与浏览器操作由 Lead 执行。
 
 ## 真实 MySQL 失败与独立锁诊断
 
@@ -89,4 +89,20 @@ Backend 修复 `f5225a3` 集成为 `563f571`。固定日志 `apps/backend/var/ph
 
 QA 还实际查看 `d1-claimed-digital-order.jpg`：数字权益已领取、文件 v1、购买快照 v2、12.9 CNY、截止 2026/10/04 04:55 北京时间与 UTC expiresAt 对应、可下载、下载请求提示。统一 JAVA_DIGITAL 对话→显式买→Mock 支付→键盘 Enter 领取由 Lead 操作记录提供，QA 没有自行控制浏览器或重复执行。无模型能力文案修复 `1bee724` 和 digital server hint/售后/到期守卫已静态复核。
 
-当前范围结论：本次已证 MySQL 死锁阻断修复，数字核心、根构建与桌面实际下载已过；不冒称浏览器退款恢复、小屏/减少动态或 D1 整体完成。变更 offer 后旧单下载原 hash 的直接 Session 证据已请求 Lead 补充，避免只凭两个不同测试方法推断完整快照行为。
+上一轮范围结论（已由下节补充）：当时已证 MySQL 死锁阻断修复，数字核心、根构建与桌面实际下载已过；浏览器退款恢复、小屏/减少动态与变更 offer 后旧单下载原 hash 的直接 Session 证据尚待 Lead，不将不同测试方法推断成直接闭环。
+
+## 最新退款、快照与最终前端证据
+
+以下文件均位于 integration 的 `apps/backend/var/phase4-evidence`（忽略的受保护证据目录），QA 实际读取了两个 Session JSON、下载文件、截图与最终前端日志，没有重复运行交易。
+
+`d1-version-snapshot-session-check.json`：Lead 在商家 390px 浏览器编辑 offer #1，价格从 12.90 改为 14.90 CNY，标题修订、文件 asset v1 换为 v2，重新确认并发布到 offer v5。当前资产 hash 为 `d0625bf0f6467bf1d4562f433961a85169f1a00915a899fcd8cffcc0726a5696`；旧订单 #3 仍保存原标题、12.90、offer v2、asset v1 与原 hash。QA 实读实际浏览器保存的 `/Users/qin/Downloads/megagraph-test-file-order-3 (2).txt`：248 bytes，SHA-256 `3fe446074ea9314be1e9776e88c5eb1fdff616dcd8fce05462d142b6adecaf1a`，与旧 purchase 相同而与新资产不同；旧展示 expectedOfferVersion=2 新建购买返回 409 OFFER_CHANGED。购买约定不可被后续编辑改变，有直接会话与实际文件证据。
+
+`d1-refund-session-check.json`：Lead 实际浏览器执行未领取 order #4 申请退款→商家批准→手动刷新。正常 Session 读取到 order/payment/afterSale 全为 REFUNDED、refund SUCCEEDED 12.90 CNY，权益 #2 REVOKED，claimedAt=null，claimAvailable/downloadAvailable=false。领取与下载均 409 DIGITAL_ENTITLEMENT_UNAVAILABLE。原桌面 `d1-refunded-digital-order.jpg` 留有已修的“当前售后处理中”旧文案，不当作最新文案验收。
+
+最后文案修订 Frontend `73ab1bd` 集成 `2ea057a`：消费者对 REFUNDED/REVOKED 先显示“退款已完成，文件权益已撤销。”；商家 REQUESTED/REFUND_PROCESSING/REFUND_FAILED/REFUNDED/REJECTED 分别描述对应事实，数字测试订单不再显示空下单组或实物库存/发货说明。QA 已读取最终 diff。`d1-final-frontend.log` 包含两端 typecheck Done、merchant build Done、shopper build Done，已覆盖本次修订；此前根 verify 的后端239总数、180执行通过、59条件跳过及两次 BUILD SUCCESS 仍按前节区分，不重复宣称59跳过已执行。
+
+`d1-digital-conversation-mobile.jpg` 和 `d1-digital-merchant-mobile.jpg` 实际为390×844：数字对话卡片、商家发布后的14.90/v5/asset v2资料可读，商家编辑按钮正常换行。Lead 操作记录另报告消费者与商家 scrollWidth=390、Enter展开详情/订单/确认。QA 曾指出 `d1-digital-orders-mobile.jpg` 的桌面尺寸及后一次半透明过渡画面；Lead 重新获取稳定画面后，QA 再次读取图像并用 sips 核实390×844，完整订单抽屉内“已退款”“权益 / 已撤销”“退款已完成，文件权益已撤销。”清楚可读，无领取/下载按钮。新增 `d1-reduced-motion-mobile.jpg` 同为390×844，实际图像显示侧栏“减少动态”checkbox 已勾选；Lead 另记录 AX value=1。本次以最终稳定文件为准，不将早先过渡截图算作视觉通过。
+
+直接以 GUI 打开下载 API 时浏览器工具返回 ERR_BLOCKED_BY_CLIENT，属于工具访问限制，不算服务端权限拒绝。越权结论来自真实正常 Session HTTP 他人404、匿名401与真实 MySQL 专项；实际所有者浏览器文件下载成功另外证实。
+
+冻结 D1 受控 Demo 必做范围已无待补证据。仍未验证的范围单列：真实供给、实体手机、生产支付，以及适用于一般数字产品的退款政策；本次只有自建测试文件、桌面/390px浏览器视口、Mock支付与冻结的未领取可退规则。D2预约尚未实施验收，整个阶段4最终组合验证、主干/远端交付也须由 Lead 按后续记录完成，不能引用此文声称整个阶段4完成。没有新增后端、数据库或模型改动，不要求重复已充分通过的复测。
