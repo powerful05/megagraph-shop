@@ -32,3 +32,8 @@ MySQL专项运行器var/phase4-tooling/mysql-run.py <MYSQL_PREFIX> <TestClass>�
 专用MySQL预览已启动8084（baseline c7ccb1d），首次curl受代理返回502，--noproxy '*'后200/65件；数据库URL修正后成功。商家5176、消费者3004 dev预览由Lead启动，session IDs 20291/73079；backend session15924。只结束这些本轮进程，旧Demo保持。
 脚本scripts/phase4-preview.sh提供无密钥Mock默认启动以及显式DB变量/受保护导购配置，所有进程仅127.0.0.1监听。最终组合验收后更新入口状态。
 B/C离线K5候选20仅评测参数，消费者既有结果上限3/候选50不无依据改动。
+
+额度检查快照：5小时使用37%，周使用39%，ordinaryUsageAllowed=true；仅只读检查，没有购买、套餐变更或使用重置券。第三方AI当前仍0新增调用（仅启动已有文本模型配置，未提问）。Goal最初创建active后复查返回null，已尝试重新建立并复查；以工具返回与持久记录为准，不能普通回复冒称后台运行。
+
+4A Frontend Worker edfeeca已review并cherry-pick为fe01fe6；7文件均在批准目录。Worker typecheck/build及domain-types7项通过，待最终组合browser。后端compile/lifecycle兼容测试通过，Lead审查发现租约耗尽DEAD_LETTER缺Outbox，已通知Worker补充及配置guard/回滚证据。目录所有权仍在各Worker，Lead不改apps/backend/frontend。
+4D1预备契约已归档PHASE_4_D1_CONTRACT.md，仅准备未实施；4A验收与B/C裁决后推进。

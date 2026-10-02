@@ -30,3 +30,7 @@ GET /ingestions 返回最新任务列表；GET /ingestions/{id}读取含steps和
 4D1先冻结专用数字offer/文件version/hash/价格CNY/购买快照和权益模型，复用账号/订单/支付事件域服务；只有所属已支付订单领取，领取幂等，服务器下载鉴权与期限，未领取可退、已领取拒绝退款。自建文件明确测试且不进实物库存。
 4D1验收后才实现4D2：独立slot与容量/预约reservation，UTC Instant事实与Asia/Shanghai展示，预占过期/支付失败/取消释放，支付确认不代表履约；显式商家测试完成。并发最后名额不超卖。退款取消预约必须同事务。
 每商家子订单只含一种类型；服务端拒绝混合交付，保留实物跨商家拆单。每个纵切片实现前更新本契约具体API与状态；未验收类型不宣称已支持。
+
+## 4A DTO补充核准
+
+POST multipart字段mockScenario可选，默认success；202。GET任务列表为最新100条数组。GET /ingestions/{id}/media为按商家鉴权的原始输入图，包含未完成任务，不开放消费者。artifact rawOutput:string|null，parsedOutput/evidence:JSON|null，unknowns:string[]，usage:JSON|null，errorCode:string|null；steps错误字段nullable。真实Provider尚未准入，配置必须拒绝不支持provider。图片实际解码，像素数量最多32M。孤立扫描至少24小时宽限并保留任意job/image引用。
