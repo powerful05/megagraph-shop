@@ -42,3 +42,13 @@ B/C离线K5候选20仅评测参数，消费者既有结果上限3/候选50不无
 MySQL preview底库8.4.11，V9基线users2/products65/orders0/sessions2/outbox65；安全统计保存demo-v9-before-upgrade.txt。新的MySqlIngestionTest与MySqlPhase4UpgradeTest由Backend编写，Lead待交接执行，不将条件skip当通过。
 
 Frontend ff8dd1f全attempt历史按需查看已集成为0350290；typecheck/build通过（Worker）。QA 9bccb7评测14文件已review集成为eaf6edc，查询/快照/基线摘要永久保存docs/phase4-evaluation。B/C分别输入不足商业准入待验证，非Milvus/Neo4j实现验收。保留Recall0.747475/NDCG0.853817；三MySQL JVM稳定，207当前GET回查无过滤；内核与目录HTTP延迟分开。v1标注Recall提升理论上限0.070707低于冻结0.10，样本不适合准入比较，保留门槛不改/不造v2。第三方模型0新增调用。
+
+## 4A验收完成恢复点 2026-10-03 01:21
+
+最终代码1f92353；常规pnpm verify成功：typecheck/build/backend测试195总、158执行通过、37条件skip、0failure/error，package成功。首次因本轮Nuxt dev锁退出，不计通过；确认44396 cwd为integration/apps/shopper-web后仅停止该进程，重跑通过并重新启动3004(session75181)。独立真实MySQL专项15/15/0skip（mg_p4_ingestion_20261002_170632_272967）及V9→V10数据保留升级1/1/0skip（mg_p4_phase4_upgrade_20261002_170417_661756），分别日志保存。
+
+真实进程恢复：确认8084 PID45906 cwd为本轮integration/apps/backend，API创建job5 timeout→RUNNING attempt1与job6 success→QUEUED后SIGKILL；相同schema重启session86765。job6 SUCCEEDED attempt1/product69；job5租约回收后累计attempt3 DEAD_LETTER无product，历史LEASE_EXPIRED、PROVIDER_TIMEOUT、PROVIDER_TIMEOUT。4a-real-crash.json保存前后持久状态，非同进程模拟。其它旧Demo进程未停止。
+
+浏览器：job4上传→product68，生成后没有自动打开/填写价格；显式打开，人工填59CNY/库存4、GENERAL_PHYSICAL颜色/材质/场景/图片声明/规格，save→confirm→publish。消费者一条真实deepseek-flash查询找到68（TEST_CONFIRMED v4）→当前SKU→加购；与B商家笔记本拆为组#1两单，A59 Mock成功库存CONFIRMED，B29 Mock失败库存RELEASED。task3 DEAD_LETTER累计3人工retry→attempt5 cancel成功，历史1–5保留；刷新后选择同商家恢复task3 CANCELLED。桌面截图与390px商家/消费者截图归档，无水平溢出；Enter展开历史/Tab焦点与减少动态选项验证。视口已reset。图片/文本均为本地测试，68明确LOCAL_TEST，修复标志前66/67保持未公开。新增消费者文本模型调用1次，费用未知，未调用视觉/嵌入模型。
+
+4A按受控Mock商品生产验收；真实视觉/OCR未验证。B/C已分别归档输入不足商业准入待验证。开始4D1，先数字交付；4D2待4D1专项和浏览器验收后再实施。主干与远端仍待整个阶段4验收，不能提前推送。

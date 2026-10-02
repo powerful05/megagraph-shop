@@ -1,4 +1,4 @@
-# 4D1数字文件纵切片契约 v1（预备冻结，4A+B/C裁决后实施）
+# 4D1数字文件纵切片契约 v1（冻结，4A验收与B/C裁决已完成）
 
 复用SalesOrder/PaymentOrder/PaymentAttempt/渠道命令/Inbox/AfterSale/Refund/Outbox/Session；新增独立delivery_offer、digital_asset、delivery_purchase与digital_entitlement，数字供给不创建实物SKU、不写stock_reservation。物理cart/checkout保持。
 

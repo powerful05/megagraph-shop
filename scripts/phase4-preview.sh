@@ -30,7 +30,7 @@ case "$mode" in
     fi
     export SPRING_PROFILES_ACTIVE="$profiles" APP_DEV_SEED_ENABLED=true
     export SERVER_ADDRESS=127.0.0.1 SERVER_PORT="${PHASE4_BACKEND_PORT:-8084}"
-    export SERVER_SERVLET_SESSION_COOKIE_NAME=PHASE4_SESSION
+    export SERVER_SERVLET_SESSION_COOKIE_NAME=PHASE4_SESSION APP_SESSION_COOKIE_SECURE=false
     export APP_MEDIA_UPLOAD_DIR="$repo_root/apps/backend/var/phase4-uploads" TZ=UTC
     exec mvn -s .mvn/settings.xml -f apps/backend/pom.xml spring-boot:run
     ;;
