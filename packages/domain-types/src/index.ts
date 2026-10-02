@@ -55,6 +55,8 @@ export interface DeliveryOffer {
 }
 
 export interface DigitalDelivery {
+  claimAvailable?: boolean
+  downloadAvailable?: boolean
   offerId: number
   offerVersion: number
   title: string

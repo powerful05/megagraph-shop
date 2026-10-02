@@ -11,13 +11,16 @@ const entitlement = computed(() => props.order.delivery?.entitlement)
 const expired = computed(() => entitlement.value ? Date.parse(entitlement.value.expiresAt) <= now.value : false)
 const blocked = computed(() => !!props.order.afterSale && props.order.afterSale.status !== 'REJECTED')
 const eligible = computed(() => props.order.status === 'PAID' && props.order.payment?.status === 'SUCCEEDED' && !props.order.payment.reconciliationRequired && !blocked.value && !!entitlement.value && !expired.value && entitlement.value.status !== 'REVOKED')
+const claimEligible = computed(() => eligible.value && props.order.delivery?.claimAvailable !== false)
+const downloadEligible = computed(() => eligible.value && props.order.delivery?.downloadAvailable !== false)
+const serverUnavailable = computed(() => eligible.value && (entitlement.value?.status === 'AVAILABLE' && props.order.delivery?.claimAvailable === false || entitlement.value?.status === 'CLAIMED' && props.order.delivery?.downloadAvailable === false))
 function statusLabel(value: string) { return value === 'AVAILABLE' ? '待领取' : value === 'CLAIMED' ? '已领取' : '已撤销' }
 function date(value: string) { return new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(value)) }
 </script>
 <template>
   <section v-if="order.delivery" class="digital-order-delivery" aria-label="数字文件交付">
     <strong>{{ order.delivery.title }} · 数字测试文件</strong><p>供给快照 v{{ order.delivery.offerVersion }} · 文件 v{{ order.delivery.assetVersion }}</p><p>{{ order.delivery.deliveryTerms }}</p><p>{{ order.delivery.refundPolicy }}</p>
-    <template v-if="entitlement"><p>权益 / {{ statusLabel(entitlement.status) }}<span v-if="expired"> · 已到期</span></p><p>领取及下载截止 {{ date(entitlement.expiresAt) }}（北京时间），重复领取不会延长。</p><p v-if="blocked">当前售后处理中，领取和下载已暂停。</p><p v-else-if="order.payment?.reconciliationRequired">支付状态需要核查，领取和下载暂不可用。</p><button v-if="entitlement.status === 'AVAILABLE'" type="button" :disabled="busy || !eligible" @click="emit('claim')">领取自建测试文件</button><button v-if="entitlement.status === 'CLAIMED'" type="button" :disabled="busy || !eligible" @click="emit('download')">下载已领取测试文件</button></template>
+    <template v-if="entitlement"><p>权益 / {{ statusLabel(entitlement.status) }}<span v-if="expired"> · 已到期</span></p><p>领取及下载截止 {{ date(entitlement.expiresAt) }}（北京时间），重复领取不会延长。</p><p v-if="blocked">当前售后处理中，领取和下载已暂停。</p><p v-else-if="order.payment?.reconciliationRequired">支付状态需要核查，领取和下载暂不可用。</p><p v-else-if="serverUnavailable">当前权益暂不可{{ entitlement.status === 'AVAILABLE' ? '领取' : '下载' }}，请刷新订单核对。</p><button v-if="entitlement.status === 'AVAILABLE'" type="button" :disabled="busy || !claimEligible" @click="emit('claim')">领取自建测试文件</button><button v-if="entitlement.status === 'CLAIMED'" type="button" :disabled="busy || !downloadEligible" @click="emit('download')">下载已领取测试文件</button></template>
     <p v-else>支付成功并由后端确认后开放领取。</p><details><summary>下单文件校验值</summary><p>SHA-256 {{ order.delivery.assetHash }}</p></details>
   </section>
 </template>
