@@ -1,4 +1,4 @@
-import type { AuthMe, Category, IngestionJob, MerchantProduct, SalesOrder, SupplyDetails } from '@megagraph/domain-types'
+import type { AuthMe, Category, IngestionArtifact, IngestionJob, MerchantProduct, SalesOrder, SupplyDetails } from '@megagraph/domain-types'
 
 const API_BASE = ''
 
@@ -157,6 +157,9 @@ export const merchantApi = {
   },
   ingestion(credentials: Credentials, id: number, signal?: AbortSignal) {
     return request<IngestionJob>(`/api/merchant/v1/ingestions/${id}`, credentials, { signal })
+  },
+  ingestionArtifacts(credentials: Credentials, id: number, signal?: AbortSignal) {
+    return request<IngestionArtifact[]>(`/api/merchant/v1/ingestions/${id}/artifacts`, credentials, { signal })
   },
   mutateIngestion(credentials: Credentials, job: IngestionJob, action: 'retry' | 'cancel', signal?: AbortSignal) {
     return request<IngestionJob>(`/api/merchant/v1/ingestions/${job.id}/${action}`, credentials, {

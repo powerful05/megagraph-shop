@@ -229,3 +229,5 @@ h2 { margin: 0; font-size: 24px; letter-spacing: -.03em; }
 
 .ingestion-input-preview { display: block; max-width: 100%; width: 160px; height: 140px; margin-bottom: 18px; object-fit: contain; border: 1px solid #34343b; border-radius: 12px; background: #0b0b0d; }
 .ingestion-artifact li { color: #c1c1ca; font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
+
+.ingestion-history > details > .ingestion-facts { margin-top: 16px; }

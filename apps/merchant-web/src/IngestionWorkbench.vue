@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import type { IngestionJob, IngestionStatus } from '@megagraph/domain-types'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import type { IngestionArtifact, IngestionJob, IngestionStatus } from '@megagraph/domain-types'
 import { canRetryIngestion, needsIngestionPolling, nextIngestionPollingDelay } from '@megagraph/domain-types'
 import { merchantApi, type Credentials } from './api'
 
@@ -8,6 +8,14 @@ const props = defineProps<{ credentials: Credentials; canEdit: boolean; userId: 
 const emit = defineEmits<{ openDraft: [productId: number]; productsChanged: [] }>()
 const jobs = ref<IngestionJob[]>([])
 const activeJob = ref<IngestionJob | null>(null)
+const historyOpen = ref(false)
+const historyLoading = ref(false)
+const historyError = ref('')
+const historyArtifacts = ref<IngestionArtifact[]>([])
+let historyController: AbortController | null = null
+let historyGeneration = 0
+let historyLoaded = false
+let historyJobId: number | null = null
 const selectedFile = ref<File | null>(null)
 const previewUrl = ref('')
 const taskPreviewUrl = ref('')
@@ -36,6 +44,51 @@ function label(status: IngestionStatus) { return statusLabels[status] ?? status 
 function json(value: unknown): string { return value == null ? '未提供' : typeof value === 'string' ? value : JSON.stringify(value, null, 2) }
 function date(value: string) { return new Date(value).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }) }
 function clearTimer() { if (timer) clearTimeout(timer); timer = null }
+function invalidateHistory(clear = false) {
+  historyController?.abort()
+  historyController = null
+  historyGeneration += 1
+  historyLoading.value = false
+  historyLoaded = false
+  historyError.value = ''
+  if (clear) historyArtifacts.value = []
+}
+async function loadHistory() {
+  const job = activeJob.value
+  if (disposed || !job || !historyOpen.value) return
+  invalidateHistory()
+  const generation = historyGeneration
+  const version = job.version
+  const taskController = new AbortController()
+  historyController = taskController
+  historyLoading.value = true
+  try {
+    const artifacts = await merchantApi.ingestionArtifacts({ ...props.credentials }, job.id,
+      AbortSignal.any([controller.signal, taskController.signal, AbortSignal.timeout(15_000)]))
+    if (disposed || generation !== historyGeneration || selectedJobId !== job.id || activeJob.value?.version !== version) return
+    historyArtifacts.value = artifacts
+    historyLoaded = true
+  } catch (reason) {
+    if (!disposed && generation === historyGeneration && !(reason instanceof DOMException && reason.name === 'AbortError')) {
+      historyError.value = reason instanceof Error ? reason.message : '尝试历史读取失败'
+    }
+  } finally {
+    if (generation === historyGeneration) { historyLoading.value = false; historyController = null }
+  }
+}
+function toggleHistory() {
+  historyOpen.value = !historyOpen.value
+  if (!historyOpen.value) invalidateHistory()
+  else if (!historyLoaded) void loadHistory()
+}
+watch(() => activeJob.value ? `${activeJob.value.id}:${activeJob.value.version}` : '', () => {
+  const id = activeJob.value?.id ?? null
+  const switched = historyJobId !== id
+  historyJobId = id
+  invalidateHistory(switched)
+  if (switched) historyOpen.value = false
+  else if (historyOpen.value) void loadHistory()
+})
 function rememberSelection(id: number) {
   selectedJobId = id
   try { sessionStorage.setItem(storageKey, String(id)) } catch { /* Storage may be disabled. */ }
@@ -155,6 +208,7 @@ async function mutate(action: 'retry' | 'cancel') {
   error.value = ''
   clearTimer()
   mutationVersion += 1
+  invalidateHistory()
   try {
     const updated = await merchantApi.mutateIngestion({ ...props.credentials }, job, action, AbortSignal.any([controller.signal, AbortSignal.timeout(15_000)]))
     if (disposed) return
@@ -181,6 +235,7 @@ onBeforeUnmount(() => {
   disposed = true
   clearTimer()
   controller.abort()
+  invalidateHistory(true)
   document.removeEventListener('visibilitychange', visibility)
   window.removeEventListener('online', recover)
   window.removeEventListener('offline', offline)
@@ -248,6 +303,32 @@ onBeforeUnmount(() => {
           <details><summary>原始输出</summary><pre>{{ json(activeJob.artifact.rawOutput) }}</pre></details>
           <details><summary>调用用量（未知费用 / 置信度留空）</summary><pre>{{ json(activeJob.artifact.usage) }}</pre></details>
         </div>
+        <section class="ingestion-artifact ingestion-history" aria-label="尝试历史">
+          <div class="action-row">
+            <el-button :aria-expanded="historyOpen" @click="toggleHistory">{{ historyOpen ? '收起尝试历史' : '查看尝试历史' }}</el-button>
+            <el-button v-if="historyOpen" :loading="historyLoading" :disabled="busy" @click="loadHistory">刷新历史</el-button>
+          </div>
+          <template v-if="historyOpen">
+            <p class="muted">每次尝试分别保存，按尝试编号从早到晚展示。人工重试保留既有记录。</p>
+            <p v-if="historyLoading" class="muted" role="status">正在读取尝试历史…</p>
+            <p v-if="historyError" class="ingestion-error" role="alert">{{ historyError }}</p>
+            <p v-else-if="!historyLoading && !historyArtifacts.length" class="muted">尚未保存尝试产物。等待领取且未开始的任务没有产物记录。</p>
+            <details v-for="artifact in historyArtifacts" :key="artifact.attempt">
+              <summary>尝试 {{ artifact.attempt }} · {{ artifact.errorCode || '产物已保存' }} · {{ artifact.elapsedMs == null ? '耗时未提供' : `${artifact.elapsedMs} ms` }}</summary>
+              <dl class="ingestion-facts">
+                <div><dt>Provider / Model</dt><dd>{{ artifact.provider }} / {{ artifact.model }}</dd></div>
+                <div><dt>安全错误</dt><dd>{{ artifact.errorCode || '无错误记录' }}</dd></div>
+                <div><dt>模板 / 协议</dt><dd>{{ artifact.templateVersion }} / {{ artifact.protocolVersion }}</dd></div>
+                <div><dt>输入 SHA256</dt><dd>{{ artifact.inputHash }}</dd></div>
+              </dl>
+              <details><summary>事实依据</summary><pre>{{ json(artifact.evidence) }}</pre></details>
+              <details><summary>未知与待确认项</summary><pre>{{ json(artifact.unknowns) }}</pre></details>
+              <details><summary>结构化输出</summary><pre>{{ json(artifact.parsedOutput) }}</pre></details>
+              <details><summary>原始输出</summary><pre>{{ json(artifact.rawOutput) }}</pre></details>
+              <details><summary>调用用量</summary><pre>{{ json(artifact.usage) }}</pre></details>
+            </details>
+          </template>
+        </section>
       </article>
       <div v-else class="ingestion-empty"><h3>提交后查看生成进度</h3><p>任务与步骤以服务器状态为准；页面刷新后会重新读取。生成完成后可打开草稿。</p></div>
     </div>
