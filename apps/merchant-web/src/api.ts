@@ -1,4 +1,4 @@
-import type { AuthMe, Category, IngestionArtifact, IngestionJob, MerchantProduct, SalesOrder, SupplyDetails } from '@megagraph/domain-types'
+import type { AuthMe, Category, DeliveryOffer, IngestionArtifact, IngestionJob, MerchantProduct, SalesOrder, SupplyDetails } from '@megagraph/domain-types'
 
 const API_BASE = ''
 
@@ -76,6 +76,18 @@ async function request<T>(
 }
 
 export const merchantApi = {
+  deliveryOffers(credentials: Credentials, signal?: AbortSignal) {
+    return request<DeliveryOffer[]>('/api/merchant/v1/delivery-offers', credentials, { signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15000)]) : AbortSignal.timeout(15000) })
+  },
+  createDeliveryOffer(credentials: Credentials, form: { title: string; description: string; price: number }, key: string) {
+    return request<DeliveryOffer>('/api/merchant/v1/delivery-offers', credentials, { method: 'POST', headers: { 'Idempotency-Key': key }, body: JSON.stringify({ ...form, currency: 'CNY', deliveryType: 'DIGITAL_FILE' }), signal: AbortSignal.timeout(15000) })
+  },
+  updateDeliveryOffer(credentials: Credentials, offer: DeliveryOffer, form: { title: string; description: string; price: number }) {
+    return request<DeliveryOffer>(`/api/merchant/v1/delivery-offers/${offer.id}`, credentials, { method: 'PATCH', body: JSON.stringify({ ...form, version: offer.version, currency: 'CNY', deliveryType: 'DIGITAL_FILE' }), signal: AbortSignal.timeout(15000) })
+  },
+  mutateDeliveryOffer(credentials: Credentials, offer: DeliveryOffer, action: 'confirm' | 'publish' | 'off-shelf') {
+    return request<DeliveryOffer>(`/api/merchant/v1/delivery-offers/${offer.id}/${action}`, credentials, { method: 'POST', body: JSON.stringify({ version: offer.version }), signal: AbortSignal.timeout(15000) })
+  },
   onSessionExpired(handler: (() => void) | null) {
     onSessionExpired = handler
   },

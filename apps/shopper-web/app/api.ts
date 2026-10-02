@@ -1,4 +1,4 @@
-import type { AuthMe, CheckoutGroup, GuideConversationDetail, GuideConversationSummary, GuideTurnRequest, GuideMessage, GuideReply, MockPaymentResult, PublicProduct, SalesOrder, ShoppingCart } from '@megagraph/domain-types'
+import type { AuthMe, CheckoutGroup, DeliveryOffer, GuideConversationDetail, GuideConversationSummary, GuideTurnRequest, GuideMessage, GuideReply, MockPaymentResult, PublicProduct, SalesOrder, ShoppingCart } from '@megagraph/domain-types'
 
 export interface ShopperCredentials {
   username: string
@@ -43,7 +43,7 @@ async function request<T>(
   _credentials: ShopperCredentials,
   init: RequestInit = {},
 ): Promise<T> {
-  const signal = init.signal ?? (path.startsWith('/api/shop/v1/') ? shopperRequests.signal : undefined)
+  const signal = path.startsWith('/api/shop/v1/') ? (init.signal ? AbortSignal.any([shopperRequests.signal, init.signal]) : shopperRequests.signal) : init.signal
   const headers = new Headers(init.headers)
   if (init.method && !['GET', 'HEAD'].includes(init.method.toUpperCase())) {
     headers.set('X-CSRF-TOKEN', await ensureCsrf(apiBase))
@@ -58,7 +58,7 @@ async function request<T>(
     }
     if (response.status === 401 && path !== '/api/auth/v1/login') onSessionExpired?.()
     const fields = body.fieldErrors ? Object.values(body.fieldErrors).join('；') : ''
-    throw new Error([body.message ?? `请求失败（${response.status}）`, fields].filter(Boolean).join('：'))
+    throw Object.assign(new Error([body.message ?? `请求失败（${response.status}）`, fields].filter(Boolean).join('：')), { status: response.status, code: body.code })
   }
   const result = response.status === 204 ? undefined : await response.json()
   if (signal?.aborted) throw new DOMException('Shopper session changed', 'AbortError')
@@ -66,6 +66,27 @@ async function request<T>(
 }
 
 export const shopperApi = {
+  deliveryOffer(apiBase: string, id: number, signal?: AbortSignal) {
+    return request<DeliveryOffer>(apiBase, `/api/shop/v1/delivery-offers/${id}`, { username: '', password: '' }, { signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15000)]) : AbortSignal.timeout(15000) })
+  },
+  createDeliveryOrder(apiBase: string, offerId: number, expectedOfferVersion: number, key: string) {
+    return request<SalesOrder>(apiBase, '/api/shop/v1/delivery-orders', { username: '', password: '' }, { method: 'POST', headers: { 'Idempotency-Key': key }, body: JSON.stringify({ items: [{ offerId, quantity: 1, expectedOfferVersion }] }), signal: AbortSignal.timeout(15000) })
+  },
+  claimDigital(apiBase: string, orderId: number, key: string) {
+    return request<SalesOrder>(apiBase, `/api/shop/v1/orders/${orderId}/digital-claim`, { username: '', password: '' }, { method: 'POST', headers: { 'Idempotency-Key': key }, signal: AbortSignal.timeout(15000) })
+  },
+  async downloadDigital(apiBase: string, orderId: number) {
+    const signal = AbortSignal.any([shopperRequests.signal, AbortSignal.timeout(15000)])
+    const response = await fetch(`${apiBase}/api/shop/v1/orders/${orderId}/digital-download`, { credentials: 'same-origin', signal })
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({})) as ApiErrorBody
+      if (response.status === 401) onSessionExpired?.()
+      throw new Error(body.message ?? `文件下载失败（${response.status}）`)
+    }
+    const blob = await response.blob()
+    if (signal.aborted) throw new DOMException('Session changed', 'AbortError')
+    return blob
+  },
   conversations(apiBase: string, signal?: AbortSignal) {
     return request<GuideConversationSummary[]>(apiBase, '/api/shop/v1/guide/conversations', { username: '', password: '' }, { signal })
   },

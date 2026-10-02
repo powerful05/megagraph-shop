@@ -9,6 +9,7 @@ import {
 } from '@megagraph/domain-types'
 import { cancelMerchantRequests, merchantApi, type Credentials } from './api'
 import IngestionWorkbench from './IngestionWorkbench.vue'
+import DigitalOffersWorkbench from './DigitalOffersWorkbench.vue'
 
 const isDevelopment = import.meta.env.DEV
 const credentials = reactive<Credentials>({
@@ -30,7 +31,7 @@ const products = ref<MerchantProduct[]>([])
 const orders = ref<SalesOrder[]>([])
 const shipmentDrafts = reactive<Record<number, { carrierName: string; trackingNo: string }>>({})
 const afterSaleNotes = reactive<Record<number, string>>({})
-const activeArea = ref<'products' | 'orders'>('products')
+const activeArea = ref<'products' | 'orders' | 'digital'>('products')
 const activeProduct = ref<MerchantProduct | null>(null)
 const storedPreviewUrl = ref('')
 const supplyDraft = ref<SupplyDetails | null>(null)
@@ -261,6 +262,7 @@ function replaceOrder(updated: SalesOrder) {
 }
 
 function canShipOrder(order: SalesOrder): boolean {
+  if (order.deliveryType === 'DIGITAL_FILE') return false
   return canEdit.value && !order.testOrder && order.status === 'PAID' && !isAfterSaleBlockingShipment(order.afterSale?.status)
 }
 
@@ -624,7 +626,10 @@ onBeforeUnmount(() => {
         >
           交易订单 <span>{{ orders.length }}</span>
         </button>
+        <button type="button" :class="{ active: activeArea === 'digital' }" @click="activeArea = 'digital'">数字文件</button>
       </nav>
+
+      <DigitalOffersWorkbench v-if="activeArea === 'digital' && connected && identity" :key="`digital-${identity.userId}-${credentials.merchantId}`" :credentials="credentials" :user-id="identity.userId" :role="merchantRole" />
 
       <IngestionWorkbench
         v-if="activeArea === 'products' && connected && identity"
@@ -769,7 +774,7 @@ onBeforeUnmount(() => {
         </section>
       </section>
 
-      <section v-else class="orders-workspace">
+      <section v-else-if="activeArea === 'orders'" class="orders-workspace">
         <div class="order-metrics">
           <article class="glass-panel metric-card">
             <span>ALL ORDERS</span>
@@ -831,7 +836,7 @@ onBeforeUnmount(() => {
                   <small v-if="order.testOrder">试用子订单 · 下单组 #{{ order.checkoutGroupId }} · 不发货、不结算</small>
                 </div>
                 <div class="order-statuses">
-                  <span :class="`order-status ${order.status.toLowerCase()}`">{{ orderStatusLabel(order.status) }}</span>
+                  <span :class="`order-status ${order.status.toLowerCase()}`">{{ order.deliveryType === 'DIGITAL_FILE' && order.status === 'PAID' ? '数字文件已支付' : orderStatusLabel(order.status) }}</span>
                   <span class="payment-status">PAYMENT / {{ paymentStatusLabel(order) }}</span>
                 </div>
               </header>
@@ -843,6 +848,7 @@ onBeforeUnmount(() => {
 
               <div class="merchant-order-body">
                 <div class="ordered-products">
+                  <template v-if="order.delivery"><p><strong>{{ order.delivery.title }}</strong> · 数字测试文件 · v{{ order.delivery.assetVersion }}</p><p>{{ order.delivery.deliveryTerms }}</p><p>{{ order.delivery.refundPolicy }}</p><p>领取 / {{ order.delivery.entitlement?.status ?? '支付成功后开放' }}</p></template>
                   <p v-for="item in order.items" :key="item.skuId">
                     <span>
                       <strong>{{ item.productTitle }}</strong>
@@ -852,7 +858,7 @@ onBeforeUnmount(() => {
                     <strong>{{ formatPrice(item.lineAmount, item.currency) }}</strong>
                   </p>
                 </div>
-                <dl class="delivery-facts">
+                <dl v-if="order.deliveryType !== 'DIGITAL_FILE'" class="delivery-facts">
                   <div><dt>收件人</dt><dd>{{ order.recipientName }}</dd></div>
                   <div><dt>电话</dt><dd>{{ order.recipientPhone }}</dd></div>
                   <div><dt>地址</dt><dd>{{ order.shippingAddress }}</dd></div>

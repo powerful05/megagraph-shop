@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, toRef, watch } from 'vue'
 import { ArrowUp, Columns2, MessageSquare, PanelLeft, Plus, RefreshCw, Square, X } from 'lucide-vue-next'
-import type { PublicProduct } from '@megagraph/domain-types'
+import type { DeliveryOffer, PublicProduct } from '@megagraph/domain-types'
 import { useGuideConversations, type AgentMessage as Message } from '../composables/useGuideConversations'
 import ProductComparison from './ProductComparison.vue'
 import ProductImage from './ProductImage.vue'
+import DigitalOfferCard from './DigitalOfferCard.vue'
 import { shopperApi } from '../api'
 
 const props = defineProps<{
   modelAvailable: boolean
+  digitalDeliveryAvailable: boolean
   demoCatalogAvailable: boolean
   modelName: string
   cartBusy: boolean
@@ -16,7 +18,7 @@ const props = defineProps<{
   reduceMotion: boolean
   systemReduceMotion: boolean
 }>()
-const emit = defineEmits<{ addToCart: [product: PublicProduct, skuId: number]; refreshCapabilities: []; 'update:reduceMotion': [value: boolean] }>()
+const emit = defineEmits<{ addToCart: [product: PublicProduct, skuId: number]; purchaseDigital: [offer: DeliveryOffer]; refreshCapabilities: []; 'update:reduceMotion': [value: boolean] }>()
 const apiBase = useRuntimeConfig().public.apiBase
 
 type DemoProduct = {
@@ -79,7 +81,7 @@ let previewTrigger: HTMLElement | null = null
 
 const { conversations, activeId, activeConversation, pendingId, waiting, progress, loading, historyError, canRetry, canSend,
   startConversation: createChat, selectConversation: switchChat, send, stopWaiting, recover, loadHistory } = useGuideConversations(
-  apiBase, toRef(props, 'accountUserId'), () => props.modelAvailable || !props.demoCatalogAvailable, demoAnswer,
+  apiBase, toRef(props, 'accountUserId'), () => props.modelAvailable || props.digitalDeliveryAvailable || !props.demoCatalogAvailable, demoAnswer,
   () => { if (!props.modelAvailable) emit('refreshCapabilities'); void nextTick(scrollToEnd) },
 )
 const hasMessages = computed(() => activeConversation.value.messages.length > 0)
@@ -307,15 +309,15 @@ onBeforeUnmount(() => {
     <div class="agent-main">
       <div class="conversation-topline">
         <button ref="historyTrigger" class="mobile-history" type="button" aria-label="打开对话历史" :aria-expanded="sidebarOpen" @click="openHistory"><PanelLeft :size="18" /></button>
-        <span>AI 超市 <small>{{ modelAvailable ? '真实对话' : demoCatalogAvailable ? '演示模式' : '暂不可用' }}</small></span>
-        <span class="not-connected">{{ modelAvailable ? modelName : demoCatalogAvailable ? '未接入实时模型' : '对话服务未就绪' }}</span>
+        <span>AI 超市 <small>{{ modelAvailable ? '真实对话' : digitalDeliveryAvailable ? '测试供给' : demoCatalogAvailable ? '演示模式' : '暂不可用' }}</small></span>
+        <span class="not-connected">{{ modelAvailable ? modelName : digitalDeliveryAvailable ? '数字文件来自商家确认资料' : demoCatalogAvailable ? '未接入实时模型' : '对话服务未就绪' }}</span>
       </div>
 
       <div ref="messageList" class="message-scroll" role="log" aria-live="polite" aria-relevant="additions">
         <div v-if="!hasMessages" class="empty-conversation">
           <div class="agent-symbol" aria-hidden="true"><span>✳</span></div>
           <h1>你在找什么？</h1>
-          <p>{{ demoCatalogAvailable && !modelAvailable ? '用自己的话描述想法。这里先演示对话和商品图片的呈现。' : '想解决什么、喜欢什么，或者还没想清楚，都可以从这里聊起。' }}</p>
+          <p>{{ !modelAvailable && digitalDeliveryAvailable ? '描述想找的数字测试文件，核对商家确认资料后再决定是否单独试购。' : demoCatalogAvailable && !modelAvailable ? '用自己的话描述想法。这里先演示对话和商品图片的呈现。' : '想解决什么、喜欢什么，或者还没想清楚，都可以从这里聊起。' }}</p>
         </div>
         <div v-else class="message-stack">
           <template v-for="message in activeConversation.messages" :key="message.id">
@@ -325,7 +327,7 @@ onBeforeUnmount(() => {
             <article v-else class="assistant-row">
               <div class="assistant-avatar" aria-hidden="true">✳</div>
               <div class="assistant-content">
-                <div class="assistant-name">MegaGraph <span>{{ message.error ? '回复失败' : message.modelReply ? modelName : '演示回复' }}</span></div>
+                <div class="assistant-name">MegaGraph <span>{{ message.error ? '回复失败' : message.modelReply ? (message.deliveryOffers?.length ? '已核验测试文件' : modelAvailable ? modelName : '已核验测试资料') : '演示回复' }}</span></div>
                 <p>{{ message.text }}</p>
                 <div v-if="message.advice" class="model-advice"><span>选购建议</span><p>{{ message.advice }}</p></div>
                 <button v-if="message.error && message === activeConversation.messages.at(-1)" class="retry-reply" type="button" :disabled="!canRetry" @click="retryReply">重试</button>
@@ -339,6 +341,7 @@ onBeforeUnmount(() => {
                   </div>
                   <p class="results-footnote">图片仅用于界面演示，不提供价格、库存和购买入口。</p>
                 </div>
+                <DigitalOfferCard v-for="offer in message.deliveryOffers" :key="`digital-${offer.id}`" :offer="offer" :busy="cartBusy" :account-user-id="accountUserId" @purchase="emit('purchaseDigital', $event)" />
                 <div v-if="message.liveProducts?.length" class="demo-results">
                   <div class="results-heading"><strong>匹配商品</strong><span>返回时已核对资料版本与可售状态</span></div>
                   <div class="demo-grid">
@@ -391,7 +394,7 @@ onBeforeUnmount(() => {
             @keydown="handleComposerKeydown"
           />
           <div class="composer-actions">
-            <span>{{ !modelAvailable && demoCatalogAvailable ? '演示对话' : '与 AI 超市对话' }}</span>
+            <span>{{ !modelAvailable && digitalDeliveryAvailable ? '查询已确认测试供给' : !modelAvailable && demoCatalogAvailable ? '演示对话' : '与 AI 超市对话' }}</span>
             <button v-if="waiting" type="button" aria-label="停止等待" title="停止等待" @click="stopWaiting"><Square :size="17" /></button>
             <button v-else-if="pendingId !== null" type="button" aria-label="刷新请求状态" title="刷新请求状态" @click="recover()"><RefreshCw :size="18" /></button>
             <button v-else type="submit" aria-label="发送消息" title="发送消息" :disabled="!draft.trim() || !canSend"><ArrowUp :size="20" /></button>

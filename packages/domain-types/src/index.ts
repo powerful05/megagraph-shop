@@ -12,6 +12,7 @@ export interface AuthMe {
 
 export interface ShopCapabilities {
   mockPaymentAvailable: boolean
+  digitalDeliveryAvailable?: boolean
   guideAvailable?: boolean
   demoCatalogAvailable?: boolean
   guideModelName?: string
@@ -33,9 +34,52 @@ export interface GuideRecommendationBasis {
   limitations: string[]
 }
 
+export interface DeliveryOffer {
+  id: number
+  version: number
+  merchantId: number
+  merchantName: string
+  deliveryType: 'DIGITAL_FILE'
+  title: string
+  description: string
+  price: number
+  currency: 'CNY'
+  status: 'DRAFT' | 'PUBLISHED' | 'OFF_SHELF'
+  confirmedVersion: number | null
+  testOnly: boolean
+  assetVersion: number
+  assetHash: string
+  deliveryTerms: string
+  refundPolicy: string
+  availabilityHours: number
+}
+
+export interface DigitalDelivery {
+  offerId: number
+  offerVersion: number
+  title: string
+  description: string
+  unitPrice: number
+  currency: string
+  assetVersion: number
+  assetHash: string
+  deliveryTerms: string
+  refundPolicy: string
+  availabilityHours: number
+  entitlement: null | {
+    id: number
+    status: 'AVAILABLE' | 'CLAIMED' | 'REVOKED'
+    availableAt: string
+    expiresAt: string
+    claimedAt: string | null
+    revokedAt: string | null
+  }
+}
+
 export interface GuideReply {
   answer: string
   products: PublicProduct[]
+  deliveryOffers?: DeliveryOffer[]
   demoProductIds: GuideDemoProductId[]
   advice: string
   recommendationBasis: GuideRecommendationBasis[]
@@ -267,6 +311,8 @@ export interface AfterSaleSummary {
 }
 
 export interface SalesOrder {
+  deliveryType?: 'PHYSICAL' | 'DIGITAL_FILE'
+  delivery?: DigitalDelivery | null
   id: number
   orderNo: string
   userId: number

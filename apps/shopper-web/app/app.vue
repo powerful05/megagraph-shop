@@ -2,7 +2,9 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { Plus, RefreshCw } from 'lucide-vue-next'
 import ProductImage from './components/ProductImage.vue'
+import DigitalOrderDelivery from './components/DigitalOrderDelivery.vue'
 import type {
+  DeliveryOffer,
   MockPaymentResult,
   OrderItem,
   PublicProduct,
@@ -356,7 +358,7 @@ async function cancelOrder(order: SalesOrder) {
   await execute(`cancel-${order.id}`, async () => {
     const updated = await shopperApi.cancelOrder(apiBase, credentials, order.id)
     replaceOrder(updated)
-    notice.value = '订单已取消，预占库存已释放'
+    notice.value = order.deliveryType === 'DIGITAL_FILE' ? '数字订单已取消，未产生文件权益' : '订单已取消，预占库存已释放'
     await refreshInventoryFacts()
   })
 }
@@ -384,8 +386,68 @@ async function requestRefund(order: SalesOrder) {
       reason,
     )
     replaceOrder(updated)
-    notice.value = '退款申请已提交，发货已暂停'
+    notice.value = order.deliveryType === 'DIGITAL_FILE' ? '退款申请已提交，文件领取与下载已暂停' : '退款申请已提交，发货已暂停'
   })
+}
+
+async function purchaseDigital(displayed: DeliveryOffer) {
+  if (busyAction.value) return
+  if (!connected.value) { loginOpen.value = true; notice.value = '登录后请重新查看当前数字文件，再显式购买。'; return }
+  if (!mockPaymentAvailable.value) { errorMessage.value = '当前环境未开放数字测试订单与 Mock 支付。'; return }
+  await execute(`digital-buy-${displayed.id}`, async () => {
+    const owner = accountUserId.value
+    const storage = `megagraph-digital-buy-${owner}-${displayed.id}`
+    let pending: { key: string; offerId: number; expectedOfferVersion: number } | null = null
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(storage) ?? 'null')
+      if (saved && typeof saved.key === 'string' && saved.offerId === displayed.id && Number.isInteger(saved.expectedOfferVersion)) pending = saved
+    } catch { /* Optional storage or invalid data. */ }
+    const recovering = pending !== null
+    if (!pending) {
+      const current = await shopperApi.deliveryOffer(apiBase, displayed.id)
+      if (owner !== accountUserId.value) return
+      if (current.version !== displayed.version || current.price !== displayed.price || current.assetHash !== displayed.assetHash) throw new Error('数字文件资料或价格已变化，请重新查看详情后购买。')
+      pending = { key: crypto.randomUUID(), offerId: current.id, expectedOfferVersion: current.version }
+      try { sessionStorage.setItem(storage, JSON.stringify(pending)) } catch { /* Optional. */ }
+    }
+    let created: SalesOrder
+    try {
+      created = await shopperApi.createDeliveryOrder(apiBase, pending.offerId, pending.expectedOfferVersion, pending.key)
+    } catch (reason) {
+      if (owner !== accountUserId.value) return
+      const status = reason instanceof Error && 'status' in reason ? Number(reason.status) : 0
+      if (status >= 400 && status < 500) { try { sessionStorage.removeItem(storage) } catch { /* Optional. */ } }
+      if (!status) throw new Error('数字下单结果待核实，请刷新订单，或再次点击同一文件购买以核对上次请求。')
+      throw reason
+    }
+    if (owner !== accountUserId.value) return
+    try { sessionStorage.removeItem(storage) } catch { /* Optional. */ }
+    orderMutationVersion++
+    orders.value = [created, ...orders.value.filter(order => order.id !== created.id)]
+    activePanel.value = 'orders'; notice.value = recovering ? '上次数字购买请求已核对，订单与金额如下；请以订单快照为准。' : '数字测试订单已创建，请显式模拟支付；支付成功后再领取文件。'; schedulePolling(true)
+  })
+}
+async function claimDigital(order: SalesOrder) {
+  await execute(`claim-${order.id}`, async () => {
+    const owner = accountUserId.value
+    const updated = await shopperApi.claimDigital(apiBase, order.id, `digital-claim-${order.id}`)
+    if (owner !== accountUserId.value) return
+    replaceOrder(updated); notice.value = '文件已领取，下载期限仍按支付成功时间计算。'
+  })
+}
+async function downloadDigital(order: SalesOrder) {
+  await execute(`download-${order.id}`, async () => {
+    const owner = accountUserId.value
+    const blob = await shopperApi.downloadDigital(apiBase, order.id)
+    if (owner !== accountUserId.value) return
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a'); link.href = url; link.download = `megagraph-test-file-order-${order.id}.txt`; link.click()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+    notice.value = '已请求保存当前订单的自建测试文本文件。'
+  })
+}
+function canRequestRefund(order: SalesOrder) {
+  return order.status === 'PAID' && !order.afterSale && (order.deliveryType !== 'DIGITAL_FILE' || order.delivery?.entitlement?.status === 'AVAILABLE')
 }
 
 function replaceOrder(updated: SalesOrder) {
@@ -611,6 +673,7 @@ onBeforeUnmount(() => {
       v-show="!catalogOpen"
       id="top"
       :model-available="capabilities?.guideAvailable === true"
+      :digital-delivery-available="capabilities?.digitalDeliveryAvailable === true"
       :demo-catalog-available="capabilities?.demoCatalogAvailable === true"
       :model-name="capabilities?.guideModelName ?? ''"
       :cart-busy="Boolean(busyAction)"
@@ -619,6 +682,7 @@ onBeforeUnmount(() => {
       :system-reduce-motion="systemReduceMotion"
       @update:reduce-motion="manualReduceMotion = $event"
       @add-to-cart="addGuideProduct"
+      @purchase-digital="purchaseDigital"
       @refresh-capabilities="refreshCapabilities()"
     />
 
@@ -804,8 +868,9 @@ onBeforeUnmount(() => {
                   <small>{{ formatDate(order.createdAt) }}</small>
                   <small>{{ merchantName(order.merchantId) }}<template v-if="order.checkoutGroupId"> · 下单组 #{{ order.checkoutGroupId }}</template><template v-if="order.testOrder"> · 试用子订单</template></small>
                 </div>
-                <strong :class="`status-${order.status.toLowerCase()}`">{{ order.testOrder && order.status === 'PAID' ? '模拟支付成功 · 不发货' : orderStatusLabel(order.status) }}</strong>
+                <strong :class="`status-${order.status.toLowerCase()}`">{{ order.deliveryType === 'DIGITAL_FILE' && order.status === 'PAID' ? '模拟支付成功 · 数字文件' : order.testOrder && order.status === 'PAID' ? '模拟支付成功 · 不发货' : orderStatusLabel(order.status) }}</strong>
               </header>
+              <DigitalOrderDelivery v-if="order.deliveryType === 'DIGITAL_FILE'" :order="order" :busy="Boolean(busyAction)" @claim="claimDigital(order)" @download="downloadDigital(order)" />
               <div class="order-items">
                 <p v-for="item in order.items" :key="item.skuId">
                   <span>{{ item.productTitle }} · {{ item.skuName }} × {{ item.quantity }}</span>
@@ -820,7 +885,7 @@ onBeforeUnmount(() => {
               </details>
               <div class="order-facts">
                 <span>支付 / {{ paymentStatusLabel(order) }}</span>
-                <span>库存 / {{ reservationSummary(order) }}</span>
+                <span v-if="order.deliveryType !== 'DIGITAL_FILE'">库存 / {{ reservationSummary(order) }}</span>
               </div>
               <div v-if="order.payment?.reconciliationRequired" class="reconciliation-card">
                 <strong>支付状态需要人工核查</strong>
@@ -888,12 +953,12 @@ onBeforeUnmount(() => {
                 </button>
               </div>
               <form
-                v-else-if="order.status === 'PAID' && !order.afterSale"
+                v-else-if="canRequestRefund(order)"
                 class="refund-request"
                 @submit.prevent="requestRefund(order)"
               >
                 <label>
-                  <span>REFUND BEFORE SHIPMENT</span>
+                  <span>{{ order.deliveryType === 'DIGITAL_FILE' ? '未领取文件退款' : 'REFUND BEFORE SHIPMENT' }}</span>
                   <textarea
                     v-model="refundReasons[order.id]"
                     maxlength="500"
