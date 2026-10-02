@@ -90,3 +90,11 @@ D1前端aa298a2已审阅集成为a5608ce；消费者/商家typecheck与productio
 390px消费者与商家均读innerWidth/scrollWidth=390，无溢出；Enter详情/订单/商家确认，减少动态checked截图d1-reduced-motion-mobile.jpg。d1-digital-orders-mobile.jpg曾误覆盖桌面/动画过渡，已重新在checked减少动态、getAX完成后独立截图，Lead/QA view核实稳定390×844终态。浏览器直开API URL被客户端拦截，不作为服务端拒绝证据；正常Session HTTP与MySQL专项证明越权边界。最终D1截图与安全JSON在ignored evidence；包含认证头的失败原始日志不交付/提交。
 
 当前integration已更新验收/交付文档为D1受控通过，整个阶段4仍未完成；下一项冻结D2独立slot/reservation与统一对话契约，再创建新的D2 worker树。实际服务：8084 PID52043/session92463 no-guide、5176 PID49507/session49764、3004 PID52535/session86517；cwd均integration，本轮MySQLmg_p4_demo_20261003 V11，未reset。额度短时QA限制已自然恢复（ordinaryUsageAllowed true，5h2%/week0%快照）；未购买/升级/使用reset。第三方仍仅4A文本1次、未知费用；D1零模型调用。
+
+## 4D2已开始：合同与目录占用
+
+D1验收提交8f1e9f7后冻结D2合同8e3a733。Lead新建三个独立树：phase-4d2-backend/phase-4d2-frontend/phase-4d2-qa，各目录 `/Users/qin/.codex/worktrees/<名称>/MegaGraph‑Shop`，分支codex/<名称>，全部从8e3a733。backend_d1/frontend_d1/qa_d1 followup明确转到这些新树（不自行换分支），所有权backend仅apps/backend、frontend仅两前端/domain-types、QA仅docs/phase4-evaluation，其它readonly；Lead仍根/docs/集成/完整服务。
+
+V12唯一预约新增迁移。已批准独立appointment_account_lock行X+app_user FK S，不用app_user X→slot以免隐式售后FK循环；所有已有order→payment必要→slot→reservation current-read。QA又发现原expiry整批TX可跨order持同slot形成环，Lead要求scalar外层无TX、每ID REQUIRES_NEW短TXcurrent复查及真实定序证明。close只当前version幂等、旧version409，start/expires排他边界。合同补充将Lead提交后告知Workers，不由他们cherry-pick。
+
+当前D2实现与独立审查进行中，没有D2测试或功能通过结论。Lead下一项审实际mutex/SQL/API共享shape，再集成专项→真实MySQL空库/升级→根verify→正常Session双账号最后名额/取消再购/付款/退款/显式测试完成与浏览器恢复。现有merchant与shopper两个app_user均ROLE_CUSTOMER（DatabaseUserDetailsService实际给所有账号），可用两个已有测试Session验证容量，不需创建账号/更改权限。旧D1与4A数据保留；整个阶段4合main/正常私有push/CI仍待最终验收。

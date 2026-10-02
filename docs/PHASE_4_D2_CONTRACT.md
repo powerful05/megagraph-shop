@@ -6,7 +6,7 @@
 
 商家OWNER/EDITOR编辑、确认；OWNER/PUBLISHER发布下架，OWNER显式模拟完成。标题含测试、描述明确不实际预约或线下履约，正价BigDecimal/CNY，所有供给与订单testOnly/testOrder=true。确认与发布核对version，修改资料或新增时段使确认失效、回DRAFT；已购买资料/金额/时段保持快照。
 
-时段为商家专属固定startAt/endAt，UTC Instant事实、前端明确Asia/Shanghai北京时间。创建只接收带offset的ISO时间，拒绝无时区/past/start>=end、时长>4小时或开始>30天；容量整数1–50，独立于实物库存。时段日期/容量创建后不可修改或删除，以避免改动现有预约约定；可显式关闭阻止新购，已预占/已确认订单仍按原约定处理。不支持复杂排班、订阅或部分退款。
+时段为商家专属固定startAt/endAt，UTC Instant事实、前端明确Asia/Shanghai北京时间。创建只接收带offset的ISO时间，拒绝无时区/past/start>=end、时长>4小时或开始>30天；容量整数1–50，独立于实物库存。时段日期/容量创建后不可修改或删除，以避免改动现有预约约定；可显式关闭阻止新购，已预占/已确认订单仍按原约定处理。不支持复杂排班、订阅或部分退款。startAt与expiresAt均为排他边界：now恰好相等也拒绝新购或付款确认。
 
 购买仅当前ACTIVE商家、PUBLISHED且当前确认、OPEN未来slot与剩余容量>0。订单预占HELD，expiresAt=min(now+15分钟,startAt)；支付成功回调在同事务HELD→CONFIRMED，支付成功不是履行完成。失败/渠道取消/主动取消/超时将HELD→RELEASED并释放名额。以服务器now<expiresAt且now<startAt作为确认边界；到界后的成功回调不能预约，记录既有REVIEW_REQUIRED/LATE_PAYMENT_SUCCESS，过期订单与释放事实在同事务保存，不凭渠道occurredAt回填过去名额。
 
@@ -26,7 +26,7 @@ ShopCapabilities追加appointmentDeliveryAvailable。GuideChatResult追加appoin
 
 - GET/POST `/api/merchant/v1/appointment-offers`；POST带Idempotency-Key与{deliveryType:"APPOINTMENT",title,description,price,currency:"CNY"}。创建DRAFT；canonical payload幂等，同键异载荷冲突。
 - PATCH `/{id}` 带{version,title,description,price,currency,deliveryType可选}；POST `/{id}/confirm`、`/publish`、`/off-shelf`带{version}，版本不匹配409。
-- POST `/{id}/slots` 带Idempotency-Key及{version,startAt,endAt,capacity}，version为offer当前展示版本；新增slot并使offer回DRAFT/取消确认。POST `/{id}/slots/{slotId}/close`带{version}为slot展示版本，关闭幂等且有版本校验；返回最新offer。
+- POST `/{id}/slots` 带Idempotency-Key及{version,startAt,endAt,capacity}，version为offer当前展示版本；新增slot并使offer回DRAFT/取消确认。POST `/{id}/slots/{slotId}/close`带{version}为slot展示版本，当前version且已CLOSED返回同结果，旧version始终409；返回最新offer。
 - GET `/api/shop/v1/appointment-offers` 与`/{id}`，只当前公开资格；无可购时段不伪装支持可购买。
 - POST `/api/shop/v1/appointment-orders`，Idempotency-Key与严格{items:[{offerId,slotId,quantity:1,expectedOfferVersion,expectedSlotVersion}]}。根/items字段白名单，整数long溢出/小数/无版本拒绝；混入SKU/数字/客户端价格或多个items明确400/409。同账号同key同payload返回原订单快照，即使offer后来变更；同key不同payload或其他交付类型409。先锁当前offer/slot事实校验两版本与容量，价格/商家/交付状态从服务端取得。返回既有OrderResponse。
 - 复用既有消费者订单GET、Mock付款、主动取消、AfterSale及商家审批/拒绝/退款重试API。APPOINTMENT不得走实物发货/收货接口，也不得数字claim/download。
@@ -36,7 +36,9 @@ ShopCapabilities追加appointmentDeliveryAvailable。GuideChatResult追加appoin
 
 所有业务与对应Outbox同事务；JDBC/JPA混用必须故障注入实证回滚。现有order相关操作统一先order→payment（如需要）→slot→reservation；不得reservation/slot后反向锁已有order。创建只插入新order，不锁其他已有order。新预约购买幂等使用独立账号mutex表/唯一键；禁止先锁app_user X再slot，因为售后插入需要app_user外键S，可能重演D1隐式FK循环。Backend在实现前核准具体mutex方案并记录，需真实MySQL同键/异键/不同账号容量竞争证明。
 
-当前事实须locking read，不以锁ID后的普通RR旧快照判断价格、容量、售后或履行。超时扫描不能预加载managed旧SalesOrder再拿锁误认为当前；改用scalar ID与current lock读取并测试付款/超时竞争。容量写变更、取消、退款与完成均锁同slot并读当前reservation；支付前名额不能被付款重复增加。只在Demo/test启用；merchant/账号跨租户404、正常Session写保留CSRF。
+当前事实须locking read，不以锁ID后的普通RR旧快照判断价格、容量、售后或履行。超时扫描不能预加载managed旧SalesOrder再拿锁误认为当前；外层scalar ID扫描无业务事务，每ID独立REQUIRES_NEW短事务current lock复查。不跨订单持有slot锁，避免批处理持A/slot再等B与B付款持B等slot成环；定序验证同slot多单付款/超时竞争。容量写变更、取消、退款与完成均锁同slot并读当前reservation；支付前名额不能被付款重复增加。只在Demo/test启用；merchant/账号跨租户404、正常Session写保留CSRF。
+
+购买mutex批准具体方案：appointment_account_lock(user_id PK，FK app_user)，INSERT IGNORE确保行存在，再SELECT自身mutex行FOR UPDATE；保留FK校验且必须取得行才继续。账号外键仅S，不能改为app_user X；旧订单重放先校验交付类型与canonicalhash，不反向锁旧order。H2兼容与真实MySQL同键/不同账号容量需实际证明。
 
 ## 前端与验收
 
