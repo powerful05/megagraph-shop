@@ -240,7 +240,7 @@ onBeforeUnmount(() => {
             <div><dt>Provider / Model</dt><dd>{{ activeJob.artifact.provider }} / {{ activeJob.artifact.model }}</dd></div>
             <div><dt>模板 / 协议</dt><dd>{{ activeJob.artifact.templateVersion }} / {{ activeJob.artifact.protocolVersion }}</dd></div>
             <div><dt>输入 SHA256</dt><dd>{{ activeJob.artifact.inputHash }}</dd></div>
-            <div><dt>尝试 / 耗时</dt><dd>{{ activeJob.artifact.attempt }} / {{ activeJob.artifact.elapsedMs }} ms</dd></div>
+            <div><dt>尝试 / 耗时</dt><dd>{{ activeJob.artifact.attempt }} / {{ activeJob.artifact.elapsedMs == null ? '未提供' : `${activeJob.artifact.elapsedMs} ms` }}</dd></div>
           </dl>
           <details open><summary>事实依据</summary><pre>{{ json(activeJob.artifact.evidence) }}</pre></details>
           <details open><summary>未知与待确认项</summary><ul v-if="activeJob.artifact.unknowns.length"><li v-for="(item, index) in activeJob.artifact.unknowns" :key="index">{{ item }}</li></ul><p v-else class="muted">未提供未知项；材质、规格与性能仍须商家核实。</p></details>

@@ -306,7 +306,7 @@ export interface IngestionArtifact {
   templateVersion: string
   protocolVersion: string
   attempt: number
-  elapsedMs: number
+  elapsedMs: number | null
   rawOutput: string | null
   parsedOutput: unknown
   evidence: unknown
