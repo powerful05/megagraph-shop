@@ -23,6 +23,8 @@ public record OrderResponse(
         List<OrderItemResponse> items,
         List<ReservationResponse> reservations,
         Long checkoutGroupId,
-        boolean testOrder
+        boolean testOrder,
+        String deliveryType,
+        DigitalDeliveryResponse delivery
 ) {
 }

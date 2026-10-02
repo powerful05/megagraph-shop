@@ -5,7 +5,6 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 @Service
-@Profile("guide")
 public class GuideConversationService {
     private final GuideConversationStore store;
     private final GuideRequestExecutor executor;

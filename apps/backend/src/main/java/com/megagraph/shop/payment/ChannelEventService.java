@@ -28,6 +28,7 @@ public class ChannelEventService {
     private final RefundAttemptRepository refundAttempts;
     private final InventoryReservationService inventory;
     private final CommerceOutboxWriter outbox;
+    private final com.megagraph.shop.delivery.DigitalDeliveryStore digital;
 
     public ChannelEventService(
             PaymentChannelEventRepository inbox,
@@ -37,7 +38,8 @@ public class ChannelEventService {
             AfterSaleRequestRepository afterSales,
             RefundAttemptRepository refundAttempts,
             InventoryReservationService inventory,
-            CommerceOutboxWriter outbox
+            CommerceOutboxWriter outbox,
+            com.megagraph.shop.delivery.DigitalDeliveryStore digital
     ) {
         this.inbox = inbox;
         this.payments = payments;
@@ -47,6 +49,7 @@ public class ChannelEventService {
         this.refundAttempts = refundAttempts;
         this.inventory = inventory;
         this.outbox = outbox;
+        this.digital = digital;
     }
 
     @Transactional
@@ -89,8 +92,11 @@ public class ChannelEventService {
         if (event.eventType().name().startsWith("REFUND_")) {
             return review(inboxEvent, "EVENT_RESOURCE_MISMATCH", null, null);
         }
-        PaymentOrder payment = payments.findByProviderResourceForUpdate(event.provider(), event.providerResourceId())
-                .orElse(null);
+        Long snapshotOrderId = payments.resourceOrderId(event.provider(), event.providerResourceId()).orElse(null);
+        if (snapshotOrderId == null) return review(inboxEvent, "EVENT_RESOURCE_NOT_FOUND", null, null);
+        SalesOrder order = orders.findByIdForUpdate(snapshotOrderId)
+                .orElseThrow(() -> new IllegalStateException("Payment order has no sales order"));
+        PaymentOrder payment = payments.findByProviderResourceForUpdate(event.provider(), event.providerResourceId()).orElse(null);
         if (payment == null) {
             return review(inboxEvent, "EVENT_RESOURCE_NOT_FOUND", null, null);
         }
@@ -100,8 +106,6 @@ public class ChannelEventService {
         if (!payment.getCurrency().equalsIgnoreCase(event.currency())) {
             return review(inboxEvent, "EVENT_CURRENCY_MISMATCH", payment.getId(), null);
         }
-        SalesOrder order = orders.findByIdForUpdate(payment.getOrderId())
-                .orElseThrow(() -> new IllegalStateException("Payment order has no sales order"));
         PaymentStatus oldPaymentStatus = payment.getStatus();
         OrderStatus oldOrderStatus = order.getStatus();
 
@@ -131,6 +135,7 @@ public class ChannelEventService {
                 payment.succeed(inboxEvent.getId());
                 order.markPaid();
                 inventory.confirm(order.getId());
+                digital.paid(order);
                 payments.flush();
                 orders.flush();
                 outbox.save("PAYMENT", payment.getId(), payment.getVersion(), "PAYMENT_SUCCEEDED",
@@ -186,14 +191,14 @@ public class ChannelEventService {
         if (event.eventType().name().startsWith("PAYMENT_")) {
             return review(inboxEvent, "EVENT_RESOURCE_MISMATCH", null, null);
         }
-        RefundOrder snapshot = refunds.findByProviderAndProviderRefundId(event.provider(), event.providerResourceId())
-                .orElse(null);
-        if (snapshot == null) {
-            return review(inboxEvent, "EVENT_RESOURCE_NOT_FOUND", null, null);
-        }
-        PaymentOrder payment = payments.findByIdForUpdate(snapshot.getPaymentOrderId())
-                .orElseThrow(() -> new IllegalStateException("Refund has no payment order"));
-        RefundOrder refund = refunds.findByIdForUpdate(snapshot.getId())
+        Long snapshotOrderId = refunds.resourceOrderId(event.provider(), event.providerResourceId()).orElse(null);
+        if (snapshotOrderId == null) return review(inboxEvent, "EVENT_RESOURCE_NOT_FOUND", null, null);
+        SalesOrder order = orders.findByIdForUpdate(snapshotOrderId)
+                .orElseThrow(() -> new IllegalStateException("Refund has no sales order"));
+        Long snapshotRefundId = refunds.resourceRefundId(event.provider(), event.providerResourceId()).orElseThrow();
+        Long snapshotPaymentId = payments.findByOrderIdForUpdate(order.getId()).orElseThrow().getId();
+        PaymentOrder payment = payments.findByIdForUpdate(snapshotPaymentId).orElseThrow();
+        RefundOrder refund = refunds.findByIdForUpdate(snapshotRefundId)
                 .orElseThrow(() -> new IllegalStateException("Refund disappeared"));
         if (refund.getAmount().compareTo(event.amount()) != 0) {
             return review(inboxEvent, "EVENT_AMOUNT_MISMATCH", null, refund.getId());
@@ -201,8 +206,6 @@ public class ChannelEventService {
         if (!refund.getCurrency().equalsIgnoreCase(event.currency())) {
             return review(inboxEvent, "EVENT_CURRENCY_MISMATCH", null, refund.getId());
         }
-        SalesOrder order = orders.findByIdForUpdate(refund.getOrderId())
-                .orElseThrow(() -> new IllegalStateException("Refund has no sales order"));
         AfterSaleRequest afterSale = afterSales.findByOrderIdForUpdate(order.getId())
                 .orElseThrow(() -> new IllegalStateException("Refund has no after-sale request"));
         RefundAttempt attempt = refundAttempts.findFirstByRefundOrderIdOrderByAttemptNoDesc(refund.getId())
@@ -240,6 +243,7 @@ public class ChannelEventService {
                 payment.refund();
                 order.markRefunded();
                 inventory.restock(order.getId());
+                digital.refunded(order);
                 refunds.flush();
                 payments.flush();
                 afterSales.flush();

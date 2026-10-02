@@ -36,6 +36,7 @@ public class AfterSaleService {
     private final OutboxEventRepository outbox;
     private final OrderMapper mapper;
     private final ObjectMapper objectMapper;
+    private final com.megagraph.shop.delivery.DigitalDeliveryStore digital;
 
     public AfterSaleService(
             SalesOrderRepository orders,
@@ -47,7 +48,8 @@ public class AfterSaleService {
             CommerceOutboxWriter commerceOutbox,
             OutboxEventRepository outbox,
             OrderMapper mapper,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            com.megagraph.shop.delivery.DigitalDeliveryStore digital
     ) {
         this.orders = orders;
         this.payments = payments;
@@ -59,6 +61,7 @@ public class AfterSaleService {
         this.outbox = outbox;
         this.mapper = mapper;
         this.objectMapper = objectMapper;
+        this.digital = digital;
     }
 
     @Transactional
@@ -90,6 +93,7 @@ public class AfterSaleService {
             throw new ConflictException("ORDER_NOT_REFUNDABLE", "只有已支付且未发货的订单可以申请退款");
         }
 
+        digital.requireRefundable(order);
         AfterSaleRequest afterSale = afterSales.saveAndFlush(new AfterSaleRequest(
                 orderId,
                 userId,
@@ -109,9 +113,9 @@ public class AfterSaleService {
             ResolveAfterSaleRequest request
     ) {
         String normalizedKey = normalizeIdempotencyKey(idempotencyKey);
+        SalesOrder order = requireMerchantOrderForUpdate(merchantId, orderId);
         PaymentOrder payment = payments.findByOrderIdForUpdate(orderId)
                 .orElseThrow(() -> new NotFoundException("PAYMENT_NOT_FOUND", "支付单不存在"));
-        SalesOrder order = requireMerchantOrderForUpdate(merchantId, orderId);
         AfterSaleRequest afterSale = requireAfterSaleForUpdate(merchantId, orderId);
         if (afterSale.getStatus() != AfterSaleStatus.REQUESTED) {
             if ((afterSale.getStatus() == AfterSaleStatus.REFUND_PROCESSING
@@ -127,6 +131,7 @@ public class AfterSaleService {
             throw new ConflictException("ORDER_NOT_REFUNDABLE", "订单当前不能退款");
         }
 
+        digital.requireRefundable(order);
         afterSale.startRefund(normalizedKey, request.note().trim());
         RefundOrder refund = refunds.saveAndFlush(new RefundOrder(
                 afterSale.getId(),
@@ -184,9 +189,9 @@ public class AfterSaleService {
             ResolveAfterSaleRequest request
     ) {
         String normalizedKey = normalizeIdempotencyKey(idempotencyKey);
+        SalesOrder order = requireMerchantOrderForUpdate(merchantId, orderId);
         PaymentOrder payment = payments.findByOrderIdForUpdate(orderId)
                 .orElseThrow(() -> new NotFoundException("PAYMENT_NOT_FOUND", "支付单不存在"));
-        SalesOrder order = requireMerchantOrderForUpdate(merchantId, orderId);
         AfterSaleRequest afterSale = requireAfterSaleForUpdate(merchantId, orderId);
         RefundOrder refund = refunds.findByAfterSaleId(afterSale.getId())
                 .flatMap(value -> refunds.findByIdForUpdate(value.getId()))

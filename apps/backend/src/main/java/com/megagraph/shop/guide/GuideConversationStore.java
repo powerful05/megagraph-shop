@@ -14,7 +14,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@Profile("guide")
 public class GuideConversationStore {
     private final GuideConversationRepository conversations;
     private final GuideTurnRequestRepository requests;

@@ -28,6 +28,7 @@ public class SalesOrder {
     private String idempotencyKey;
     private Long checkoutGroupId;
     private boolean testOrder;
+    private String deliveryType = "PHYSICAL";
 
     @Enumerated(EnumType.STRING)
     private OrderStatus status;
@@ -79,6 +80,10 @@ public class SalesOrder {
         this.createdAt = Instant.now();
         this.updatedAt = this.createdAt;
     }
+
+    public void markDigital() { this.deliveryType = "DIGITAL_FILE"; this.testOrder = true; }
+    public String getDeliveryType() { return deliveryType; }
+    public Instant getPaidAt() { return paidAt; }
 
     public void markPaid() {
         requirePending();

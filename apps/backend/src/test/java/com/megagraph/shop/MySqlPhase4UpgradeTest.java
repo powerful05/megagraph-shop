@@ -46,6 +46,11 @@ class MySqlPhase4UpgradeTest {
    assertThat(count(c,"SELECT COUNT(*) FROM ingestion_step WHERE job_id=1 AND status='SUCCEEDED' AND attempt_count=1")).isEqualTo(1);
    assertThat(count(c,"SELECT COUNT(*) FROM outbox_event WHERE event_type='PRODUCT_PUBLISHED' AND aggregate_version=7 AND status='PENDING'")).isEqualTo(1);
    assertThat(count(c,"SELECT COUNT(*) FROM ingestion_artifact")).isZero();
+   assertThat(count(c,"SELECT COUNT(*) FROM sales_order WHERE id=1 AND delivery_type='PHYSICAL'")).isEqualTo(1);
+   assertThat(count(c,"SELECT COUNT(*) FROM delivery_offer")).isZero();
+   assertThat(count(c,"SELECT COUNT(*) FROM digital_asset")).isZero();
+   assertThat(count(c,"SELECT COUNT(*) FROM delivery_purchase")).isZero();
+   assertThat(count(c,"SELECT COUNT(*) FROM digital_entitlement")).isZero();
   }
  }
  private static void execute(Connection c,String sql)throws SQLException {try(var s=c.createStatement()){s.executeUpdate(sql);}}

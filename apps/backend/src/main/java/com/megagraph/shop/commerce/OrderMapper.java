@@ -22,6 +22,7 @@ public class OrderMapper {
     private final AfterSaleRequestRepository afterSales;
     private final RefundOrderRepository refunds;
     private final ObjectMapper json;
+    private final com.megagraph.shop.delivery.DigitalDeliveryStore digital;
 
     public OrderMapper(
             SalesOrderItemRepository items,
@@ -30,7 +31,8 @@ public class OrderMapper {
             ShipmentRepository shipments,
             AfterSaleRequestRepository afterSales,
             RefundOrderRepository refunds,
-            ObjectMapper json
+            ObjectMapper json,
+            com.megagraph.shop.delivery.DigitalDeliveryStore digital
     ) {
         this.items = items;
         this.payments = payments;
@@ -39,6 +41,7 @@ public class OrderMapper {
         this.afterSales = afterSales;
         this.refunds = refunds;
         this.json = json;
+        this.digital = digital;
     }
 
     public OrderResponse toResponse(SalesOrder order) {
@@ -121,7 +124,9 @@ public class OrderMapper {
                         ))
                         .toList(),
                 order.getCheckoutGroupId(),
-                order.isTestOrder()
+                order.isTestOrder(),
+                order.getDeliveryType(),
+                digital.delivery(order.getId())
         );
     }
 

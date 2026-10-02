@@ -21,7 +21,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@Profile("guide")
 @RequestMapping("/api/shop/v1/guide/conversations")
 public class GuideConversationController {
     private final CurrentUser currentUser;

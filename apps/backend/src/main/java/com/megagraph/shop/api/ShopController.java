@@ -30,7 +30,7 @@ public class ShopController {
     }
 
     public record ShopCapabilities(boolean mockPaymentAvailable, boolean guideAvailable,
-                                   boolean demoCatalogAvailable, String guideModelName) {
+                                   boolean demoCatalogAvailable, String guideModelName, boolean digitalDeliveryAvailable) {
     }
 
     @GetMapping("/capabilities")
@@ -38,7 +38,8 @@ public class ShopController {
         boolean guide = environment.acceptsProfiles(Profiles.of("guide"));
         return new ShopCapabilities(environment.acceptsProfiles(Profiles.of("local", "test")), guide,
                 guide && environment.acceptsProfiles(Profiles.of("local")),
-                guide ? environment.getProperty("spring.ai.openai.chat.options.model", "") : "");
+                guide ? environment.getProperty("spring.ai.openai.chat.options.model", "") : "",
+                environment.acceptsProfiles(Profiles.of("test")) || environment.acceptsProfiles(Profiles.of("local")) && environment.acceptsProfiles(Profiles.of("supply-demo")));
     }
 
     @GetMapping("/products")

@@ -11,6 +11,9 @@ public interface PaymentOrderRepository extends JpaRepository<PaymentOrder, Long
     Optional<PaymentOrder> findByOrderId(Long orderId);
     Optional<PaymentOrder> findByProviderAndProviderPaymentId(String provider, String providerPaymentId);
 
+    @Query("select p.orderId from PaymentOrder p where p.provider=:provider and p.providerPaymentId=:resource")
+    Optional<Long> resourceOrderId(@Param("provider") String provider,@Param("resource") String resource);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select payment from PaymentOrder payment where payment.orderId = :orderId")
     Optional<PaymentOrder> findByOrderIdForUpdate(@Param("orderId") Long orderId);

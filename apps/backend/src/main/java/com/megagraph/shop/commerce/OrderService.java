@@ -97,7 +97,7 @@ public class OrderService {
     public OrderResponse create(Long userId, String idempotencyKey, CreateOrderRequest request) {
         String normalizedKey = normalizeIdempotencyKey(idempotencyKey);
         return orders.findByUserIdAndIdempotencyKey(userId, normalizedKey)
-                .map(mapper::toResponse)
+                .map(order -> { if (!"PHYSICAL".equals(order.getDeliveryType())) throw new ConflictException("ORDER_IDEMPOTENCY_CONFLICT", "该键已用于其他交付类型的订单"); return mapper.toResponse(order); })
                 .orElseGet(() -> createNew(userId, normalizedKey, request));
     }
 
@@ -199,11 +199,11 @@ public class OrderService {
             MockPaymentResult result
     ) {
         String normalizedKey = normalizeIdempotencyKey(idempotencyKey);
-        PaymentOrder payment = payments.findByOrderIdForUpdate(orderId)
-                .orElseThrow(() -> new NotFoundException("PAYMENT_NOT_FOUND", "支付单不存在"));
         SalesOrder order = orders.findByIdForUpdate(orderId)
                 .filter(value -> value.getUserId().equals(userId))
                 .orElseThrow(() -> new NotFoundException("ORDER_NOT_FOUND", "订单不存在"));
+        PaymentOrder payment = payments.findByOrderIdForUpdate(orderId)
+                .orElseThrow(() -> new NotFoundException("PAYMENT_NOT_FOUND", "支付单不存在"));
 
         if (paymentAttempts.findByPaymentOrderIdAndIdempotencyKey(payment.getId(), normalizedKey).isPresent()) {
             return mapper.toResponse(order);
@@ -252,11 +252,11 @@ public class OrderService {
 
     @Transactional
     public OrderResponse cancel(Long userId, Long orderId) {
-        PaymentOrder payment = payments.findByOrderIdForUpdate(orderId)
-                .orElseThrow(() -> new NotFoundException("PAYMENT_NOT_FOUND", "支付单不存在"));
         SalesOrder order = orders.findByIdForUpdate(orderId)
                 .filter(value -> value.getUserId().equals(userId))
                 .orElseThrow(() -> new NotFoundException("ORDER_NOT_FOUND", "订单不存在"));
+        PaymentOrder payment = payments.findByOrderIdForUpdate(orderId)
+                .orElseThrow(() -> new NotFoundException("PAYMENT_NOT_FOUND", "支付单不存在"));
         if (order.getStatus() == OrderStatus.CANCELLED) {
             return mapper.toResponse(order);
         }
@@ -276,15 +276,11 @@ public class OrderService {
                 Instant.now()
         );
         for (SalesOrder candidate : overdue) {
+            SalesOrder order = orders.findByIdForUpdate(candidate.getId()).orElse(null);
+            if (order == null || order.getStatus() != OrderStatus.PENDING_PAYMENT) continue;
             PaymentOrder payment = payments.findByOrderIdForUpdate(candidate.getId()).orElse(null);
             if (payment == null || (payment.getStatus() != PaymentStatus.PENDING
-                    && payment.getStatus() != PaymentStatus.PROCESSING)) {
-                continue;
-            }
-            SalesOrder order = orders.findByIdForUpdate(candidate.getId()).orElse(null);
-            if (order == null || order.getStatus() != OrderStatus.PENDING_PAYMENT) {
-                continue;
-            }
+                    && payment.getStatus() != PaymentStatus.PROCESSING)) continue;
             PaymentStatus oldPaymentStatus = payment.getStatus();
             payment.cancel();
             order.expire();
