@@ -58,3 +58,7 @@ Frontend ff8dd1f全attempt历史按需查看已集成为0350290；typecheck/buil
 当前integration HEAD f8ec542，D1两个新树仍干净b53f578，旧Worker因平台额度中断没有产生D1代码。当前普通使用已允许（快照5小时9%/周57%），未购买/未使用重置券；重新派发backend_d1/frontend_d1/qa_d1，各沿用批准目录。D1迁移保留V11，DTO已核准，merchantName补入公开销售方；统一对话入口必须无guide/key仍能走Java数字供给，能力字段digitalDeliveryAvailable与真实guideAvailable区分。默认非数字无模型不冒称真实AI。
 
 本轮复核8084/5176/3004均无监听后，在integration重新启动backend session15392、merchant49764、shopper77090，同mg_p4_demo_20261003未reset；旧服务停止状态不由本轮终止操作造成。4A补真实Session/CSRF HTTP负例4a-session-csrf-isolation.json：已有merchant账号切有效B身份访问Ajob/artifact/media均404；缺CSRF retry403且不改任务；匿名私有media401；公开列表包含68而66/67/69仍隐藏。此为新接口正常Session实际负例，与测试Basic证据分开。
+
+D1契约补充：items.expectedOfferVersion必填，服务端锁当前offer后版本不符409要求重新确认；避免顾客看到旧价却被新价下单。幂等hash含展示版本，同载荷重放维持原快照。Backend采用JDBC数字表参与既有JPA事务，必须故障回滚证明；QA已指出MySQL RR下旧快照问题，锁ID后普通查询不能当current-read，领取/售后写守卫与购价读取须锁查询当前行。
+
+4A独立维护CLI实跑：隔离synthetic fixture schema mg_p4_cleanup_20261002_203225_085303，仅两张测试引用表与专属测试目录；打包PropertiesLauncher实际执行exit0，旧孤立文件删除1，job引用/product引用及24h内无引用文件保留。没有读取/删除Demo媒体，未启HTTP/Flyway/seed。4a-cleanup-cli.json归档；此不是全迁移验收。浏览器重开时账号连续对话和两单终态仍从MySQL恢复，补4a-physical-orders-refresh.jpg；无新增模型调用。
