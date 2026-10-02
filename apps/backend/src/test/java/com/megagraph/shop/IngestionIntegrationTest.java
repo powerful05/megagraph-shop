@@ -74,7 +74,7 @@ class IngestionIntegrationTest {
   assertThat(worker.runOnce()).isTrue(); var done=state(q.id());
   assertThat(done.status()).isEqualTo("SUCCEEDED"); assertThat(done.artifact().inputHash()).hasSize(64);
   assertThat(done.artifact().unknowns()).contains("材质待商家确认");assertThat(done.artifact().usage()).isNull();
-  assertThat(db.queryForMap("SELECT draft_status,publish_status FROM product WHERE id=?",done.productId())).containsEntry("draft_status","READY_FOR_CONFIRMATION").containsEntry("publish_status","UNPUBLISHED");
+  assertThat(db.queryForMap("SELECT draft_status,publish_status,test_supply FROM product WHERE id=?",done.productId())).containsEntry("draft_status","READY_FOR_CONFIRMATION").containsEntry("publish_status","UNPUBLISHED").containsEntry("test_supply",false);
   assertThat(db.queryForObject("SELECT COUNT(*) FROM product_sku WHERE product_id=?",Integer.class,done.productId())).isZero();
   assertThat(worker.runOnce()).isFalse();
   assertThatThrownBy(()->service.retry(actor,q.id(),done.version())).isInstanceOf(ConflictException.class);

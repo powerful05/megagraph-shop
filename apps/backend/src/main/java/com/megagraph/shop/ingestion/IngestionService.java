@@ -39,15 +39,20 @@ public class IngestionService {
     private final Environment environment;
     private final long leaseSeconds;
     private final long backoffSeconds;
+    private final boolean testSupply;
     private final Set<String> pendingFiles = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     public IngestionService(IngestionJobRepository jobs, ProductRepository products, ProductImageRepository images,
             ImageUploadValidator validator, MediaStorage storage, JdbcTemplate db, ObjectMapper json,
             CommerceOutboxWriter outbox, PlatformTransactionManager manager, Environment environment,
             @Value("${app.ingestion.lease-seconds:60}") long leaseSeconds,
-            @Value("${app.ingestion.backoff-seconds:2}") long backoffSeconds) {
+            @Value("${app.ingestion.backoff-seconds:2}") long backoffSeconds,
+            @Value("${app.ingestion.test-supply:false}") boolean testSupply) {
         this.jobs=jobs; this.products=products; this.images=images; this.validator=validator; this.storage=storage;
         this.db=db; this.json=json; this.outbox=outbox; this.environment=environment;
+        if(testSupply && !environment.acceptsProfiles(org.springframework.core.env.Profiles.of("local","test")))
+            throw new IllegalStateException("Ingestion test supply requires local/test profile");
+        this.testSupply=testSupply || environment.acceptsProfiles(org.springframework.core.env.Profiles.of("local & supply-demo"));
         this.leaseSeconds=leaseSeconds; this.backoffSeconds=backoffSeconds;
         this.tx=new TransactionTemplate(manager); this.tx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
@@ -178,7 +183,9 @@ public class IngestionService {
         return tx.execute(s -> {
             lock(claim.id()); if(!valid(claim,Instant.now())) return false;
             Product p=products.save(new Product(claim.merchantId(),suggestion.title()));
-            p.revise(suggestion.title(),suggestion.subtitle(),null); products.flush();
+            p.revise(suggestion.title(),suggestion.subtitle(),null);
+            if(testSupply) p.markTestSupply();
+            products.flush();
             images.save(new ProductImage(claim.merchantId(),p.getId(),claim.storageKey(),claim.filename(),claim.contentType(),db.queryForObject("SELECT byte_size FROM ingestion_job WHERE id=?",Long.class,claim.id()),ImageRole.MAIN,0));
             saveArtifact(claim,artifact);
             db.update("UPDATE ingestion_job SET status='SUCCEEDED',product_id=?,version=version+1,lease_until=NULL,next_attempt_at=NULL,finished_at=? WHERE id=?",p.getId(),Timestamp.from(Instant.now()),claim.id());

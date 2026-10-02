@@ -14,6 +14,8 @@
 
 成功完成原子保存产物、唯一商品草稿、图片与INGESTION_SUCCEEDED Outbox。任务的创建、领取、失败、取消、重试和租约耗尽均有同事务Outbox。商家仍必须在既有商品领域服务编辑当前版本、确认和发布；AI不生成SKU价格库存、不确认、不发布。成功后不再写回该商品，后续人工修改不会被重跑覆盖。
 
+`local & supply-demo`环境的新草稿自动标记测试供给，证据dataOrigin为LOCAL_TEST；也可在local/test显式设置`app.ingestion.test-supply=true`。其他环境禁止开启此标志。默认正常商家和默认testprofile仍沿用原语义；已有商品不追溯修改。
+
 ## 文件补偿与维护
 
 新上传使用唯一storage key；任务创建或Outbox失败、并发重放未使用的本次文件只在DB没有job/image引用时补偿删除。失败删除留待维护，不删除已引用文件。未完成或已取消任务的输入仍属于持久记录，清理不会删除它们。
