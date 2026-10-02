@@ -80,3 +80,13 @@ D1前端aa298a2已审阅集成为a5608ce；消费者/商家typecheck与productio
 浏览器no-guide模式在已有MySQLschema正常创建数字offer#1（商家A，12.90CNY）→确认v1→发布v2；统一账号对话无模型返回JAVA_DIGITAL资料→显式购买数字order#3 MGDAD39878C91004BFBA4F5CAF→Mock支付→键盘Enter领取→下载。浏览器实际保存/Users/qin/Downloads/megagraph-test-file-order-3.txt，248字节，与正常Session HTTP下载字节及购买assetHash完全一致。另一账号404/匿名401、同key领取重放200两次期限不变、已领退款409 DIGITAL_ALREADY_CLAIMED，安全证据d1-download-session-check.json。截图d1-digital-offer-published.jpg/d1-claimed-digital-order.jpg。浏览器waitForEvent download与click组合曾工具超时，恢复绑定后正常click成功保存并通过真实文件核验。
 
 仅停止本轮cwd核准8084 PID51371和3004 PID51365，merchant5176继续运行。修复后真实MySQL数字22/22通过、0skip，schema mg_p4_digital_20261002_205905_451630，日志同名.log；此前失败记录保留。当前开始串行pnpm verify。D1剩余未领取退款、刷新/越权浏览器、小屏/减少动态及最终组合验收；D2没有开始。
+
+## 4D1受控验收完成恢复点 2026-10-03 05:31
+
+代码最终2ea057a：MySQL22/22/0skip，根pnpm verify239总/180执行通过/59条件skip/0failure/error；最后仅数字退款事实文案改动后，d1-final-frontend.log两端typecheck/build通过（session11383 exit0），未无意义重复后端测试。QA独立复核最终b1000c6确认D1受控通过。
+
+实际浏览器未领订单4 MGD71A3F33335E44D79994CF2C→Mockpay→退款申请→商家审批→退款成功REVOKED。d1-refund-session-check.json持久终态/claim409/download409。商家小屏修改offer#1价格12.90→14.90、文件v1→v2、重新确认发布v5；旧订单3浏览器再次保存(2).txt与SessionGET都248byte原hash、原金额，旧展示version2新购409，d1-version-snapshot-session-check.json。重复领取三份id/claimedAt/expiresAt比较已经补入d1-download-session-check.json。旧实物两单、连续对话、数字订单刷新恢复；商家同身份打开数字页恢复offer1/v5。
+
+390px消费者与商家均读innerWidth/scrollWidth=390，无溢出；Enter详情/订单/商家确认，减少动态checked截图d1-reduced-motion-mobile.jpg。d1-digital-orders-mobile.jpg曾误覆盖桌面/动画过渡，已重新在checked减少动态、getAX完成后独立截图，Lead/QA view核实稳定390×844终态。浏览器直开API URL被客户端拦截，不作为服务端拒绝证据；正常Session HTTP与MySQL专项证明越权边界。最终D1截图与安全JSON在ignored evidence；包含认证头的失败原始日志不交付/提交。
+
+当前integration已更新验收/交付文档为D1受控通过，整个阶段4仍未完成；下一项冻结D2独立slot/reservation与统一对话契约，再创建新的D2 worker树。实际服务：8084 PID52043/session92463 no-guide、5176 PID49507/session49764、3004 PID52535/session86517；cwd均integration，本轮MySQLmg_p4_demo_20261003 V11，未reset。额度短时QA限制已自然恢复（ordinaryUsageAllowed true，5h2%/week0%快照）；未购买/升级/使用reset。第三方仍仅4A文本1次、未知费用；D1零模型调用。
