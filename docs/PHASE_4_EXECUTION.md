@@ -104,3 +104,11 @@ V12唯一预约新增迁移。已批准独立appointment_account_lock行X+app_us
 Lead/QA已读后端开发树，currentOffer改offer单表X，MySQL merchant资格使用LOCK IN SHARE MODE而非join排他锁；expiry无外层事务/scalarIDs逐单TransactionTemplate REQUIRES_NEW。修复方向已批准，但尚未实跑D2专项，不能记为并发通过。QA首轮新增7926d3b已审集成300a0b3；输入严格deserializer拒小数token、epoch/无时区，毫秒规范化在hash/validate/store之前，契约同步此普通技术决定。Workers仍各自独立phase-4d2树，实现/测试进行中。
 
 Lead已通过正常Session只读记录Demo V11旧数据：`apps/backend/var/phase4-evidence/d2-preview-v11-before.json`，包含数字order3 CLAIMED、order4 REFUNDED/REVOKED及已发布实物68。后续本轮预览V11→V12只增量迁移，不reset；集成后对比这些事实与旧文件SHA。当前完整服务保持8084/5176/3004，同mg_p4_demo_20261003/no-guide；第三方调用仍总计1条4A文本，D2无模型调用。下一项等待完整Worker提交并审查→串行真实MySQL最终专项/升级→根verify→同schema迁移和双账号浏览器预约闭环。
+
+## 4D2最终组合首轮MySQL发现（05:57）
+
+前端19ab078已审集成为949ebd4，Worker两端typecheck/production build通过，北京时间3新增及7既有共享测试在America/Los_Angeles和Asia/Shanghai各10通过。后端1f4af5d已审集成为3253ad4，Worker相称批次109/109 H2执行通过、0skip。仅按cwd核准停止本轮8084 PID52043和3004 PID52535，5176继续；旧业务库、旧Demo没有重置或终止。
+
+Lead真实MySQL专项：`python3 var/phase4-tooling/mysql-run.py MYSQL_APPOINTMENT MySqlAppointmentDeliveryTest`，独立空schema `mg_p4_appointment_20261002_215627_269959`，20执行/0failure/2error/0skip，BUILD FAILURE。失败为twoAccountsLastCapacityAndSameKeyConcurrent的account mutex以及completionRefundAndCrossOrderCompletionKeysSerialize的merchant mutex FOR UPDATE死锁。原日志同schema `.log`保存ignored evidence；`d2-first-mysql-deadlock.txt`记录实际InnoDB报告：99009/99010双方持appointment_merchant_lock同PRIMARY行S，再等待对方释放以升级X。此前INSERT IGNORE重复行后FOR UPDATE方案未通过实证；Backend/QA已受派修复，不重试吞SQL错误、不降低隔离、不移除FK。
+
+潜在跨D1父锁问题没有实际复现；查MySQL8.4.11官方row0ins源码，外键检查在聚簇重复检查之前，不能宣称existing IGNORE没有parentS。新增显式early user shared-read与既有mutex/D1服务并发测试只是顺序保护。当前实际失败是mutex同记录S→X升级，须按此证据修复和新schema重跑。V9→V12、最终根verify、V12预览和浏览器尚未执行。恢复HEAD3253ad4，backend worker1f4af5d/clean后继续修复，front19ab078/clean待browser；第二消费者页localhost3004已恢复既有账号1，默认127消费者账号2。下一项review mutex修复→fresh MySQL20+升级串行→根verify→sameDemo V11保留迁移/正常Session/browser。
