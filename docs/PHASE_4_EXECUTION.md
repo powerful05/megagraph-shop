@@ -52,3 +52,9 @@ Frontend ff8dd1f全attempt历史按需查看已集成为0350290；typecheck/buil
 浏览器：job4上传→product68，生成后没有自动打开/填写价格；显式打开，人工填59CNY/库存4、GENERAL_PHYSICAL颜色/材质/场景/图片声明/规格，save→confirm→publish。消费者一条真实deepseek-flash查询找到68（TEST_CONFIRMED v4）→当前SKU→加购；与B商家笔记本拆为组#1两单，A59 Mock成功库存CONFIRMED，B29 Mock失败库存RELEASED。task3 DEAD_LETTER累计3人工retry→attempt5 cancel成功，历史1–5保留；刷新后选择同商家恢复task3 CANCELLED。桌面截图与390px商家/消费者截图归档，无水平溢出；Enter展开历史/Tab焦点与减少动态选项验证。视口已reset。图片/文本均为本地测试，68明确LOCAL_TEST，修复标志前66/67保持未公开。新增消费者文本模型调用1次，费用未知，未调用视觉/嵌入模型。
 
 4A按受控Mock商品生产验收；真实视觉/OCR未验证。B/C已分别归档输入不足商业准入待验证。开始4D1，先数字交付；4D2待4D1专项和浏览器验收后再实施。主干与远端仍待整个阶段4验收，不能提前推送。
+
+## 额度恢复后的继续点
+
+当前integration HEAD f8ec542，D1两个新树仍干净b53f578，旧Worker因平台额度中断没有产生D1代码。当前普通使用已允许（快照5小时9%/周57%），未购买/未使用重置券；重新派发backend_d1/frontend_d1/qa_d1，各沿用批准目录。D1迁移保留V11，DTO已核准，merchantName补入公开销售方；统一对话入口必须无guide/key仍能走Java数字供给，能力字段digitalDeliveryAvailable与真实guideAvailable区分。默认非数字无模型不冒称真实AI。
+
+本轮复核8084/5176/3004均无监听后，在integration重新启动backend session15392、merchant49764、shopper77090，同mg_p4_demo_20261003未reset；旧服务停止状态不由本轮终止操作造成。4A补真实Session/CSRF HTTP负例4a-session-csrf-isolation.json：已有merchant账号切有效B身份访问Ajob/artifact/media均404；缺CSRF retry403且不改任务；匿名私有media401；公开列表包含68而66/67/69仍隐藏。此为新接口正常Session实际负例，与测试Basic证据分开。
