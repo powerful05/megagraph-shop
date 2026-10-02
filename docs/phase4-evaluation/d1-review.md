@@ -38,6 +38,14 @@ claim 应使用 order → entitlement，并普通读取 payment 的当前状态�
 
 上述反馈已发 Lead 与实现者，最终结果需要检查修订后的代码及运行测试，本文不以中间实现宣判交付失败。
 
+## 修订静态复核
+
+Frontend `aa298a20a920dfbff804e94271bef9798d36ff00`：已核对 PATCH 带 DIGITAL_FILE、购买前当前详情与 price/hash/version 核验、server expectedOfferVersion、账号与商家组件 key 隔离、账号 owner fence、下载会话 abort、安全固定文件名。未知下单结果按账号与 offer 保存原 key/offerId/expectedOfferVersion，重试优先原载荷；明确 4xx 清 pending。数字订单独立展示交付快照与权益，不显示库存或物流按钮；到期、撤销及阻塞售后禁领下载，CLAIMED 禁退款。商家 panel 改为浅字深底。以上是代码事实，尚不能代替真实浏览器视觉与交互证据。
+
+Backend 当前开发树已看到 `currentPublicOffer` 完整 FOR UPDATE 取公开事实，asset_id 单独 FOR UPDATE 取当前关联，写守卫 `currentEntitlement` 使用 FOR UPDATE；载荷 hash 使用字段长度前缀；实物重放拒绝数字类型。旧付款/退款/取消/超时与售后审批路径已改 order 优先；ChannelEvent 定位支付/退款资源改 scalar JPQL，避免先加载会被更新的 managed 实体。仍待最终提交与定序 MySQL 测试证明竞争窗口确已覆盖。
+
+已读取 Backend 首轮 Surefire `DigitalDeliveryIntegrationTest` 报告：10 tests、0 failures、0 errors、0 skipped，12.22 s；其中缺失 expectedOfferVersion、混入 SKU/价格、支付后权益、未领拒下载、实际 bytes SHA-256、private/no-store、匿名/另一账号、未领取退款/已领取拒退、拒绝恢复/过期、创建及领取 Outbox 回滚、旧历史 JSON 有断言。报告对应首轮代码，不宣称之后所有修订已通过，也不是 MySQL 或浏览器验收。支付/退款权益 Outbox 回滚、定序 RR 竞争、不同事件重复支付与商家角色专项仍待最终证据。
+
 ## 结论
 
 尚不能宣布 D1 通过。当前产出为旧领域边界核实与具体审查入口；待 Backend/Frontend 的实现与运行证据到位后更新。本次准备不运行付费模型、修改业务或重复充分完成的 4A/B/C 验证。
