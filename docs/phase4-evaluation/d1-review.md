@@ -28,6 +28,16 @@ claim 应使用 order → entitlement，并普通读取 payment 的当前状态�
 | 浏览器 | 对话卡片→详情→显式购买→Mock支付→领取→下载/刷新；待退款禁领 | Lead 真实 MySQL 浏览器记录/截图/下载 hash | 待 Lead 验证 |
 | 实物回归 | 原购物袋、跨商家拆单、支付/退款不变 | 相称现有自动化与真实浏览器 | 待 Lead 验证 |
 
+## 首轮代码审查反馈（正在实现，尚未定最终缺陷）
+
+- MySQL REPEATABLE READ：购买先普通查询幂等订单，再锁 offer id，然后普通查询公开资料，可能沿用首次普通读的旧快照。锁查询必须直接取得当前 version/price/可售事实，并验证必填 `expectedOfferVersion`；同键重放仍应返回先前购买快照。缺失版本与并发改价窗口需要独立断言。
+- 同源风险出现在旧 `AfterSaleService.request`：锁 order 前普通查询售后幂等，等待 claim 提交后，普通 entitlement 读仍可能见旧 AVAILABLE。写守卫应在已经持有 order 后使用 entitlement current-read，例如 `FOR UPDATE`，从而拒绝真正已 CLAIMED 的权益。竞争测试应定序到旧快照窗口。
+- offer 创建载荷 hash 使用换行拼接字段有歧义，字段内含换行可让不同 title/description 拼出相同字串。使用 canonical JSON 或长度前缀，测试不同字段边界载荷明确冲突。
+- 共用订单幂等键需双向保护：数字购买不能重放已有实物订单，旧实物创建也不能返回已有数字订单；后者原来无 deliveryType 检查。
+- 首轮前端 PATCH 没有 deliveryType，而 Backend 请求 DTO 原有 `@NotBlank`。双方需要统一 PATCH DTO，避免全部保存请求 400；当前消息已送达两位实现者。
+
+上述反馈已发 Lead 与实现者，最终结果需要检查修订后的代码及运行测试，本文不以中间实现宣判交付失败。
+
 ## 结论
 
 尚不能宣布 D1 通过。当前产出为旧领域边界核实与具体审查入口；待 Backend/Frontend 的实现与运行证据到位后更新。本次准备不运行付费模型、修改业务或重复充分完成的 4A/B/C 验证。
