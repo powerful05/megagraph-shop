@@ -406,6 +406,17 @@ function refundStatusLabel(order: SalesOrder): string {
   }[status]
 }
 
+function digitalAfterSaleNotice(order: SalesOrder) {
+  if (order.deliveryType !== 'DIGITAL_FILE' || !order.afterSale) return ''
+  return {
+    REQUESTED: '退款申请等待审核，文件领取与下载已暂停。',
+    REFUND_PROCESSING: '渠道正在处理退款，文件领取与下载已暂停；渠道确认退款成功后撤销文件权益。',
+    REFUND_FAILED: '退款未完成，文件领取与下载保持暂停，等待重试或人工处理。',
+    REFUNDED: '退款已完成，文件权益已撤销。',
+    REJECTED: '退款申请已驳回；有效期限内可继续领取或下载，请核对当前权益状态。',
+  }[order.afterSale.status]
+}
+
 async function saveDraft() {
   if (!activeProduct.value) return
   await execute(async () => {
@@ -794,7 +805,7 @@ onBeforeUnmount(() => {
           <article class="glass-panel metric-card refund">
             <span>REFUND REVIEW</span>
             <strong>{{ refundReviewOrders }}</strong>
-            <p>等待审核的未发货退款</p>
+            <p>退款申请与待处理退款</p>
           </article>
           <article class="glass-panel metric-card revenue">
             <span>PAID REVENUE</span>
@@ -808,7 +819,7 @@ onBeforeUnmount(() => {
             <div>
               <p class="step">03 / 交易</p>
               <h2>订单事实台账</h2>
-              <p>订单金额、支付状态与库存预占均来自后端事实库。</p>
+              <p>查看订单金额、支付、交付与退款的当前状态。</p>
             </div>
             <el-button :loading="ordersRefreshBusy || busy" @click="manualRefreshOrders">刷新订单</el-button>
           </header>
@@ -833,7 +844,7 @@ onBeforeUnmount(() => {
                   <span>#{{ order.id }}</span>
                   <strong>{{ order.orderNo }}</strong>
                   <small>{{ formatDate(order.createdAt) }}</small>
-                  <small v-if="order.testOrder">试用子订单 · 下单组 #{{ order.checkoutGroupId }} · 不发货、不结算</small>
+                  <small v-if="order.testOrder">{{ order.deliveryType === 'DIGITAL_FILE' ? '数字测试订单' : '试用订单' }}<template v-if="order.checkoutGroupId != null"> · 下单组 #{{ order.checkoutGroupId }}</template> · {{ order.deliveryType === 'DIGITAL_FILE' ? 'Mock 支付、不真实收费' : '不发货、不结算' }}</small>
                 </div>
                 <div class="order-statuses">
                   <span :class="`order-status ${order.status.toLowerCase()}`">{{ order.deliveryType === 'DIGITAL_FILE' && order.status === 'PAID' ? '数字文件已支付' : orderStatusLabel(order.status) }}</span>
@@ -911,7 +922,8 @@ onBeforeUnmount(() => {
                     <strong class="refund-failure-copy">{{ order.afterSale.refund?.failureMessage || order.afterSale.refund?.failureCode || '退款未完成，需要 OWNER 重试或人工处理。' }}</strong>
                   </template>
                 </div>
-                <div v-if="order.afterSale.status === 'REFUND_PROCESSING'" class="refund-processing-note">
+                <p v-if="order.deliveryType === 'DIGITAL_FILE'" class="refund-processing-note">{{ digitalAfterSaleNotice(order) }}</p>
+                <div v-if="order.deliveryType !== 'DIGITAL_FILE' && order.afterSale.status === 'REFUND_PROCESSING'" class="refund-processing-note">
                   渠道正在处理退款。订单仍保持已支付，库存不会提前回补，发货已锁定。
                 </div>
                 <div v-else-if="order.afterSale.status === 'REFUND_FAILED'" class="refund-retry-row">
