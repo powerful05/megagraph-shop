@@ -41,11 +41,13 @@ public class TestSupplyConfig {
         private final ProductService productService;
         private final MediaStorage media;
         private final Path assets;
+        private final boolean expanded;
 
         public TestSupplyService(DevSeedConfig.DevSeedService devSeed, UserAccountRepository users,
                 MerchantRepository merchants, MerchantUserRepository memberships, CategoryRepository categories,
                 ProductRepository products, ProductImageRepository images, ProductService productService,
-                MediaStorage media, @Value("${app.test-supply.asset-dir}") String assetDir) {
+                MediaStorage media, @Value("${app.test-supply.asset-dir}") String assetDir,
+                @Value("${app.test-supply.expanded:false}") boolean expanded) {
             this.devSeed = devSeed;
             this.users = users;
             this.merchants = merchants;
@@ -56,6 +58,7 @@ public class TestSupplyConfig {
             this.productService = productService;
             this.media = media;
             this.assets = Path.of(assetDir);
+            this.expanded = expanded;
         }
 
         @Transactional(rollbackFor = IOException.class)
@@ -87,6 +90,41 @@ public class TestSupplyConfig {
                             new SupplyDetails.Specification("TEST-NOTE-A5", "内页", "横线，80张 / 160页"),
                             new SupplyDetails.Specification("TEST-NOTE-A5", "装订", "精装硬壳")),
                     "merchant-b-red-notebook.png");
+            if (expanded) {
+                createExpandedSupply(first, second, userId, categoryId, daily.getId());
+            }
+        }
+
+        private void createExpandedSupply(Merchant first, Merchant second, Long userId,
+                Long apparelCategoryId, Long dailyCategoryId) throws IOException {
+            Long bagCategoryId = category(dailyCategoryId, "文件袋", 2).getId();
+            Long noteCategoryId = category(dailyCategoryId, "纸质笔记本", 2).getId();
+            // Newer, higher-priced fixtures put the original five products beyond the 50-candidate limit.
+            for (int index = 1; index <= 15; index++) {
+                String suffix = String.format(java.util.Locale.ROOT, "%02d", index);
+                Merchant merchant = index % 2 == 0 ? first : second;
+                String price = Integer.toString(300 + index * 10) + ".00";
+                create(merchant, userId, apparelCategoryId, "扩展测试 · 浅蓝衬衫 " + suffix,
+                        "EXP-BLUE-" + suffix, "浅蓝", "100% 棉", "直筒", price,
+                        "104", "66", "44", "58", "merchant-a-blue-shirt.jpg");
+                create(merchant, userId, apparelCategoryId, "扩展测试 · 米白针织上衣 " + suffix,
+                        "EXP-IVORY-" + suffix, "米白", "60% 棉 / 40% 粘纤", "常规", price,
+                        "96", "58", "38", "56", "merchant-b-ivory-knit.jpg");
+                String bagCode = "EXP-BAG-" + suffix;
+                createGeneral(merchant, userId, bagCategoryId, "扩展测试 · 绿色帆布文件袋 " + suffix,
+                        bagCode, "绿色 / A4", "绿色", "100% 棉帆布", price, List.of("通勤", "文件收纳"),
+                        "扩展测试设定，与基础样本共用演示图；未验证防水或承重。",
+                        List.of(new SupplyDetails.Specification(bagCode, "适用纸张", "A4文件"),
+                                new SupplyDetails.Specification(bagCode, "封口", "开放式袋口，无拉链")),
+                        "merchant-a-green-document-bag.png");
+                String noteCode = "EXP-NOTE-" + suffix;
+                createGeneral(merchant, userId, noteCategoryId, "扩展测试 · 红色横线笔记本 " + suffix,
+                        noteCode, "红色 / A5", "红色", "纸质内页，硬质纸板封面", price,
+                        List.of("会议记录", "学习", "手写"), "扩展测试设定，与基础样本共用演示图；未验证钢笔防洇墨。",
+                        List.of(new SupplyDetails.Specification(noteCode, "规格", "A5，148 × 210 mm"),
+                                new SupplyDetails.Specification(noteCode, "内页", "横线，80张 / 160页")),
+                        "merchant-b-red-notebook.png");
+            }
         }
 
         private Category category(Long parentId, String name, int level) {

@@ -2,7 +2,9 @@
 
 2026-10-01：当前为预览分支、测试供给和真实 DeepSeek 模型的本地验证，不构成真实商家供给、真实用户满意度或完整阶段验收。
 
-本文件保留最初三件服饰、22题的历史验证。当前目录已扩展为五件测试商品、问题集为30题；最新结果及多轮指代波动见 [PHASE_3B_GENERAL_SUPPLY.md](PHASE_3B_GENERAL_SUPPLY.md)，不应把下文旧计数当作当前完整验收。
+本文件保留最初三件服饰、22题的历史验证。当前目录已扩展为五件测试商品、问题集为49题；30题供给验证见 [PHASE_3B_GENERAL_SUPPLY.md](PHASE_3B_GENERAL_SUPPLY.md)，40题结构化指代记录见 [PHASE_3B_REFERENCES.md](PHASE_3B_REFERENCES.md)，45题可核验依据记录见 [PHASE_3B_EVIDENCE.md](PHASE_3B_EVIDENCE.md)，当前空推荐一致性与实际结果见 [PHASE_3B_SELECTION_STATUS.md](PHASE_3B_SELECTION_STATUS.md)。不应把下文旧计数当作当前完整验收。
+
+2026-10-02另建65件隔离测试目录，专用14题全部在模型意图调用阶段超时失败，业务构建与目录加购检查通过。详见 [扩大目录验证记录](PHASE_3B_EXPANDED_SUPPLY.md)。基础49题与扩大14题是两套固定目录问题集，不能互换结果或将旧通过率当作当前模型可用性。
 
 ## 自动化与数据库
 

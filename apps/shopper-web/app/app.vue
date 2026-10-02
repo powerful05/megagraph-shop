@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { Plus, RefreshCw } from 'lucide-vue-next'
+import ProductImage from './components/ProductImage.vue'
 import type {
   MockPaymentResult,
   OrderItem,
@@ -24,7 +26,7 @@ const { data: products, pending, error: catalogError, refresh } = await useFetch
   `${apiBase}/api/shop/v1/products`,
   { default: () => [] },
 )
-const { data: capabilities } = await useFetch<ShopCapabilities>(`${apiBase}/api/shop/v1/capabilities`, {
+const { data: capabilities, refresh: refreshCapabilities } = await useFetch<ShopCapabilities>(`${apiBase}/api/shop/v1/capabilities`, {
   default: () => ({ mockPaymentAvailable: false }),
 })
 const mockPaymentAvailable = computed(() => capabilities.value?.mockPaymentAvailable === true)
@@ -37,12 +39,18 @@ const inviteCode = ref('')
 const displayName = ref('')
 const registering = ref(false)
 const catalogOpen = ref(false)
+const manualReduceMotion = ref(false)
+const systemReduceMotion = ref(false)
+const reduceMotion = computed(() => manualReduceMotion.value || systemReduceMotion.value)
+let motionPreference: MediaQueryList | null = null
+function syncMotionPreference() { systemReduceMotion.value = motionPreference?.matches ?? false }
 const checkout = reactive({
   recipientName: isDevelopment ? '示例顾客' : '',
   recipientPhone: isDevelopment ? '13800138000' : '',
   shippingAddress: isDevelopment ? '深圳市盐田区海景路 1 号' : '',
 })
 const connected = ref(false)
+const accountUserId = ref<number | null>(null)
 const loginOpen = ref(false)
 const loginDialog = ref<HTMLElement | null>(null)
 const commerceDialog = ref<HTMLElement | null>(null)
@@ -197,7 +205,7 @@ async function connectShopper() {
   await execute('login', async () => {
     await shopperApi.login(apiBase, credentials)
     credentials.password = ''
-    await loadPrivateState()
+    await loadPrivateState(true)
     notice.value = '顾客会话已建立'
     const pending = pendingGuideCart.value
     pendingGuideCart.value = null
@@ -208,16 +216,18 @@ async function connectShopper() {
   })
 }
 
-async function loadPrivateState() {
-    const [nextCart, nextOrders] = await Promise.all([
+async function loadPrivateState(openCart = false) {
+    const [nextCart, nextOrders, me] = await Promise.all([
       shopperApi.cart(apiBase, credentials),
       shopperApi.orders(apiBase, credentials),
+      shopperApi.me(apiBase),
     ])
     cart.value = nextCart
     setOrders(nextOrders)
     connected.value = true
+    accountUserId.value = me.userId
     loginOpen.value = false
-    activePanel.value = nextCart.items.length > 0 ? 'cart' : null
+    activePanel.value = openCart && nextCart.items.length > 0 ? 'cart' : null
     schedulePolling(true)
 }
 
@@ -238,6 +248,7 @@ async function logoutShopper() {
     orderMutationVersion += 1
     ordersRequest = null
     connected.value = false
+    accountUserId.value = null
     pendingGuideCart.value = null
     cart.value = { cartId: 0, currency: null, estimatedTotal: 0, items: [] }
     orders.value = []
@@ -542,6 +553,9 @@ function handleDialogKeydown(event: KeyboardEvent) {
 }
 
 onMounted(() => {
+  motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)')
+  syncMotionPreference()
+  motionPreference.addEventListener('change', syncMotionPreference)
   shopperApi.onSessionExpired(() => {
     if (!connected.value) return
     cancelShopperRequests()
@@ -549,6 +563,7 @@ onMounted(() => {
     orderMutationVersion += 1
     ordersRequest = null
     connected.value = false
+    accountUserId.value = null
     activePanel.value = null
     orders.value = []
     cart.value = { cartId: 0, currency: null, estimatedTotal: 0, items: [] }
@@ -560,6 +575,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  motionPreference?.removeEventListener('change', syncMotionPreference)
   if (noticeTimer) clearTimeout(noticeTimer)
   shopperApi.onSessionExpired(null)
   clearPollTimer()
@@ -569,7 +585,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main>
+  <main :class="{ 'reduce-motion': reduceMotion }">
     <nav class="nav-shell agent-nav">
       <a class="brand" href="#top" aria-label="MegaGraph Shop 首页">
         <span class="brand-mark" />
@@ -598,16 +614,20 @@ onBeforeUnmount(() => {
       :demo-catalog-available="capabilities?.demoCatalogAvailable === true"
       :model-name="capabilities?.guideModelName ?? ''"
       :cart-busy="Boolean(busyAction)"
+      :account-user-id="accountUserId"
+      :reduce-motion="reduceMotion"
+      :system-reduce-motion="systemReduceMotion"
+      @update:reduce-motion="manualReduceMotion = $event"
       @add-to-cart="addGuideProduct"
+      @refresh-capabilities="refreshCapabilities()"
     />
 
     <section v-if="catalogOpen" id="collection" class="collection-section live-catalog">
       <header class="section-header">
         <div>
-          <p class="eyebrow">LIVE CATALOG</p>
-          <h2>当前可售</h2>
+          <h2>商品目录 <span class="catalog-count">{{ products.length }} 件</span></h2>
         </div>
-        <button type="button" :disabled="pending" @click="refresh">{{ pending ? '同步中' : '刷新商品' }}</button>
+        <button type="button" :disabled="pending" @click="refresh"><RefreshCw :size="15" aria-hidden="true" />{{ pending ? '同步中' : '刷新商品' }}</button>
       </header>
 
       <div v-if="catalogError" class="state-panel">
@@ -623,14 +643,12 @@ onBeforeUnmount(() => {
       <div v-else class="product-grid">
         <article v-for="(product, index) in products" :key="product.id" class="product-card">
           <div class="product-media">
-            <img v-if="product.mainImageUrl" :src="imageUrl(product.mainImageUrl)" :alt="product.title" />
-            <div v-else class="image-placeholder">NO IMAGE</div>
+            <ProductImage :src="product.mainImageUrl ? imageUrl(product.mainImageUrl) : null" :alt="product.title" contain sizes="(max-width: 640px) 50vw, (max-width: 1100px) 33vw, 260px" />
             <span class="index">{{ String(index + 1).padStart(2, '0') }}</span>
-            <span class="stock-chip">{{ product.availableStock }} READY</span>
           </div>
           <div class="product-meta">
             <div>
-              <h3>{{ product.title }}</h3>
+              <h3 :title="product.title">{{ product.title }}</h3>
               <p>{{ product.subtitle }}</p>
             </div>
             <div class="price-block">
@@ -656,11 +674,10 @@ onBeforeUnmount(() => {
               :disabled="!product.skus.length || busyAction === `add-${chosenSku(product)?.id}`"
               @click="addToCart(product)"
             >
-              {{ busyAction === `add-${chosenSku(product)?.id}` ? '加入中…' : '加入购物袋' }}
-              <span>＋</span>
+              <Plus :size="16" aria-hidden="true" />{{ busyAction === `add-${chosenSku(product)?.id}` ? '加入中…' : '加购' }}
             </button>
           </div>
-          <details class="product-evidence-details"><summary>商品资料与尺码</summary><ProductSupplyEvidence :product="product" /></details>
+          <details class="product-evidence-details"><summary>商品资料与规格</summary><ProductSupplyEvidence :product="product" /></details>
         </article>
       </div>
     </section>

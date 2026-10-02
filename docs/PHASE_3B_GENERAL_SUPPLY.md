@@ -2,6 +2,8 @@
 
 2026-10-01：继续在现有预览分支扩展实物供给。保持空白对话、真实 DeepSeek、明确标注的测试资料和 Mock 交易；不开放数字权益、服务预约或真实支付。
 
+后续记录：本文件保留30题和当时未完成项的历史结果；结构化指代、40题问题集及消费者390像素通用规格加购补验见 [PHASE_3B_REFERENCES.md](PHASE_3B_REFERENCES.md)，当前45题与可核验推荐依据见 [PHASE_3B_EVIDENCE.md](PHASE_3B_EVIDENCE.md)，不将下文旧结果当作最新完整验收。
+
 ## 契约
 
 `SupplyDetails` 新增 `profile` 和 `specifications`，商品资料与订单快照均返回这些字段。没有 profile 的旧 JSON 按 `APPAREL` 读取，缺少 specifications 按空列表读取；旧成衣资料、确认版本和旧订单保持兼容。数据仍存于既有 TEXT JSON 列，没有新增或重写数据库迁移。

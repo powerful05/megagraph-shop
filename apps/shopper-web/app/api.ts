@@ -1,4 +1,4 @@
-import type { AuthMe, CheckoutGroup, GuideMessage, GuideReply, MockPaymentResult, PublicProduct, SalesOrder, ShoppingCart } from '@megagraph/domain-types'
+import type { AuthMe, CheckoutGroup, GuideConversationDetail, GuideConversationSummary, GuideTurnRequest, GuideMessage, GuideReply, MockPaymentResult, PublicProduct, SalesOrder, ShoppingCart } from '@megagraph/domain-types'
 
 export interface ShopperCredentials {
   username: string
@@ -66,6 +66,23 @@ async function request<T>(
 }
 
 export const shopperApi = {
+  conversations(apiBase: string, signal?: AbortSignal) {
+    return request<GuideConversationSummary[]>(apiBase, '/api/shop/v1/guide/conversations', { username: '', password: '' }, { signal })
+  },
+  createConversation(apiBase: string, signal?: AbortSignal) {
+    return request<GuideConversationDetail>(apiBase, '/api/shop/v1/guide/conversations', { username: '', password: '' }, { method: 'POST', signal })
+  },
+  conversation(apiBase: string, id: string, signal?: AbortSignal) {
+    return request<GuideConversationDetail>(apiBase, `/api/shop/v1/guide/conversations/${id}`, { username: '', password: '' }, { signal })
+  },
+  sendConversation(apiBase: string, id: string, requestId: string, content: string, signal: AbortSignal) {
+    return request<GuideTurnRequest>(apiBase, `/api/shop/v1/guide/conversations/${id}/messages`, { username: '', password: '' }, {
+      method: 'POST', body: JSON.stringify({ requestId, content }), signal,
+    })
+  },
+  retryConversation(apiBase: string, id: string, requestId: string, signal: AbortSignal) {
+    return request<GuideTurnRequest>(apiBase, `/api/shop/v1/guide/conversations/${id}/requests/${requestId}/retry`, { username: '', password: '' }, { method: 'POST', signal })
+  },
   product(apiBase: string, id: number, signal?: AbortSignal): Promise<PublicProduct> {
     return request<PublicProduct>(apiBase, `/api/shop/v1/products/${id}`, { username: '', password: '' }, { signal })
   },

@@ -25,6 +25,10 @@ NUXT_API_UPSTREAM=http://127.0.0.1:8081 pnpm --filter @megagraph/shopper-web dev
 
 `POST /api/shop/v1/guide/messages` 接收 `messages`，每条包含 `role`（`user` 或 `assistant`）和 `content`。消息须从用户开始、交替排列，并以用户消息结束；最多 19 条，单条最多 2000 字符，总计最多 12000 字符。前端保留最近的完整消息对以控制上下文大小。
 
+2026-10-01续：助手消息新增可选 `displayedProductIds`，按当轮卡片顺序填写最多三个唯一正整数；用户消息只能为空。缺省为空，旧客户端保持一般对话兼容，但不能凭缺失记录精确定位“第二件”。该字段不是交易事实或认证的历史凭证；服务端仍核对当前公开目录与约束，详见 [多轮指代契约与验证](PHASE_3B_REFERENCES.md)。
+
+2026-10-01再续：响应新增 `advice` 与 `recommendationBasis`，模型建议从 `answer` 移至独立字段，商品属性与限制由服务端校验引用后生成。回复结构收紧为带 `evidenceReferences` 的 JSON，普通文本不再降级展示；前后端需配套发布。完整定义和验证见 [可核验推荐依据](PHASE_3B_EVIDENCE.md)，下文保留初期接通的历史行为。
+
 响应为 `answer`、`products` 和 `demoProductIds`。`products` 使用既有公开商品契约；返回前再次核对可售资格。`demoProductIds` 只能是 `blue-shirt`、`ivory-knit`、`gray-cardigan`，与前端生成素材一一对应，不能下单。模型不能生成图片 URL、商品 ID、价格或库存事实。
 
 能力接口增加 `guideAvailable`、`demoCatalogAvailable`、`guideModelName`。只有显式启用 `guide` 的环境才开放对话控制器；本地预览允许带 CSRF 令牌的匿名对话，其他环境沿用登录要求。最多同时处理两次模型请求；上游错误只返回稳定的 `GUIDE_MODEL_FAILED` 提示。

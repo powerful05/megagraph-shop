@@ -72,6 +72,38 @@ class CrossMerchantCheckoutIntegrationTest {
     }
 
     @Test
+    void checkoutRecalculatesChangedPricesAndLaterChangesCannotRewriteOrderAmounts() throws Exception {
+        Fixture f = fixture();
+        add(f, f.firstSku(), 1); add(f, f.secondSku(), 1);
+        ProductSku first = skus.findById(f.firstSku()).orElseThrow();
+        ProductSku second = skus.findById(f.secondSku()).orElseThrow();
+        first.revise(first.getSkuCode(), first.getSkuName(), new BigDecimal("12.34"), 5);
+        second.revise(second.getSkuCode(), second.getSkuName(), new BigDecimal("56.78"), 5);
+        skus.saveAndFlush(first); skus.saveAndFlush(second);
+        JsonNode result = checkout(f, UUID.randomUUID().toString());
+        assertThat(result.path("totalAmount").decimalValue()).isEqualByComparingTo("69.12");
+        assertThat(result.path("orders").get(0).path("items").get(0).path("unitPrice").decimalValue())
+                .isEqualByComparingTo("12.34");
+        assertThat(result.path("orders").get(1).path("items").get(0).path("unitPrice").decimalValue())
+                .isEqualByComparingTo("56.78");
+        first = skus.findById(f.firstSku()).orElseThrow();
+        second = skus.findById(f.secondSku()).orElseThrow();
+        first.revise(first.getSkuCode(), first.getSkuName(), new BigDecimal("199.00"), first.getAvailableStock());
+        second.revise(second.getSkuCode(), second.getSkuName(), new BigDecimal("299.00"), second.getAvailableStock());
+        skus.saveAndFlush(first); skus.saveAndFlush(second);
+        JsonNode saved = json.readTree(mvc.perform(get("/api/shop/v1/checkouts/{id}", result.path("id").asLong())
+                .with(httpBasic(f.buyer(), "test123"))).andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray());
+        assertThat(saved.path("totalAmount").decimalValue()).isEqualByComparingTo("69.12");
+        for (int index = 0; index < 2; index++) {
+            for (String field : List.of("id", "orderNo", "merchantId", "currency", "totalAmount", "items")) {
+                assertThat(saved.path("orders").get(index).path(field))
+                        .as("Persisted order %s %s", index, field)
+                        .isEqualTo(result.path("orders").get(index).path(field));
+            }
+        }
+    }
+
+    @Test
     void mixedCategoriesKeepGenericAndLegacyApparelSnapshotsAfterLaterProductRevision() throws Exception {
         Fixture f = fixture();
         var firstProduct = products.findById(skus.findById(f.firstSku()).orElseThrow().getProductId()).orElseThrow();

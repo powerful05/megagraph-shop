@@ -159,6 +159,11 @@ class ProductFlowIntegrationTest {
         mvc.perform(get("/api/shop/v1/media/{imageId}", imageId))
                 .andExpect(status().isOk())
                 .andExpect(result -> assertThat(result.getResponse().getContentType()).isEqualTo(MediaType.IMAGE_PNG_VALUE));
+        mvc.perform(get("/api/shop/v1/media/{imageId}", imageId).param("width", "640"))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/shop/v1/media/{imageId}", imageId).param("width", "641"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("MEDIA_WIDTH_INVALID"));
 
         assertThat(outboxEvents.findByAggregateTypeAndAggregateIdOrderByCreatedAtAsc("PRODUCT", productId))
                 .extracting("eventType")
@@ -177,6 +182,8 @@ class ProductFlowIntegrationTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("PUBLIC_PRODUCT_NOT_FOUND"));
         mvc.perform(get("/api/shop/v1/media/{imageId}", imageId))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/shop/v1/media/{imageId}", imageId).param("width", "640"))
                 .andExpect(status().isNotFound());
 
         assertThat(outboxEvents.findByAggregateTypeAndAggregateIdOrderByCreatedAtAsc("PRODUCT", productId))

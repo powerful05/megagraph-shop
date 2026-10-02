@@ -1,6 +1,7 @@
 const apiUpstream = process.env.NUXT_API_UPSTREAM ?? 'http://127.0.0.1:8080'
 
 export default defineNuxtConfig({
+  buildDir: process.env.NUXT_BUILD_DIR ?? '.nuxt',
   compatibilityDate: '2026-09-01',
   devtools: { enabled: false },
   css: ['~/assets/main.css'],

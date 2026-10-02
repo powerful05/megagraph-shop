@@ -27,8 +27,8 @@ public class GuideCatalogSearch {
             return Optional.empty();
         }
         SupplyDetails details = confirmedDetails(product);
-        String categoryText = normalize(product.title() + " " + product.subtitle() + " " + categoryNames.getOrDefault(product.categoryId(), ""));
-        if (!intent.categoryKeywords().isEmpty() && intent.categoryKeywords().stream().noneMatch(term -> categoryText.contains(normalize(term)))) {
+        String categoryText = categoryToken(product.title() + " " + product.subtitle() + " " + categoryNames.getOrDefault(product.categoryId(), ""));
+        if (!intent.categoryKeywords().isEmpty() && intent.categoryKeywords().stream().noneMatch(term -> categoryText.contains(categoryToken(term)))) {
             return Optional.empty();
         }
         if (!attributesMatch(details == null ? null : details.color(), intent.requiredColors(), intent.excludedColors(), true)
@@ -52,6 +52,10 @@ public class GuideCatalogSearch {
         if (details != null && details.sizeChart().stream().anyMatch(row -> row.skuCode().equals(sku.code())
                 && row.sizeLabel().equalsIgnoreCase(size))) return true;
         return Arrays.stream(sku.name().split("[\\s/·,]+" )).anyMatch(token -> token.equalsIgnoreCase(size));
+    }
+
+    private String categoryToken(String text) {
+        return normalize(text).replace("针织上衣", "针织").replace("针织衫", "针织");
     }
 
     private boolean attributesMatch(String value, List<String> required, List<String> excluded, boolean color) {

@@ -22,6 +22,20 @@ class GuideCatalogSearchTest {
     }
 
     @Test
+    void knitCategorySynonymsDoNotBecomeFabricOrMatchOtherApparel() {
+        var knit = product(1L, "米白针织上衣", "米白", "60% 棉 / 40% 粘纤", "CONFIRMED", "CNY", "M", "169");
+        var shirt = product(2L, "米白衬衫", "米白", "100% 棉", "CONFIRMED", "CNY", "M", "100");
+        for (String term : List.of("针织衫", "针织上衣", "米白针织衫")) {
+            var intent = new GuideIntent(GuideIntent.DeliveryType.PHYSICAL, new BigDecimal("180"), "CNY", List.of(),
+                    List.of(term), List.of("米白"), List.of("蓝"), List.of(), List.of(), "M");
+            assertThat(search.search(List.of(shirt, knit), intent, 50)).extracting(PublicProductResponse::id).containsExactly(1L);
+        }
+        var pure = new GuideIntent(GuideIntent.DeliveryType.PHYSICAL, null, "CNY", List.of(), List.of("针织衫"),
+                List.of(), List.of(), List.of("100%棉"), List.of(), "M");
+        assertThat(search.search(List.of(knit, shirt), pure, 50)).isEmpty();
+    }
+
+    @Test
     void budgetAndSizeMustBeSatisfiedByTheSameSku() {
         PublicProductResponse base = product(1L, "开衫", "灰", "100% 棉", "CONFIRMED", "CNY", "M", "229");
         PublicProductResponse multi = new PublicProductResponse(base.id(), base.title(), base.subtitle(), base.categoryId(),

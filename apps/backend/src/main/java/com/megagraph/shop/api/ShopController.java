@@ -52,8 +52,8 @@ public class ShopController {
     }
 
     @GetMapping("/media/{imageId}")
-    ResponseEntity<Resource> media(@PathVariable Long imageId) {
-        MediaPayload media = mediaService.loadPublicMedia(imageId);
+    ResponseEntity<Resource> media(@PathVariable Long imageId, @org.springframework.web.bind.annotation.RequestParam(required = false) Integer width) {
+        MediaPayload media = mediaService.loadPublicMedia(imageId, width);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CACHE_CONTROL, "public, max-age=3600")
                 .contentType(MediaType.parseMediaType(media.contentType()))

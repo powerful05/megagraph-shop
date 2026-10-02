@@ -20,14 +20,49 @@ export interface ShopCapabilities {
 export interface GuideMessage {
   role: 'user' | 'assistant'
   content: string
+  displayedProductIds?: number[]
 }
 
 export type GuideDemoProductId = 'blue-shirt' | 'ivory-knit' | 'gray-cardigan'
+
+export interface GuideRecommendationBasis {
+  productId: number
+  productVersion: number | null
+  dataOrigin: 'MERCHANT' | 'LOCAL_TEST' | 'UNKNOWN'
+  facts: { key: string; label: string; value: string }[]
+  limitations: string[]
+}
 
 export interface GuideReply {
   answer: string
   products: PublicProduct[]
   demoProductIds: GuideDemoProductId[]
+  advice: string
+  recommendationBasis: GuideRecommendationBasis[]
+}
+
+export interface GuideConversationSummary {
+  id: string
+  title: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface GuideTurnRequest {
+  requestId: string
+  conversationId: string
+  sequence: number
+  content: string
+  status: 'PENDING' | 'COMPLETED' | 'FAILED'
+  attempt: number
+  result: GuideReply | null
+  error: { code: string; message: string } | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface GuideConversationDetail extends GuideConversationSummary {
+  requests: GuideTurnRequest[]
 }
 
 export interface Category {

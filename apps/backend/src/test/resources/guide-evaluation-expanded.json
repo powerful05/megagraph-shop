@@ -1,0 +1,16 @@
+[
+  {"id":"older-blue-budget", "messages":["上班穿，想要浅蓝色纯棉衬衫，M码，每件最多200元。"], "allowedSkus":["TEST-BLUE-M"], "requireProducts":true, "maxPrice":200},
+  {"id":"older-ivory-budget", "messages":["找米白色针织上衣，M码，不超过180元，不要蓝色。"], "allowedSkus":["TEST-IVORY-M"], "requireProducts":true, "maxPrice":180},
+  {"id":"older-bag-budget", "messages":["每天上下班带A4纸文件，想买个绿色帆布文件袋，100元以内。"], "allowedSkus":["TEST-BAG-A4"], "requireProducts":true, "maxPrice":100},
+  {"id":"older-note-budget", "messages":["开会手写用的A5横线纸质笔记本，红色，30元内。"], "allowedSkus":["TEST-NOTE-A5"], "requireProducts":true, "maxPrice":30},
+  {"id":"older-gray-budget", "messages":["要灰色纯棉开衫，M码，最多230元。"], "allowedSkus":["TEST-GRAY-M"], "requireProducts":true, "maxPrice":230},
+  {"id":"expanded-tighten-budget", "messages":["想看米白针织上衣，M码，每件500元内。", "预算改成180元，仍然要米白针织上衣M码。"], "allowedSkus":["TEST-IVORY-M"], "requireProducts":true, "maxPrice":180, "answerNone":["这三款", "这两款"]},
+  {"id":"expanded-switch-purpose", "messages":["想看浅蓝纯棉衬衫M码，每件500元内。", "现在不买衣服了，给我找开会手写用的红色A5横线笔记本，30元内。"], "allowedSkus":["TEST-NOTE-A5"], "requireProducts":true, "maxPrice":30},
+  {"id":"expanded-note-computer", "messages":["我要的是能运行办公软件的笔记本电脑，预算5000元，不是纸本。"], "noProducts":true},
+  {"id":"expanded-ambiguous-mood", "messages":["最近很累，想给自己买点东西。"], "noProducts":true, "requireQuestion":true},
+  {"id":"expanded-performance-gap", "messages":["绿色帆布文件袋，100元以内，必须防水且能承重十公斤，有检测证明才推荐。"], "noProducts":true},
+  {"id":"expanded-unavailable-size", "messages":["找浅蓝色纯棉衬衫，必须XL码，500元以内。"], "noProducts":true},
+  {"id":"expanded-digital-boundary", "messages":["想买一份可下载的绘画软件授权，预算200元，不要实物。"], "noProducts":true},
+  {"id":"expanded-service-boundary", "messages":["周末想预约一次上门保洁服务，预算300元。"], "noProducts":true},
+  {"id":"expanded-exact-reference", "messages":["看看米白针织上衣M码，预算500元，给我三个可选的。", "就看刚才第二个，不要换别的。"], "initialCount":3, "selectPosition":2, "requireProducts":true, "maxPrice":500}
+]
