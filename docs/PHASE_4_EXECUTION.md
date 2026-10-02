@@ -74,3 +74,9 @@ D1前端aa298a2已审阅集成为a5608ce；消费者/商家typecheck与productio
 最终20例MySQL mg_p4_digital_20261002_204903_225214执行20/0failure/1error/0skip：concurrentPurchaseIdempotencyAndClaimRefundSerialize领取与退款并发报死锁。初步定位claim先app_user X再order，而refund先order再插入FK user导致等待环；Backend/QA受派独立核对锁顺序。保留失败原始日志，不删断言或把SQL死锁当正常业务冲突。D1尚未验收，D2尚未开始。
 
 当前8084/3004已停止，merchant5176仍本轮session49764。下一步：review锁顺序修复→fresh schema最终MySQL数字专项→串行pnpm verify（shopper dev仍停止）→无guide/key的8084与3004恢复→浏览器D1完整闭环/退款/越权/刷新/小屏验收。启动no-model：PHASE4_LOAD_GUIDE_CONFIG=false python3 var/phase4-tooling/run-preview.py。已有Demo mg_p4_demo_20261003不reset。第三方新增调用仍仅4A文本1次、费用未知，无D1模型调用/购买/重置。
+
+4D1 MySQL锁报告已由QA实读归档d1-review.md，非仅推断。修复f5225a3→563f571：claim统一先order再app_user；有定序FK回归和跨订单相同claimkey竞争，新H2数字22/22。无重试/降隔离/关闭FK/吞数据库异常。前端能力文案b3c6578→1bee724修复model=false/digital=true底部误提示不可用。QA修复静态核对df968ce→7722921。
+
+浏览器no-guide模式在已有MySQLschema正常创建数字offer#1（商家A，12.90CNY）→确认v1→发布v2；统一账号对话无模型返回JAVA_DIGITAL资料→显式购买数字order#3 MGDAD39878C91004BFBA4F5CAF→Mock支付→键盘Enter领取→下载。浏览器实际保存/Users/qin/Downloads/megagraph-test-file-order-3.txt，248字节，与正常Session HTTP下载字节及购买assetHash完全一致。另一账号404/匿名401、同key领取重放200两次期限不变、已领退款409 DIGITAL_ALREADY_CLAIMED，安全证据d1-download-session-check.json。截图d1-digital-offer-published.jpg/d1-claimed-digital-order.jpg。浏览器waitForEvent download与click组合曾工具超时，恢复绑定后正常click成功保存并通过真实文件核验。
+
+仅停止本轮cwd核准8084 PID51371和3004 PID51365，merchant5176继续运行。修复后真实MySQL数字22/22通过、0skip，schema mg_p4_digital_20261002_205905_451630，日志同名.log；此前失败记录保留。当前开始串行pnpm verify。D1剩余未领取退款、刷新/越权浏览器、小屏/减少动态及最终组合验收；D2没有开始。
