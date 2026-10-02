@@ -64,3 +64,13 @@ D1契约补充：items.expectedOfferVersion必填，服务端锁当前offer后�
 4A独立维护CLI实跑：隔离synthetic fixture schema mg_p4_cleanup_20261002_203225_085303，仅两张测试引用表与专属测试目录；打包PropertiesLauncher实际执行exit0，旧孤立文件删除1，job引用/product引用及24h内无引用文件保留。没有读取/删除Demo媒体，未启HTTP/Flyway/seed。4a-cleanup-cli.json归档；此不是全迁移验收。浏览器重开时账号连续对话和两单终态仍从MySQL恢复，补4a-physical-orders-refresh.jpg；无新增模型调用。
 
 D1前端aa298a2已审阅集成为a5608ce；消费者/商家typecheck与productionbuild通过，旧shared7项未冒称数字领域验收。网络下单未知保存原account+offer key/payload，先重放核对而不换键重复购买。来源修复9604b08单独集成：GuideReply.responseSource TEXT_MODEL/JAVA_DIGITAL/NO_MODEL兼容旧历史，数字空结果仍不误标文本模型；真实模型能力徽标和实际回复来源分开。后端首轮H2数字10项通过，正在补MySQL定序竞争/Outbox完整回滚并交接；尚不标D1验收完成。
+
+## 4D1集成与真实MySQL发现（2026-10-03 04:49）
+
+当前integration HEAD b9e10e7；数字后端d768099/1bea378已顺序集成758092d/b9e10e7，前端a5608ce/2a99a55/9902395均review。Worker最终H2数字20及guide46共66执行通过，没有据此冒称MySQL通过。
+
+真实MySQL V9→V11升级保留1/1/0skip（mg_p4_phase4_upgrade_20261002_204603_242086）。首次数字运行mg_p4_digital_20261002_204602_141189 testCompile失败：Lead同一target并发两条Maven导致编译产物干扰，测试未执行；确认本轮进程cwd后停止8084 PID49540和3004 PID49534，serial clean test-compile通过（d1-serial-compile.log），随后15例MySQL独立schema mg_p4_digital_20261002_204755_511985通过。
+
+最终20例MySQL mg_p4_digital_20261002_204903_225214执行20/0failure/1error/0skip：concurrentPurchaseIdempotencyAndClaimRefundSerialize领取与退款并发报死锁。初步定位claim先app_user X再order，而refund先order再插入FK user导致等待环；Backend/QA受派独立核对锁顺序。保留失败原始日志，不删断言或把SQL死锁当正常业务冲突。D1尚未验收，D2尚未开始。
+
+当前8084/3004已停止，merchant5176仍本轮session49764。下一步：review锁顺序修复→fresh schema最终MySQL数字专项→串行pnpm verify（shopper dev仍停止）→无guide/key的8084与3004恢复→浏览器D1完整闭环/退款/越权/刷新/小屏验收。启动no-model：PHASE4_LOAD_GUIDE_CONFIG=false python3 var/phase4-tooling/run-preview.py。已有Demo mg_p4_demo_20261003不reset。第三方新增调用仍仅4A文本1次、费用未知，无D1模型调用/购买/重置。
