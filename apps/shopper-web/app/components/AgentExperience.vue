@@ -370,7 +370,7 @@ onBeforeUnmount(() => {
           </template>
           <div v-if="pendingId === activeId" class="assistant-row thinking-row" role="status">
             <div class="assistant-avatar" aria-hidden="true">✳</div>
-            <div class="assistant-content"><div class="assistant-name">MegaGraph <span>{{ !modelAvailable && demoCatalogAvailable ? '演示处理中' : '正在回复' }}</span></div><p><span class="thinking-dot" />{{ progress }}</p></div>
+            <div class="assistant-content"><div class="assistant-name">MegaGraph <span>{{ !modelAvailable && !digitalDeliveryAvailable && demoCatalogAvailable ? '演示处理中' : '正在回复' }}</span></div><p><span class="thinking-dot" />{{ progress }}</p></div>
           </div>
         </div>
       </div>
@@ -400,7 +400,7 @@ onBeforeUnmount(() => {
             <button v-else type="submit" aria-label="发送消息" title="发送消息" :disabled="!draft.trim() || !canSend"><ArrowUp :size="20" /></button>
           </div>
         </form>
-        <p class="composer-disclaimer">{{ modelAvailable ? (demoCatalogAvailable ? '当前包含生成的演示图；商品交易信息以商家发布为准。' : 'AI 建议仅供选购参考，商品交易信息以商家发布为准。') : demoCatalogAvailable ? '演示回复不代表真实 AI 推荐；交易信息以商家发布和后端数据为准。' : '对话服务状态暂不可用，商品目录以当前服务端资料为准。' }}</p>
+        <p class="composer-disclaimer">{{ modelAvailable ? (demoCatalogAvailable ? '当前包含生成的演示图；商品交易信息以商家发布为准。' : 'AI 建议仅供选购参考，商品交易信息以商家发布为准。') : digitalDeliveryAvailable ? '可查询商家已确认的自建测试文件。此为受控 Demo，使用 Mock 支付；支付成功后 24 小时内领取及下载。' : demoCatalogAvailable ? '演示回复不代表真实 AI 推荐；交易信息以商家发布和后端数据为准。' : '对话服务状态暂不可用，商品目录以当前服务端资料为准。' }}</p>
       </div>
     </div>
 
