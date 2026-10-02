@@ -43,7 +43,9 @@ async function request<T>(
   credentials: Credentials,
   init: RequestInit = {},
 ): Promise<T> {
-  const signal = path.startsWith('/api/merchant/v1/') ? merchantRequests.signal : init.signal
+  const signal = path.startsWith('/api/merchant/v1/')
+    ? (init.signal ? AbortSignal.any([merchantRequests.signal, init.signal]) : merchantRequests.signal)
+    : init.signal
   const headers = new Headers(init.headers)
   if (path.startsWith('/api/merchant/v1/')) {
     headers.set('X-Merchant-Id', String(credentials.merchantId))
@@ -141,13 +143,24 @@ export const merchantApi = {
       body: JSON.stringify({ note }),
     })
   },
-  upload(credentials: Credentials, image: File) {
+  upload(credentials: Credentials, image: File, idempotencyKey: string, signal?: AbortSignal) {
     const data = new FormData()
     data.append('image', image)
     return request<IngestionJob>('/api/merchant/v1/ingestions', credentials, {
       method: 'POST',
-      headers: { 'Idempotency-Key': crypto.randomUUID() },
-      body: data,
+      headers: { 'Idempotency-Key': idempotencyKey },
+      body: data, signal,
+    })
+  },
+  ingestions(credentials: Credentials, signal?: AbortSignal) {
+    return request<IngestionJob[]>('/api/merchant/v1/ingestions', credentials, { signal })
+  },
+  ingestion(credentials: Credentials, id: number, signal?: AbortSignal) {
+    return request<IngestionJob>(`/api/merchant/v1/ingestions/${id}`, credentials, { signal })
+  },
+  mutateIngestion(credentials: Credentials, job: IngestionJob, action: 'retry' | 'cancel', signal?: AbortSignal) {
+    return request<IngestionJob>(`/api/merchant/v1/ingestions/${job.id}/${action}`, credentials, {
+      method: 'POST', body: JSON.stringify({ version: job.version }), signal,
     })
   },
   product(credentials: Credentials, id: number) {
@@ -189,11 +202,11 @@ export const merchantApi = {
       body: JSON.stringify({ version: product.version }),
     })
   },
-  async imageUrl(credentials: Credentials, path: string): Promise<string> {
+  async imageUrl(credentials: Credentials, path: string, signal?: AbortSignal): Promise<string> {
     const response = await fetch(`${API_BASE}${path}`, {
       headers: { 'X-Merchant-Id': String(credentials.merchantId) },
       credentials: 'same-origin',
-      signal: merchantRequests.signal,
+      signal: signal ? AbortSignal.any([merchantRequests.signal, signal]) : merchantRequests.signal,
     })
     if (!response.ok) throw new Error('商品图片加载失败')
     return URL.createObjectURL(await response.blob())

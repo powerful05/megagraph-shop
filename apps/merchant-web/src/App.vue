@@ -8,6 +8,7 @@ import {
   nextOrderPollingDelay,
 } from '@megagraph/domain-types'
 import { cancelMerchantRequests, merchantApi, type Credentials } from './api'
+import IngestionWorkbench from './IngestionWorkbench.vue'
 
 const isDevelopment = import.meta.env.DEV
 const credentials = reactive<Credentials>({
@@ -31,8 +32,6 @@ const shipmentDrafts = reactive<Record<number, { carrierName: string; trackingNo
 const afterSaleNotes = reactive<Record<number, string>>({})
 const activeArea = ref<'products' | 'orders'>('products')
 const activeProduct = ref<MerchantProduct | null>(null)
-const selectedFile = ref<File | null>(null)
-const localPreviewUrl = ref('')
 const storedPreviewUrl = ref('')
 const supplyDraft = ref<SupplyDetails | null>(null)
 const scenarioText = ref('')
@@ -168,6 +167,7 @@ async function switchMerchant(event: Event) {
   clearPollTimer()
   orderMutationVersion += 1
   ordersRequest = null
+  connected.value = false
   credentials.merchantId = selected
   categories.value = []
   products.value = []
@@ -197,24 +197,14 @@ async function logout() {
   })
 }
 
-function selectFile(event: Event) {
-  const input = event.target as HTMLInputElement
-  selectedFile.value = input.files?.[0] ?? null
-  if (localPreviewUrl.value) URL.revokeObjectURL(localPreviewUrl.value)
-  localPreviewUrl.value = selectedFile.value ? URL.createObjectURL(selectedFile.value) : ''
-}
-
-async function upload() {
-  if (!selectedFile.value) {
-    error.value = '请先选择商品图片'
-    return
-  }
+async function openIngestionDraft(productId: number) {
+  const generation = merchantGeneration
   await execute(async () => {
-    const job = await merchantApi.upload(credentials, selectedFile.value!)
-    const product = await merchantApi.product(credentials, job.productId)
+    const product = await merchantApi.product(credentials, productId)
+    if (generation !== merchantGeneration) return
     await setActiveProduct(product)
     await refreshProducts()
-    ElMessage.success('AI 草稿已生成，请补齐发布信息')
+    ElMessage.success('请核实描述与资料，并填写价格、库存，再确认当前版本')
   })
 }
 
@@ -238,7 +228,7 @@ async function setActiveProduct(product: MerchantProduct) {
   if (image) {
     try {
       const previewUrl = await merchantApi.imageUrl(credentials, image.url)
-      if (generation === merchantGeneration) storedPreviewUrl.value = previewUrl
+      if (generation === merchantGeneration && activeProduct.value?.id === product.id) storedPreviewUrl.value = previewUrl
       else URL.revokeObjectURL(previewUrl)
     } catch {
       // 编辑能力不依赖预览成功。
@@ -571,7 +561,6 @@ onBeforeUnmount(() => {
   clearPollTimer()
   document.removeEventListener('visibilitychange', handleVisibilityChange)
   window.removeEventListener('online', handleOnline)
-  if (localPreviewUrl.value) URL.revokeObjectURL(localPreviewUrl.value)
   if (storedPreviewUrl.value) URL.revokeObjectURL(storedPreviewUrl.value)
 })
 </script>
@@ -637,25 +626,25 @@ onBeforeUnmount(() => {
         </button>
       </nav>
 
+      <IngestionWorkbench
+        v-if="activeArea === 'products' && connected && identity"
+        :key="`${identity.userId}-${credentials.merchantId}`"
+        :credentials="credentials"
+        :user-id="identity.userId"
+        :can-edit="canEdit"
+        @open-draft="openIngestionDraft"
+        @products-changed="execute(refreshProducts)"
+      />
+
       <section v-if="activeArea === 'products'" class="workspace-grid">
         <aside class="glass-panel product-rail">
           <div class="section-heading">
             <div>
-              <p class="step">01 / 上传</p>
-              <h2>商品源图片</h2>
+              <p class="step">02 / 编辑</p>
+              <h2>商品草稿与发布</h2>
             </div>
             <span>{{ products.length }} 件</span>
           </div>
-
-          <label class="dropzone">
-            <input type="file" :disabled="!canEdit" accept="image/jpeg,image/png,image/webp" @change="selectFile" />
-            <img v-if="localPreviewUrl" :src="localPreviewUrl" alt="待上传商品预览" />
-            <div v-else>
-              <strong>选择一张商品图</strong>
-              <span>JPEG / PNG / WebP · 最大 10MB</span>
-            </div>
-          </label>
-          <el-button type="primary" class="full-button" :disabled="!canEdit" :loading="busy" @click="upload">生成 AI 草稿</el-button>
 
           <div class="product-list">
             <button
@@ -676,8 +665,8 @@ onBeforeUnmount(() => {
         <section class="glass-panel editor-panel">
           <div v-if="!activeProduct" class="empty-state">
             <span class="orb" />
-            <h2>上传第一张商品图片</h2>
-            <p>系统会创建可编辑草稿。价格、库存和类目必须由你确认。</p>
+            <h2>选择已生成的商品草稿</h2>
+            <p>上方任务成功后可打开草稿；价格、库存、类目与商品资料需由商家核实。</p>
           </div>
 
           <template v-else>
@@ -696,7 +685,7 @@ onBeforeUnmount(() => {
 
             <div class="draft-layout">
               <div class="media-frame">
-                <img v-if="storedPreviewUrl || localPreviewUrl" :src="storedPreviewUrl || localPreviewUrl" alt="商品主图" />
+                <img v-if="storedPreviewUrl" :src="storedPreviewUrl" alt="商品主图" />
                 <div v-else class="media-placeholder">IMAGE</div>
                 <span>MAIN IMAGE</span>
               </div>
@@ -721,10 +710,10 @@ onBeforeUnmount(() => {
                   <el-form-item label="规格名称">
                     <el-input v-model="form.name" />
                   </el-form-item>
-                  <el-form-item label="价格 / CNY">
+                  <el-form-item label="商家填写价格 / CNY">
                     <el-input-number v-model="form.price" :min="0" :precision="2" class="full-width" />
                   </el-form-item>
-                  <el-form-item label="可售库存">
+                  <el-form-item label="商家填写可售库存">
                     <el-input-number v-model="form.stock" :min="0" :precision="0" class="full-width" />
                   </el-form-item>
                 </div>

@@ -297,14 +297,39 @@ export interface CheckoutGroup {
   orders: SalesOrder[]
 }
 
+export type IngestionStatus = 'QUEUED' | 'RUNNING' | 'RETRY_WAIT' | 'SUCCEEDED' | 'FAILED' | 'DEAD_LETTER' | 'CANCELLED'
+
+export interface IngestionArtifact {
+  inputHash: string
+  provider: string
+  model: string
+  templateVersion: string
+  protocolVersion: string
+  attempt: number
+  elapsedMs: number
+  rawOutput: string | null
+  parsedOutput: unknown
+  evidence: unknown
+  unknowns: string[]
+  usage: unknown | null
+  errorCode: string | null
+}
+
 export interface IngestionJob {
   id: number
-  productId: number
-  status: string
+  productId: number | null
+  status: IngestionStatus
+  version: number
+  attempt: number
+  leaseUntil: string | null
+  nextAttemptAt: string | null
+  errorCode: string | null
+  errorSummary: string | null
+  artifact: IngestionArtifact | null
   originalFilename: string
   createdAt: string
   finishedAt: string | null
-  steps: Array<{ type: string; status: string; attempts: number }>
+  steps: Array<{ type: string; status: string; attempts: number; errorCode: string | null; errorSummary: string | null }>
 }
 
 export function isPaymentInProgress(status: PaymentStatus | null | undefined): boolean {
@@ -342,4 +367,20 @@ export function nextOrderPollingDelay(startedAt: number, now: number): number | 
   const remaining = ORDER_POLL_TIMEOUT_MS - elapsed
   if (remaining <= 0) return null
   return Math.min(ORDER_POLL_INTERVAL_MS, remaining)
+}
+
+export function needsIngestionPolling(job: Pick<IngestionJob, 'status'>): boolean {
+  return ['QUEUED', 'RUNNING', 'RETRY_WAIT'].includes(job.status)
+}
+
+export function canRetryIngestion(job: Pick<IngestionJob, 'status'>): boolean {
+  return job.status === 'FAILED' || job.status === 'DEAD_LETTER'
+}
+
+export const INGESTION_POLL_INTERVAL_MS = 2_000
+export const INGESTION_POLL_TIMEOUT_MS = 60_000
+
+export function nextIngestionPollingDelay(startedAt: number, now: number): number | null {
+  const remaining = INGESTION_POLL_TIMEOUT_MS - Math.max(0, now - startedAt)
+  return remaining <= 0 ? null : Math.min(INGESTION_POLL_INTERVAL_MS, remaining)
 }

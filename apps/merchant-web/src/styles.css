@@ -197,3 +197,35 @@ h2 { margin: 0; font-size: 24px; letter-spacing: -.03em; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
+
+.ingestion-workbench { margin-bottom: 20px; padding: 24px; }
+.ingestion-layout { display: grid; grid-template-columns: minmax(240px, 320px) minmax(0, 1fr); gap: 28px; }
+.ingestion-detail { min-width: 0; padding: 20px; border: 1px solid #34343b; border-radius: 18px; background: rgba(8,8,11,.3); }
+.ingestion-detail h3 { margin: 0; font-size: 18px; }
+.ingestion-facts { display: grid; gap: 10px; margin: 0 0 18px; }
+.ingestion-facts > div { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 14px; }
+.ingestion-facts dt { color: #92929b; font-size: 12px; }
+.ingestion-facts dd { margin: 0; overflow-wrap: anywhere; font-size: 13px; }
+.ingestion-steps { display: grid; gap: 10px; padding-left: 22px; }
+.ingestion-steps li { padding: 8px; border-bottom: 1px solid #34343b; font-size: 13px; }
+.ingestion-steps span { float: right; color: #b4b4bd; }
+.ingestion-steps small { display: block; margin-top: 8px; color: #ffb8b8; }
+.ingestion-artifact { margin-top: 24px; padding-top: 20px; border-top: 1px solid #34343b; }
+.ingestion-artifact h3 { margin-bottom: 18px; }
+.ingestion-artifact details { margin-top: 10px; border: 1px solid #34343b; border-radius: 10px; padding: 12px; }
+.ingestion-artifact summary { cursor: pointer; color: #c8e9df; }
+.ingestion-artifact pre { max-height: 280px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; color: #c1c1ca; font-size: 12px; line-height: 1.6; }
+.ingestion-error { padding: 12px; border: 1px solid rgba(255,115,115,.4); border-radius: 10px; color: #ffb8b8; background: rgba(255,115,115,.06); overflow-wrap: anywhere; }
+.ingestion-empty { align-self: center; color: #aaaab3; line-height: 1.6; }
+.ingestion-polling { margin: 18px 0 0; color: #aaaab3; font-size: 12px; line-height: 1.6; }
+.dropzone:focus-within { outline: 2px solid #9dfbd6; outline-offset: 3px; }
+.product-list-item:focus-visible, .ingestion-artifact summary:focus-visible { outline: 2px solid #9dfbd6; outline-offset: 3px; }
+@media (max-width: 760px) {
+  .ingestion-layout { grid-template-columns: 1fr; }
+  .ingestion-workbench, .ingestion-detail { padding: 18px; }
+  .ingestion-facts > div { grid-template-columns: 1fr; gap: 4px; }
+  .ingestion-steps span { float: none; display: block; margin-top: 4px; }
+}
+
+.ingestion-input-preview { display: block; max-width: 100%; width: 160px; height: 140px; margin-bottom: 18px; object-fit: contain; border: 1px solid #34343b; border-radius: 12px; background: #0b0b0d; }
+.ingestion-artifact li { color: #c1c1ca; font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
