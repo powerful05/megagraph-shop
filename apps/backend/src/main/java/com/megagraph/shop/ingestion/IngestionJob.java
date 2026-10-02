@@ -17,6 +17,18 @@ public class IngestionJob {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @jakarta.persistence.Version
+    private Long version;
+    private Integer attempt = 0;
+    private Integer retryCount = 0;
+    private Instant leaseUntil;
+    private Instant nextAttemptAt;
+    private String inputHash;
+    private String payloadHash;
+    private String storageKey;
+    private String contentType;
+    private Long byteSize;
+    private String mockScenario = "success";
     private Long merchantId;
     private Long productId;
     private String idempotencyKey;
@@ -44,6 +56,17 @@ public class IngestionJob {
         this.createdAt = Instant.now();
     }
 
+    public void input(String inputHash, String payloadHash, com.megagraph.shop.media.StoredMedia media, String scenario) {
+        this.inputHash = inputHash; this.payloadHash = payloadHash; this.storageKey = media.storageKey();
+        this.contentType = media.contentType(); this.byteSize = media.byteSize(); this.mockScenario = scenario;
+    }
+    public Long getVersion() { return version; }
+    public Integer getAttempt() { return attempt; }
+    public Instant getLeaseUntil() { return leaseUntil; }
+    public Instant getNextAttemptAt() { return nextAttemptAt; }
+    public String getPayloadHash() { return payloadHash; }
+    public String getStorageKey() { return storageKey; }
+    public String getContentType() { return contentType; }
     public void start() {
         this.status = IngestionStatus.RUNNING;
         this.startedAt = Instant.now();

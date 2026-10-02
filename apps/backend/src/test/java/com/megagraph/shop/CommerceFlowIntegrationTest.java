@@ -61,6 +61,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 @ActiveProfiles("test")
 @Import(CommerceFlowIntegrationTest.FaultInjectionConfig.class)
 class CommerceFlowIntegrationTest {
+    @Autowired private com.megagraph.shop.ingestion.IngestionWorker ingestionWorker;
 
     private static final String MERCHANT_USERNAME = "merchant@megagraph.local";
     private static final String MERCHANT_PASSWORD = "merchant123";
@@ -969,10 +970,7 @@ class CommerceFlowIntegrationTest {
     }
 
     private PublishedSku publishProduct(String title, String skuCode, double price, int stock) throws Exception {
-        byte[] png = new byte[] {
-                (byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
-                0x00, 0x00, 0x00, 0x00
-        };
+        byte[] png = TestImages.png();
         MockMultipartFile image = new MockMultipartFile(
                 "image",
                 "commerce.png",
@@ -983,8 +981,12 @@ class CommerceFlowIntegrationTest {
                         .file(image)
                         .header("Idempotency-Key", "commerce-product-" + UUID.randomUUID())
                         .with(httpBasic(MERCHANT_USERNAME, MERCHANT_PASSWORD)))
-                .andExpect(status().isOk())
+                .andExpect(status().isAccepted())
                 .andReturn());
+        assertThat(ingestion.path("status").asText()).isEqualTo("QUEUED");
+        assertThat(ingestionWorker.runOnce()).isTrue();
+        ingestion=merchantGet("/api/merchant/v1/ingestions/"+ingestion.path("id").asLong());
+        assertThat(ingestion.path("status").asText()).isEqualTo("SUCCEEDED");
         long productId = ingestion.required("productId").asLong();
         JsonNode draft = merchantGet("/api/merchant/v1/products/" + productId + "/draft");
 

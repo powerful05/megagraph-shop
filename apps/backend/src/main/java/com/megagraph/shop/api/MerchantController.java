@@ -70,17 +70,19 @@ public class MerchantController {
     }
 
     @PostMapping(value = "/ingestions", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @org.springframework.web.bind.annotation.ResponseStatus(org.springframework.http.HttpStatus.ACCEPTED)
     IngestionResponse createIngestion(
             Authentication authentication,
             @RequestHeader("Idempotency-Key") String idempotencyKey,
-            @RequestPart("image") MultipartFile image
+            @RequestPart("image") MultipartFile image,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue="success") String mockScenario
     ) {
         MerchantActor actor = currentMerchant.requireActor(
                 authentication,
                 MerchantRole.OWNER,
                 MerchantRole.EDITOR
         );
-        return ingestionService.create(actor, idempotencyKey, image);
+        return ingestionService.create(actor, idempotencyKey, image, mockScenario);
     }
 
     @GetMapping("/ingestions/{jobId}")
@@ -88,6 +90,24 @@ public class MerchantController {
         return ingestionService.get(currentMerchant.requireActor(authentication), jobId);
     }
 
+    @GetMapping("/ingestions/{jobId}/artifacts")
+    List<IngestionArtifactResponse> ingestionArtifacts(Authentication auth,@PathVariable Long jobId) {
+        return ingestionService.artifacts(currentMerchant.requireActor(auth),jobId);
+    }
+    @GetMapping("/ingestions")
+    List<IngestionResponse> ingestions(Authentication auth) { return ingestionService.list(currentMerchant.requireActor(auth)); }
+    @PostMapping("/ingestions/{jobId}/retry")
+    IngestionResponse retryIngestion(Authentication auth,@PathVariable Long jobId,@Valid @RequestBody VersionRequest request) {
+        return ingestionService.retry(currentMerchant.requireActor(auth,MerchantRole.OWNER,MerchantRole.EDITOR),jobId,request.version());
+    }
+    @PostMapping("/ingestions/{jobId}/cancel")
+    IngestionResponse cancelIngestion(Authentication auth,@PathVariable Long jobId,@Valid @RequestBody VersionRequest request) {
+        return ingestionService.cancel(currentMerchant.requireActor(auth,MerchantRole.OWNER,MerchantRole.EDITOR),jobId,request.version());
+    }
+    @GetMapping("/ingestions/{jobId}/media")
+    ResponseEntity<Resource> ingestionMedia(Authentication auth,@PathVariable Long jobId) {
+        return mediaResponse(ingestionService.inputMedia(currentMerchant.requireActor(auth),jobId),"private, no-store");
+    }
     @GetMapping("/products")
     List<ProductResponse> products(Authentication authentication) {
         return productService.list(currentMerchant.requireActor(authentication));

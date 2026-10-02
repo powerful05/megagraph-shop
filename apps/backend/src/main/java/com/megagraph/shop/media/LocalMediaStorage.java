@@ -36,7 +36,9 @@ public class LocalMediaStorage implements MediaStorage {
             throw new IllegalArgumentException("Invalid media key");
         }
         Files.createDirectories(target.getParent());
-        long bytes = Files.copy(inputStream, target, StandardCopyOption.REPLACE_EXISTING);
+        long bytes;
+        try { bytes = Files.copy(inputStream, target); }
+        catch(IOException e) { Files.deleteIfExists(target); throw e; }
         return new StoredMedia(key, contentType.toLowerCase(Locale.ROOT), bytes);
     }
 
@@ -49,6 +51,22 @@ public class LocalMediaStorage implements MediaStorage {
         return new FileSystemResource(target);
     }
 
+    @Override
+    public void delete(String key) throws IOException {
+        Path target=root.resolve(key).normalize();
+        if(!target.startsWith(root) || !key.startsWith("merchant/")) throw new IOException("Invalid media key");
+        Files.deleteIfExists(target);
+    }
+    @Override
+    public java.util.List<String> keysOlderThan(java.time.Instant cutoff) throws IOException {
+        if(!Files.exists(root.resolve("merchant"))) return java.util.List.of();
+        try(var files=Files.walk(root.resolve("merchant"))) {
+            return files.filter(Files::isRegularFile).filter(path -> {
+                try { return Files.getLastModifiedTime(path).toInstant().isBefore(cutoff); }
+                catch(IOException e) { return false; }
+            }).map(path -> root.relativize(path).toString().replace('\\','/')).toList();
+        }
+    }
     private String extensionFor(String contentType) {
         return switch (contentType.toLowerCase(Locale.ROOT)) {
             case "image/jpeg" -> ".jpg";

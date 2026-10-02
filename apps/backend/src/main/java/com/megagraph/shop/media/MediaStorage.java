@@ -9,5 +9,7 @@ public interface MediaStorage {
             throws IOException;
 
     Resource load(String storageKey);
+    default void delete(String storageKey) throws IOException { throw new IOException("Deletion unsupported"); }
+    default java.util.List<String> keysOlderThan(java.time.Instant cutoff) throws IOException { return java.util.List.of(); }
 }
 

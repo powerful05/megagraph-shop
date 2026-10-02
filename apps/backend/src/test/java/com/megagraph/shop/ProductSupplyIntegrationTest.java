@@ -24,6 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class ProductSupplyIntegrationTest {
+    @Autowired private com.megagraph.shop.ingestion.IngestionWorker ingestionWorker;
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;
     @Autowired ProductRepository products;
@@ -170,11 +171,16 @@ class ProductSupplyIntegrationTest {
     }
 
     private JsonNode createDraft() throws Exception {
-        byte[] png = {(byte) 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0};
+        byte[] png = TestImages.png();
         var image = new MockMultipartFile("image", "supply.png", "image/png", png);
         JsonNode job = json.readTree(mvc.perform(multipart("/api/merchant/v1/ingestions").file(image)
                 .with(httpBasic(USER, "merchant123")).header("Idempotency-Key", UUID.randomUUID().toString()))
+                .andExpect(status().isAccepted()).andReturn().getResponse().getContentAsByteArray());
+        assertThat(job.path("status").asText()).isEqualTo("QUEUED");
+        assertThat(ingestionWorker.runOnce()).isTrue();
+        job=json.readTree(mvc.perform(get("/api/merchant/v1/ingestions/{id}",job.path("id").asLong()).with(httpBasic(USER,"merchant123")))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray());
+        assertThat(job.path("status").asText()).isEqualTo("SUCCEEDED");
         return merchantDraft(job.path("productId").asLong());
     }
 

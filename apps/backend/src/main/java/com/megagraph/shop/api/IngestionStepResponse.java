@@ -1,5 +1,2 @@
 package com.megagraph.shop.api;
-
-public record IngestionStepResponse(String type, String status, Integer attempts) {
-}
-
+public record IngestionStepResponse(String type, String status, Integer attempts, String errorCode, String errorSummary) {}

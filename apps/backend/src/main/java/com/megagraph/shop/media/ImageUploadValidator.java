@@ -36,9 +36,21 @@ public class ImageUploadValidator {
             throw new ValidationException("IMAGE_TYPE_NOT_ALLOWED", "只支持 JPEG、PNG 或 WebP 图片");
         }
         try {
-            byte[] header = file.getInputStream().readNBytes(12);
+            byte[] header;
+            try(var stream=file.getInputStream()){header=stream.readNBytes(12);}
             if (!matchesSignature(contentType, header)) {
                 throw new ValidationException("IMAGE_SIGNATURE_INVALID", "图片内容与文件类型不一致");
+            }
+            try(var stream=file.getInputStream();var input=javax.imageio.ImageIO.createImageInputStream(stream)) {
+                var readers=javax.imageio.ImageIO.getImageReaders(input);
+                if(!readers.hasNext()) throw new ValidationException("IMAGE_CONTENT_INVALID","图片无法解码");
+                var reader=readers.next();
+                try {
+                    reader.setInput(input,true,true);
+                    int width=reader.getWidth(0),height=reader.getHeight(0);
+                    if(width<1 || height<1 || (long)width*height>32_000_000) throw new ValidationException("IMAGE_DIMENSIONS_INVALID","图片像素数量不支持");
+                    if(reader.read(0)==null) throw new ValidationException("IMAGE_CONTENT_INVALID","图片无法解码");
+                } finally { reader.dispose(); }
             }
         } catch (IOException exception) {
             throw new ValidationException("IMAGE_READ_FAILED", "无法读取上传图片");

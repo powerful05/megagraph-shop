@@ -36,6 +36,7 @@ import org.springframework.test.web.servlet.MvcResult;
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class ProductFlowIntegrationTest {
+    @Autowired private com.megagraph.shop.ingestion.IngestionWorker ingestionWorker;
 
     private static final String USERNAME = "merchant@megagraph.local";
     private static final String PASSWORD = "merchant123";
@@ -258,24 +259,27 @@ class ProductFlowIntegrationTest {
     }
 
     private JsonNode upload(String idempotencyKey, String username, String password) throws Exception {
-        byte[] png = new byte[] {
-                (byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
-                0x00, 0x00, 0x00, 0x00
-        };
+        byte[] png = TestImages.png();
         MockMultipartFile image = new MockMultipartFile(
                 "image",
                 "urban-jacket.png",
                 MediaType.IMAGE_PNG_VALUE,
                 png
         );
-        return responseJson(
+        JsonNode queued = responseJson(
                 mvc.perform(multipart("/api/merchant/v1/ingestions")
                                 .file(image)
                                 .header("Idempotency-Key", idempotencyKey)
                                 .with(httpBasic(username, password)))
-                        .andExpect(status().isOk())
+                        .andExpect(status().isAccepted())
                         .andReturn()
         );
+        if (queued.path("status").asText().equals("QUEUED")) {
+            assertThat(queued.path("productId").isNull()).isTrue();
+            assertThat(ingestionWorker.runOnce()).isTrue();
+        }
+        return responseJson(mvc.perform(get("/api/merchant/v1/ingestions/{id}",queued.path("id").asLong())
+                .with(httpBasic(username,password))).andExpect(status().isOk()).andReturn());
     }
 
     private JsonNode getJson(String path) throws Exception {

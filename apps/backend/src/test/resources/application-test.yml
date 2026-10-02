@@ -13,6 +13,8 @@ spring:
       ddl-auto: validate
 
 app:
+  ingestion:
+    worker-enabled: false
   security:
     legacy-basic-enabled: true
     legacy-merchant-context-enabled: true
