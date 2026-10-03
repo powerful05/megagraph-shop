@@ -112,3 +112,13 @@ Lead已通过正常Session只读记录Demo V11旧数据：`apps/backend/var/phas
 Lead真实MySQL专项：`python3 var/phase4-tooling/mysql-run.py MYSQL_APPOINTMENT MySqlAppointmentDeliveryTest`，独立空schema `mg_p4_appointment_20261002_215627_269959`，20执行/0failure/2error/0skip，BUILD FAILURE。失败为twoAccountsLastCapacityAndSameKeyConcurrent的account mutex以及completionRefundAndCrossOrderCompletionKeysSerialize的merchant mutex FOR UPDATE死锁。原日志同schema `.log`保存ignored evidence；`d2-first-mysql-deadlock.txt`记录实际InnoDB报告：99009/99010双方持appointment_merchant_lock同PRIMARY行S，再等待对方释放以升级X。此前INSERT IGNORE重复行后FOR UPDATE方案未通过实证；Backend/QA已受派修复，不重试吞SQL错误、不降低隔离、不移除FK。
 
 潜在跨D1父锁问题没有实际复现；查MySQL8.4.11官方row0ins源码，外键检查在聚簇重复检查之前，不能宣称existing IGNORE没有parentS。新增显式early user shared-read与既有mutex/D1服务并发测试只是顺序保护。当前实际失败是mutex同记录S→X升级，须按此证据修复和新schema重跑。V9→V12、最终根verify、V12预览和浏览器尚未执行。恢复HEAD3253ad4，backend worker1f4af5d/clean后继续修复，front19ab078/clean待browser；第二消费者页localhost3004已恢复既有账号1，默认127消费者账号2。下一项review mutex修复→fresh MySQL20+升级串行→根verify→sameDemo V11保留迁移/正常Session/browser。
+
+## 4D2修复后MySQL通过与额度恢复（14:24）
+
+额度限制期间已保存失败/代码工作树；恢复后实时工具ordinaryUsageAllowed=true，没有购买、升级或使用重置权益。实际8084/3004/5176均无监听，旧session编号不能作为活服务证据。Backend修复3bb4a686已审集成为5965869：两mutex no-op ON DUPLICATE KEY UPDATE直接记录X，保留FK、父表共享当前读、行存在校验及原20业务断言；新增2个已有mutex顺序测试。Worker当前22/22 H2通过，非MySQL结论。QA失败独立摘要a4aaa7f已审集成为4e317d1，合同当前策略已更新d03101a，历史错误记录未删。
+
+Lead串行真实MySQL新空库：`python3 var/phase4-tooling/mysql-run.py MYSQL_APPOINTMENT MySqlAppointmentDeliveryTest`，schema `mg_p4_appointment_20261003_062150_100114`，22/22执行通过、0failure/error/skip、BUILD SUCCESS，18.38s。含实际last-capacity、同key、完成键、RR/FK/expiry定序与Outbox回滚及2新增exclusive upsert先阻塞测试。首次失败库仍保留，未reset或覆盖失败日志。
+
+另一空schema `mg_p4_phase4_upgrade_20261003_062240_660481`：`python3 var/phase4-tooling/mysql-run.py MYSQL_PHASE4_UPGRADE MySqlPhase4UpgradeTest`，V9代表账号、商品/SKU、订单/支付、Session/属性、连续对话、任务/步骤与Outbox升级V12均保留，1/1执行通过、0skip、BUILD SUCCESS；新增7预约表空与V12成功断言通过。两个原日志在ignored evidence同schema名.log。
+
+当前代码5965869，Lead最终组合 `pnpm verify > apps/backend/var/phase4-evidence/d2-final-integration-verify.log 2>&1` 进行中（session68775），无并行同target Maven，无本轮预览进程。完成后同mg_p4_demo_20261003仅启动增量V11→V12、旧D1/实物Session对比；准备ignored `var/phase4-tooling/d2-preservation-check.py`，未执行不能记通过。下一项真实浏览器商家资料/北京时间固定slot、两已有账号最后名额与取消再购/付款/退款/OWNER模拟完成，390px/键盘/减少动态/刷新恢复。主干/私有push/CI仍整个阶段最终验收后执行，第三方调用仍仅4A文本1次费用未知。
