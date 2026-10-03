@@ -37,7 +37,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 class AppointmentDeliveryIntegrationTest {
   @Autowired MockMvc mvc;
   @Autowired ObjectMapper json;
-  @Autowired JdbcTemplate db;
+  @MockitoSpyBean JdbcTemplate db;
   @Autowired AppointmentService service;
   @MockitoSpyBean AppointmentStore store;
   @Autowired OrderService orders;
@@ -1072,5 +1072,117 @@ class AppointmentDeliveryIntegrationTest {
                 .status())
         .isEqualTo(ChannelEventProcessingStatus.REVIEW_REQUIRED);
     assertThat(store.reservation(order.id(), false).status()).isEqualTo("RELEASED");
+  }
+
+  void exclusiveExistingMutex(
+      String sql,
+      Long id,
+      Callable<OrderResponse> first,
+      Callable<OrderResponse> second,
+      boolean sameOrder)
+      throws Exception {
+    CountDownLatch firstUpserted = new CountDownLatch(1),
+        releaseFirst = new CountDownLatch(1),
+        secondUpserted = new CountDownLatch(1);
+    var delegate =
+        org.mockito.Mockito.mockingDetails(db).getMockCreationSettings().getDefaultAnswer();
+    org.mockito.Mockito.doAnswer(
+            invocation -> {
+              Object result = delegate.answer(invocation);
+              String thread = Thread.currentThread().getName();
+              if (thread.equals("mutex-first")) {
+                firstUpserted.countDown();
+                await(releaseFirst);
+              }
+              if (thread.equals("mutex-second")) secondUpserted.countDown();
+              return result;
+            })
+        .when(db)
+        .update(org.mockito.ArgumentMatchers.eq(sql), org.mockito.ArgumentMatchers.eq(id));
+    try (var a = Executors.newSingleThreadExecutor(r -> new Thread(r, "mutex-first"));
+        var b = Executors.newSingleThreadExecutor(r -> new Thread(r, "mutex-second"))) {
+      Future<OrderResponse> x = a.submit(first);
+      assertThat(firstUpserted.await(5, TimeUnit.SECONDS)).isTrue();
+      Future<OrderResponse> y = b.submit(second);
+      try {
+        assertThat(secondUpserted.await(200, TimeUnit.MILLISECONDS))
+            .as(
+                "Existing mutex upsert must hold X immediately; second statement must wait before"
+                    + " SELECT FOR UPDATE")
+            .isFalse();
+      } finally {
+        releaseFirst.countDown();
+      }
+      var original = x.get(10, TimeUnit.SECONDS);
+      if (sameOrder) assertThat(y.get(10, TimeUnit.SECONDS).id()).isEqualTo(original.id());
+      else
+        assertThatThrownBy(() -> y.get(10, TimeUnit.SECONDS))
+            .hasCauseInstanceOf(com.megagraph.shop.shared.ConflictException.class);
+    }
+  }
+
+  @Test
+  void existingAccountMutexUpsertAcquiresExclusiveLockBeforeFollowupSelect() throws Exception {
+    var offer = offer(2);
+    var seed = buy(offer);
+    orders.cancel(user(), seed.id());
+    String k = key();
+    Long u = user();
+    assertThat(
+            db.queryForObject(
+                "select count(*) from appointment_account_lock where user_id=?", Long.class, u))
+        .isEqualTo(1);
+    exclusiveExistingMutex(
+        "insert into appointment_account_lock(user_id) values(?) on duplicate key update"
+            + " user_id=user_id",
+        u,
+        () -> service.purchase(u, k, request(offer)),
+        () -> service.purchase(u, k, request(offer)),
+        true);
+    assertThat(
+            db.queryForObject(
+                "select count(*) from sales_order where user_id=? and idempotency_key=?",
+                Long.class,
+                u,
+                k))
+        .isEqualTo(1);
+  }
+
+  @Test
+  void existingMerchantMutexUpsertSerializesDifferentOrderCompletionWithoutUpgradeDeadlock()
+      throws Exception {
+    var a = paid(1);
+    var b = paid(1);
+    String k = key();
+    Long m = merchant();
+    assertThat(
+            db.queryForObject(
+                "select count(*) from appointment_merchant_lock where merchant_id=?",
+                Long.class,
+                m))
+        .isEqualTo(1);
+    exclusiveExistingMutex(
+        "insert into appointment_merchant_lock(merchant_id) values(?) on duplicate key update"
+            + " merchant_id=merchant_id",
+        m,
+        () -> service.complete(m, a.id(), k, a.appointment().reservation().version()),
+        () -> service.complete(m, b.id(), k, b.appointment().reservation().version()),
+        false);
+    assertThat(
+            db.queryForObject(
+                "select count(*) from appointment_complete_key where merchant_id=? and"
+                    + " idempotency_key=?",
+                Long.class,
+                m,
+                k))
+        .isEqualTo(1);
+    assertThat(
+            db.queryForObject(
+                "select count(*) from appointment_reservation where order_id in (?,?) and"
+                    + " status='FULFILLED'",
+                Long.class,
+                a.id(),
+                b.id()))
+        .isEqualTo(1);
   }
 }

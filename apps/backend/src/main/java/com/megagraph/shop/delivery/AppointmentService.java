@@ -113,7 +113,10 @@ public class AppointmentService {
   }
 
   void merchantMutex(Long m) {
-    db.update("insert ignore into appointment_merchant_lock(merchant_id) values(?)", m);
+    db.update(
+        "insert into appointment_merchant_lock(merchant_id) values(?) on duplicate key update"
+            + " merchant_id=merchant_id",
+        m);
     if (db.queryForList(
                 "select merchant_id from appointment_merchant_lock where merchant_id=? for update",
                 Long.class,
@@ -123,7 +126,10 @@ public class AppointmentService {
   }
 
   void accountMutex(Long u) {
-    db.update("insert ignore into appointment_account_lock(user_id) values(?)", u);
+    db.update(
+        "insert into appointment_account_lock(user_id) values(?) on duplicate key update"
+            + " user_id=user_id",
+        u);
     if (db.queryForList(
                 "select user_id from appointment_account_lock where user_id=? for update",
                 Long.class,
