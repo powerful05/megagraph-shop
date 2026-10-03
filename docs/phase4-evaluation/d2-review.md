@@ -1,6 +1,6 @@
 # 4D2 固定时段测试预约独立审查
 
-状态：合同与旧领域边界已审，新实现与运行验收尚未完成。此文不把 D1 验收、H2 成功或静态守卫当作预约场景已通过。
+状态：D2 尚未通过。最终首轮实现已静态复核，H2预约20/20通过，但真实MySQL首轮20项出现2个数据库死锁错误；merchant mutex同记录S→X升级环已由InnoDB报告确证。Backend正在修订mutex，须新MySQL复验；迁移升级、最终组合与浏览器仍待Lead证据。此文不把D1验收、H2成功或静态守卫当作预约场景已通过。
 
 审查基线：QA worktree `/Users/qin/.codex/worktrees/phase-4d2-qa/MegaGraph‑Shop`，branch `codex/phase-4d2-qa`，HEAD `8e3a733`。已完整读取本目录 AGENTS.md 与 `docs/PHASE_4_D2_CONTRACT.md` v1。QA 仅拥有 `docs/phase4-evaluation` 文档写权限，其余业务实现只读；真实 MySQL、服务、浏览器由 Lead 执行。
 
@@ -33,7 +33,7 @@ QA 提出的 close 重放与时间界点歧义已由 Lead 明确：now==startAt 
 | 释放 | 失败、渠道取消、主动取消、超时仅一次释放；同 slot 多订单扫描无跨订单死锁 | 各终态、expiry-vs-pay 定序、当前容量与 Outbox | 待实现/执行 |
 | 退款/完成 | REQUESTED/PROCESSING/FAILED 禁完成；拒绝恢复；FULFILLED拒退；成功退款RELEASED | 两方向定序竞争、refund终态与容量、角色/键冲突 | 待实现/执行 |
 | 快照/当前事实 | 锁读价格/版本/时段/容量/售后；资料编辑不能改已购约定 | 先普通RR snapshot后编辑/付款/完成，双expectedVersion与旧单事实 | 待实现/执行 |
-| 幂等 | account购买键跨类型双向拒绝；merchant完成键跨订单同key仅一结果 | 同key并发/异载荷/不同订单计数，败方无预约/键/事件残留 | 待实现/执行 |
+| 幂等 | account购买键跨类型双向拒绝；merchant完成键跨订单同key仅一结果 | 同key并发/异载荷/不同订单计数，败方无预约/键/事件残留 | H2已过；首轮真实MySQL account/merchant mutex死锁，未通过 |
 | 时间与请求 | 带offsetISO、UTC/+08等价事实；排他界点；拒绝无时区/past/非法时长与long小数溢出 | strict根/items白名单、时间边界及服务端now断言 | 待实现/执行 |
 | 权限 | OWNER/EDITOR编辑确认、OWNER/PUBLISHER发布、OWNER完成；跨商家/账号404 | 正常Session/CSRF、角色及测试开关专项 | 待实现/执行 |
 | 回滚 | 创建、确认、释放、退款、完成的业务与Outbox同事务 | JDBC/JPA故障注入，订单/payment/reservation/key全状态 | 待实现/执行 |
@@ -41,7 +41,7 @@ QA 提出的 close 重放与时间界点歧义已由 Lead 明确：now==startAt 
 | 回归/迁移 | V12仅新增，旧V9代表数据保留，D1与实物能力保持 | 空库/V9→V12真实MySQL与相称根verify | 待实现/执行 |
 | 浏览器 | 对话→试购→取消再购/付款/退款/显式完成→重新打开恢复 | Lead真实浏览器、稳定390px/键盘/减少动态图像 | 待实现/执行 |
 
-当前 Backend/Frontend 仍处于新D2基线开工，QA 尚无最终实现提交或 D2 测试执行证据。本轮风险已发 Lead 和两位实现者；只有新的源码、实际报告或状态变化才继续评审，不无变化忙轮询，不重复 D1 已充分通过检查。
+首轮合同审查时Backend/Frontend尚在新D2基线开工，当时没有最终实现提交或D2运行证据。本轮风险已发Lead和两位实现者；只有新源码、实际报告或状态变化才继续评审，不无变化忙轮询，不重复D1已充分通过检查。最终首轮提交与MySQL失败见下节。
 
 ## 首轮开发树 SQL 与输入边界复核
 
@@ -60,3 +60,36 @@ QA 新发现的输入风险与后续修订：
 新Controller角色静态核对：OWNER/EDITOR创建、编辑、确认、添加/关闭时段；OWNER/PUBLISHER发布下架；OWNER完成。完成先order/payment，再独立merchant mutex，再slot/reservation与当前阻塞售后/核查守卫，同键重放优先原hash。实际merchant/account404、CSRF、相同完成键跨订单竞争、退款与完成互斥仍必须执行，不以Controller角色枚举算验收通过。
 
 当前结论：以上新发现均已告实现者并看到对应修订方向，未发现剩余明确的SQL反锁order路径。该开发树仍未提交、未有D2 H2/真实MySQL执行证据，不能宣称修复实证或D2通过。
+
+## 跨 D1/D2 的父账户锁核查（等待真实定序）
+
+Lead 新提出的潜在路径：D1 digital purchase 显式 app_user X，然后 currentPublicOffer 的 join merchant FOR UPDATE 可能取得 merchant X；D2 若只锁既有独立 account mutex 而未持 parent user S，再 merchant S→slot→创建 SalesOrder FK user S，可能出现 user/merchant互等。QA 已实际读到 D1 的user X及join锁、D2 mutex INSERT IGNORE与SalesOrder两项父外键；目前没有复现此循环，不能把缺少parent S或数据库死锁写作已确认事实。
+
+特别核对 [MySQL 8.4.11 官方 row0ins.cc](https://raw.githubusercontent.com/mysql/mysql-server/mysql-8.4.11/storage/innobase/row/row0ins.cc)：row_ins_clust_index_entry在聚簇索引重复检查之前调用row_ins_check_foreign_constraints；匹配父记录的外键检查取得S/REC_NOT_GAP。另 [MySQL错误处理规则](https://dev.mysql.com/doc/refman/8.4/en/innodb-error-handling.html) 说明单statement rollback不释放其locks。这些源码与规则不支持“既有INSERT IGNORE必不持parent S”的确定表述；实际JDBC路径是否已保留该S，应由真实MySQL既有mutex定序/锁证据判断。
+
+Backend 拟在预约取得merchant/slot前显式共享current-read app_user。静态安全理由：D1 user X先取得时，D2在父用户处等待，尚不持merchant/slot；D2 user S先取得时，D1 user X等待，D2后续创建订单对同user的FK S兼容。预约售后持slot后请求user FK仍是S，与提前S兼容，不重演D1原先user X→order / order→user S循环。此理由要求真实MySQL共享锁，不能以FOR UPDATE X替代；H2兼容实现不可算MySQL锁行为实证。
+
+已告Backend的定序要求：用正常业务预先创建并持久化mutex行，同账户/同商家的D1与D2真实service并发，测试调用真实INSERT IGNORE；不得去掉FK或人为绕开mutex模拟假失败。再覆盖预约purchase/售后共享父锁，检查完整订单/预约/支付/Outbox终态，而非只“线程结束”。等待最终代码、提交与MySQL报告后再给运行结论。
+
+## 最终首轮实现与前端静态交接
+
+Backend `1f4af5db994f96824fed3159a362befb9719e446`集成为`3253ad4`，Frontend `19ab0789428e34821fac5c331c137f40b7c49db1`集成为`949ebd4`；旧QA新增`7926d3b`已集成`300a0b3`。QA重新核对首轮最终代码：accountMutex后、offer/merchant/slot前显式currentAccountShared，MySQL LOCK IN SHARE MODE、H2 FOR UPDATE；merchant共享当前读、strict整数/日期、每单独立超时事务与晚成功释放均保留。
+
+新增existingAppointmentMutexSameUserDigitalPurchaseRespectsSharedParentOrdering先正常购买并取消以持久化mutex行，断言行数1，再在真实事务持user X，后台调用真实预约purchase，同事务真实digital purchase完成后预约也完成。此用例证明组合可完成，但不能区分后台等待发生于INSERT IGNORE外键检查还是explicit共享读，不能表述为“此前跨D1循环已经复现并修复”。QA实际读取H2报告：AppointmentDeliveryIntegrationTest 20/0 failures/0 errors/0 skipped，4.008s；XML记录jdbc:h2:mem。数字22/0/0/0报告亦已读。Backend另外报告相称109/109通过；该总数为Worker交接，不代替下节真实MySQL结果。
+
+前端最终源码与API/shared DTO静态核对一致：appointmentOffer/slot/reservation字段、两expectedVersion单item购买、appointment-complete reservation.version/Idempotency-Key、北京时间工具、JAVA_APPOINTMENT与capability。未知购买按account+offer保存原key和完整payload，优先重放；public详情404仍可核对原请求；成功或明确4xx清pending，网络/5xx保留，账号变化有owner fence。HELD到expires/start发一次回读并禁Mock成功；CONFIRMED明确尚未测试完成，商家只有OWNER且server completeAvailable/支付/售后守卫允许显式完成。组件请求有15s限制与释放，预约不清实物购物袋，不显示数字下载/实物库存按钮。当前未发现阻断静态问题。
+
+Frontend交接报告两端typecheck/build通过，US/Shanghai TZ各10测试（3新增、7既有）通过；QA本次没有自行运行这些命令，最终集成构建与浏览器须引用Lead日志/实际记录。桌面/稳定390px、键盘、减少动态、最后名额/取消再购、退款与模拟完成、重新打开恢复仍待真实浏览器证据，不能以此次静态检查替代。
+
+## 首轮真实 MySQL 失败与mutex锁证据
+
+QA独立读取Lead固定日志 `apps/backend/var/phase4-evidence/mg_p4_appointment_20261002_215627_269959.log`：隔离schema同名，真实MySQL8.4、空库V1–V12迁移成功；MySqlAppointmentDeliveryTest 20 tests、0 failures、2 errors、0 skipped，BUILD FAILURE，结束2026-10-02 21:56:47 UTC。两项错误均CannotAcquireLockException/MySQL deadlock，不能因H2通过或failure计数0就宣称专项通过：
+
+- twoAccountsLastCapacityAndSameKeyConcurrent：同账户同key竞争阶段，在 `select user_id from appointment_account_lock where user_id=? for update` 失败。
+- completionRefundAndCrossOrderCompletionKeysSerialize：同商家跨订单完成键竞争阶段，在 `select merchant_id from appointment_merchant_lock where merchant_id=? for update` 失败。
+
+QA只读了Lead保存的 `d2-first-mysql-deadlock.txt`，没有执行数据库命令。最新死锁为merchant例：2026-10-02 21:56:44 UTC，事务99009与99010在appointment_merchant_lock PRIMARY记录merchant_id=1各持S record/not-gap，各等待同记录X record/not-gap；InnoDB回滚事务99010。这确证的是mutex本身的S→X升级互等，来源与INSERT IGNORE重复键取得S后再SELECT FOR UPDATE的代码一致。account例的最新dump已被merchant例覆盖，只有实际异常日志；不得编造它的事务号或声称相同记录锁已实测。
+
+本次确证失败与上节未复现的跨D1父表假设分开记录。Backend拟将两个mutex改为no-op INSERT ON DUPLICATE KEY UPDATE，直接取得重复键X，保留FK和显式早期user共享读；不要吞数据库异常为业务Conflict、降隔离或删竞争测试。修订后须真实MySQL保留同账户同键、不同账号最后容量、同商家不同订单完成同键、父FK共享定序与expiry定序，检查完整终态和Outbox；不能仅靠H2重验结束。
+
+Lead已记录失败恢复点`187c056`，D2 V12尚未部署预览，旧Demo未改；当前没有修订后真实MySQL通过证据、V9→V12升级通过证据或D2浏览器验收。QA此轮只保存脱敏摘要，受保护原始日志与锁dump不进入Git。
