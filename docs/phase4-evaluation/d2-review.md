@@ -1,6 +1,6 @@
 # 4D2 固定时段测试预约独立审查
 
-状态：D2 尚未通过。最终首轮实现已静态复核，H2预约20/20通过，但真实MySQL首轮20项出现2个数据库死锁错误；merchant mutex同记录S→X升级环已由InnoDB报告确证。Backend正在修订mutex，须新MySQL复验；迁移升级、最终组合与浏览器仍待Lead证据。此文不把D1验收、H2成功或静态守卫当作预约场景已通过。
+状态：mutex死锁修复后真实MySQL预约22/22通过，V9→V12升级1/1通过，已独立读取固定日志与断言；首轮两个死锁保留为历史实证。D2整体仍待最终组合验证和Lead浏览器闭环，不能宣布全部通过。此文不把D1验收、H2成功或静态守卫当作预约场景已通过，当前结论以“mutex修复后MySQL与升级证据”节为准。
 
 审查基线：QA worktree `/Users/qin/.codex/worktrees/phase-4d2-qa/MegaGraph‑Shop`，branch `codex/phase-4d2-qa`，HEAD `8e3a733`。已完整读取本目录 AGENTS.md 与 `docs/PHASE_4_D2_CONTRACT.md` v1。QA 仅拥有 `docs/phase4-evaluation` 文档写权限，其余业务实现只读；真实 MySQL、服务、浏览器由 Lead 执行。
 
@@ -27,18 +27,18 @@ QA 提出的 close 重放与时间界点歧义已由 Lead 明确：now==startAt 
 
 | 范围 | 不变量/实际失败风险 | 必需证据 | 当前状态 |
 | --- | --- | --- | --- |
-| 最后容量 | 两不同账号同一最后名额最多一个 HELD，独立账号 mutex 不得串行掩盖竞争 | 真实 MySQL 定序/并发，最终订单/预约数量与 remaining | 待实现/执行 |
-| 过期与复用 | 已过期 HELD 不占当前容量；新买成功后旧单晚成功不可重新占用 | 过期尚未扫描→新购买→旧支付成功，完整终态 | 待实现/执行 |
-| 支付重复 | 不同 eventId 重复成功只一 CONFIRMED 与一确认事件，支付不等于 FULFILLED | Inbox/Outbox与 reservation 计数，重复/并发回调 | 待实现/执行 |
-| 释放 | 失败、渠道取消、主动取消、超时仅一次释放；同 slot 多订单扫描无跨订单死锁 | 各终态、expiry-vs-pay 定序、当前容量与 Outbox | 待实现/执行 |
-| 退款/完成 | REQUESTED/PROCESSING/FAILED 禁完成；拒绝恢复；FULFILLED拒退；成功退款RELEASED | 两方向定序竞争、refund终态与容量、角色/键冲突 | 待实现/执行 |
-| 快照/当前事实 | 锁读价格/版本/时段/容量/售后；资料编辑不能改已购约定 | 先普通RR snapshot后编辑/付款/完成，双expectedVersion与旧单事实 | 待实现/执行 |
-| 幂等 | account购买键跨类型双向拒绝；merchant完成键跨订单同key仅一结果 | 同key并发/异载荷/不同订单计数，败方无预约/键/事件残留 | H2已过；首轮真实MySQL account/merchant mutex死锁，未通过 |
-| 时间与请求 | 带offsetISO、UTC/+08等价事实；排他界点；拒绝无时区/past/非法时长与long小数溢出 | strict根/items白名单、时间边界及服务端now断言 | 待实现/执行 |
-| 权限 | OWNER/EDITOR编辑确认、OWNER/PUBLISHER发布、OWNER完成；跨商家/账号404 | 正常Session/CSRF、角色及测试开关专项 | 待实现/执行 |
-| 回滚 | 创建、确认、释放、退款、完成的业务与Outbox同事务 | JDBC/JPA故障注入，订单/payment/reservation/key全状态 | 待实现/执行 |
-| 导购/前端 | 无key真资料JAVA_APPOINTMENT；每次reply标来源；未知下单原payload恢复 | 历史JSON兼容、unknownpending/account fence、实际统一入口 | 待实现/执行 |
-| 回归/迁移 | V12仅新增，旧V9代表数据保留，D1与实物能力保持 | 空库/V9→V12真实MySQL与相称根verify | 待实现/执行 |
+| 最后容量 | 两不同账号同一最后名额最多一个 HELD，独立账号 mutex 不得串行掩盖竞争 | 真实 MySQL 定序/并发，最终订单/预约数量与 remaining | 修复后MySQL两账号最后容量已过；实际浏览器竞争待 |
+| 过期与复用 | 已过期 HELD 不占当前容量；新买成功后旧单晚成功不可重新占用 | 过期尚未扫描→新购买→旧支付成功，完整终态 | MySQL过期复用/晚成功终态已过 |
+| 支付重复 | 不同 eventId 重复成功只一 CONFIRMED 与一确认事件，支付不等于 FULFILLED | Inbox/Outbox与 reservation 计数，重复/并发回调 | MySQL重复支付/仅确认已过；浏览器待 |
+| 释放 | 失败、渠道取消、主动取消、超时仅一次释放；同 slot 多订单扫描无跨订单死锁 | 各终态、expiry-vs-pay 定序、当前容量与 Outbox | MySQL各释放与逐单expiry/陈旧candidate定序已过 |
+| 退款/完成 | REQUESTED/PROCESSING/FAILED 禁完成；拒绝恢复；FULFILLED拒退；成功退款RELEASED | 两方向定序竞争、refund终态与容量、角色/键冲突 | MySQL退款、完成及竞争已过；浏览器待 |
+| 快照/当前事实 | 锁读价格/版本/时段/容量/售后；资料编辑不能改已购约定 | 先普通RR snapshot后编辑/付款/完成，双expectedVersion与旧单事实 | MySQL购买快照与RR容量/完成退款守卫已过 |
+| 幂等 | account购买键跨类型双向拒绝；merchant完成键跨订单同key仅一结果 | 同key并发/异载荷/不同订单计数，败方无预约/键/事件残留 | 首轮mutex死锁已修；修复后22项含原竞争与两个已有mutex测试全过 |
+| 时间与请求 | 带offsetISO、UTC/+08等价事实；排他界点；拒绝无时区/past/非法时长与long小数溢出 | strict根/items白名单、时间边界及服务端now断言 | MySQL strict/offset/millis/期限及迟到已过；前端实际时区展示待 |
+| 权限 | OWNER/EDITOR编辑确认、OWNER/PUBLISHER发布、OWNER完成；跨商家/账号404 | 正常Session/CSRF、角色及测试开关专项 | MySQL角色/租户拒绝已过；实际Session浏览器待 |
+| 回滚 | 创建、确认、释放、退款、完成的业务与Outbox同事务 | JDBC/JPA故障注入，订单/payment/reservation/key全状态 | MySQL创建/HELD/确认/释放/退款/完成及晚释放故障回滚已过 |
+| 导购/前端 | 无key真资料JAVA_APPOINTMENT；每次reply标来源；未知下单原payload恢复 | 历史JSON兼容、unknownpending/account fence、实际统一入口 | MySQL无模型对话/历史已过；Frontend静态一致，实际入口待 |
+| 回归/迁移 | V12仅新增，旧V9代表数据保留，D1与实物能力保持 | 空库/V9→V12真实MySQL与相称根verify | 空库V1–V12与V9→V12已过；D1/实物相称Worker回归已报，最终根verify待 |
 | 浏览器 | 对话→试购→取消再购/付款/退款/显式完成→重新打开恢复 | Lead真实浏览器、稳定390px/键盘/减少动态图像 | 待实现/执行 |
 
 首轮合同审查时Backend/Frontend尚在新D2基线开工，当时没有最终实现提交或D2运行证据。本轮风险已发Lead和两位实现者；只有新源码、实际报告或状态变化才继续评审，不无变化忙轮询，不重复D1已充分通过检查。最终首轮提交与MySQL失败见下节。
@@ -92,4 +92,16 @@ QA只读了Lead保存的 `d2-first-mysql-deadlock.txt`，没有执行数据库�
 
 本次确证失败与上节未复现的跨D1父表假设分开记录。Backend拟将两个mutex改为no-op INSERT ON DUPLICATE KEY UPDATE，直接取得重复键X，保留FK和显式早期user共享读；不要吞数据库异常为业务Conflict、降隔离或删竞争测试。修订后须真实MySQL保留同账户同键、不同账号最后容量、同商家不同订单完成同键、父FK共享定序与expiry定序，检查完整终态和Outbox；不能仅靠H2重验结束。
 
-Lead已记录失败恢复点`187c056`，D2 V12尚未部署预览，旧Demo未改；当前没有修订后真实MySQL通过证据、V9→V12升级通过证据或D2浏览器验收。QA此轮只保存脱敏摘要，受保护原始日志与锁dump不进入Git。
+首轮失败时Lead记录恢复点`187c056`，D2 V12尚未部署预览，旧Demo未改；当时没有修订后MySQL或升级通过证据。此节只保存脱敏摘要，受保护原始日志与锁dump不进入Git；最新结果见下节。
+
+## mutex修复后MySQL与升级证据
+
+Backend修复`3bb4a68604a719c6b737711ebbaa3d3484833dd5`集成为`5965869`。QA实际读取该diff：仅两个mutex INSERT IGNORE改为no-op ON DUPLICATE KEY UPDATE，保留真实FK、后续FOR UPDATE行存在验证与currentAccountShared；没有异常吞掉/自动重试或降低隔离。原20个业务测试没有删除或削弱，只把JdbcTemplate设为spy并新增2例真实语句等待测试。
+
+新增existingAccountMutexUpsertAcquiresExclusiveLockBeforeFollowupSelect与existingMerchantMutexUpsertSerializesDifferentOrderCompletionWithoutUpgradeDeadlock：用正常业务建立已有mutex行，真实upsert委托返回后第一线程暂持事务，第二语句在200ms观察窗口内尚未返回；释放后同账号同key得到同一订单且DB订单计数1，不同订单同完成key败方Conflict、key记录1且FULFILLED总数1。故障是检查真实数据库操作，没有改FK或人为模拟缺锁。QA读取Worker固定 `apps/backend/var-d2-mutex.log`与报告：H2预约22/0/0/0、BUILD SUCCESS，9.812s；该H2证据仍与下一项MySQL分列。
+
+QA独立读取integration固定日志 `apps/backend/var/phase4-evidence/mg_p4_appointment_20261003_062150_100114.log`：真实MySQL8.4，新空schema V1–V12全迁移成功，MySqlAppointmentDeliveryTest 22 tests/0 failures/0 errors/0 skipped，BUILD SUCCESS，专项18.38s、Maven总22.276s，结束2026-10-03 06:22:14 UTC。原20项同键/跨订单竞争、最后容量、RR、父FK与逐单expiry、业务Outbox回滚，加两个已有mutex测试均执行；首轮确证的mutex死锁阻断已获复验通过。不能把这次通过改写成此前未复现的跨D1假设曾失败。
+
+QA随后读取独立升级日志 `mg_p4_phase4_upgrade_20261003_062240_660481.log`：先迁移V1–V9，加入代表性旧事实，再追加V10–V12；MySqlPhase4UpgradeTest 1 test/0 failures/0 errors/0 skipped，BUILD SUCCESS，2.028s（Maven总3.165s），结束06:22:44 UTC。已读实际断言：旧用户、已发布商品version7、SKU价格/库存、订单/订单行/支付、Session及属性bytes、会话、ingestion历史与Outbox保留，旧订单delivery_type=PHYSICAL，原数字表空，新增7预约表空，V12迁移历史成功。不是只检查表存在。
+
+当前准入结论：后端核心与真实MySQL并发/回滚、mutex修复、空库与升级gate已通过；前端静态契约一致，但最终集成根verify和正常Session实际预约浏览器仍待。Lead说明本轮停机期间8084/3004/5176无监听，将随后恢复sameDemo并V11→V12，不将未启动的新预览或running进程当成页面验收，也未新增模型调用。D2尚不能整体通过，整个阶段4更未完成。
