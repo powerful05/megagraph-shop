@@ -135,3 +135,14 @@ QA ac853063→bbf4e5a、d71cbb40→b927501已审集成。代码最终5965869，�
 390px消费者重开对话与orders、商家重开身份与offer slots，Enter/减少动态checked；实际innerWidth/scrollWidth390，稳定截图Lead view核准。小屏减少动态在折叠历史内，首次locator无匹配，打开历史后check成功。退款处理中getAX观察disabled真实，但保存截图时已成功，已将误命名processing图改merchant-refunded-released，不把截图作处理中证据。slot3未来Oct5 10–11cap2小屏添加使offerDRAFT，重新Enterconfirm/publishv7，旧order7v4不变，d2-final-future-slot-snapshot.json。
 
 主目录main实时仍c7ccb1d；baseline-preserved manifest7文件SHA逐一一致；V1–V9 byte同基线。117阶段4文件范围审计、git diff --check/冲突/忽略数据无异常。2026-10-03实时gh确认powerful05/megagraph-shop private/main，fetch origin/main9625916仍是基线祖先。未夹带原AGENTS/README/架构/设计资料。第三方仍4A文本1次费用未知，D1/D2零模型。独立QA最终浏览器复核和backend说明doconly交接进行中，随后本地main快进、正常private origin main推送和可用CI核实。没有待用户批准事项。
+
+
+## 已授权主干与远端交付 2026-10-03 14:54
+
+QA af9d0966→681517d、Lead本地全验收docs bd74410、Backend doc-only5789d5b→ec48916，全部review，最终integration clean。主目录 `git merge --ff-only codex/phase-4-integration`成功，无冲突，main ec489168d619bda072b4964ed7b2881e44597fd5；合后manifest7原文件SHA仍全部一致，tracked AGENTS/README/架构和untracked原两文档/设计目录保持。
+
+正常 `git push origin main` exit0：9625916..ec48916 main→main；实时 `git ls-remote --heads origin main`返回ec48916。实际GitHub push run37104192321对同SHA completed/success，pnpm verify步骤与工具链成功，ignored phase4-code-main-ci.json保存工作流/各步骤元数据。没有force、重写历史、删除旧树/stash/库，未夹带原改动。
+
+本次只补最终范围/验收/执行/交付归档文档，然后快进同步main并正常push；最后文档提交触发的CI需等待实际结果，将安全凭据保存outputs/evidence/final-git-ci.json与中文报告。所有业务代码依然5965869，文档改动不无意义重复本机业务测试。当前服务8084/3004/5176仍实际监听且cwd本次integration，实体设备/真实视觉嵌入/生产支付不在通过范围。第三方仍1次文本费用未知，数字/预约0模型；没有购买/重置额度。
+
+outputs已永久保存10份安全业务JSON、15精选截图、源码统计提取 validation-summary.json和契约/QA文档，原敏感失败认证日志不导出。最后待收敛：仅正常推送doc-only归档提交后核远端同SHA与CI、更新outputs最终报告/hash，读取可用入口当前状态、标记Goal complete并停止，不创造后续任务。

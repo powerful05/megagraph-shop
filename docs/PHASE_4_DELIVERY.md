@@ -1,6 +1,6 @@
 # 阶段4交付记录
 
-状态：4A受控Mock商品生产与4D1自建数字文件已验收；B/C分别完成输入不足裁决；4D2、最终MySQL升级/并发、浏览器与组合验证已验收；当前进行最后主干/远端/CI交付。当前工作位于隔离集成分支 `codex/phase-4-integration`，阶段3基线 `c7ccb1d`，尚未合入main或推送。恢复先读 `PHASE_4_EXECUTION.md`，再核对实际Git/监听与数据库状态。
+状态：4A受控Mock商品生产与4D1自建数字文件已验收；B/C分别完成输入不足裁决；4D2、最终MySQL升级/并发、浏览器与组合验证已验收；阶段4受控Demo已完成，主干/私有远端交付与代码版本CI已通过。当前工作位于隔离集成分支 `codex/phase-4-integration`，阶段3基线 `c7ccb1d`，已快进合入main并正常推送至已实时核准的私有origin/main。恢复先读 `PHASE_4_EXECUTION.md`，再核对实际Git/监听与数据库状态。
 
 ## 当前入口与模式
 
@@ -31,7 +31,7 @@ scripts/phase4-preview.sh shopper
 
 Session负例证明跨商家任务/产物/媒体404、匿名媒体401、缺CSRF写403。独立维护CLI在专属合成fixture验证24h旧孤立清理及两类引用和新文件保留，不触碰Demo媒体。完整范围及原始日志/截图位置见 `PHASE_4_ACCEPTANCE.md`、`PHASE_4_EXECUTION.md`、`docs/phase4-evaluation/`。
 
-B语义召回与C多跳关系分别裁决为“输入不足，商业准入待验证”。MySQL工程基线与快照已永久归档；未实现Milvus/Neo4j，也未把输入不足算作功能通过。D1真实MySQL22专项、V9→V11升级、根verify和浏览器已通过，范围为单个自建UTF-8文件/支付后24小时；新供给换版不改旧订单文件与金额，未领可退/已领拒退仅Demo规则。4D2真实MySQL22/22、V9→V12升级1/1、最终根283总/202执行通过/81条件skip/0失败错误、浏览器桌面与390px/键盘/减少动态均已通过。main/远端/CI最终状态在交付完成时更新。真实供给、视觉/嵌入模型、实体设备与真实支付不在已通过声明内。
+B语义召回与C多跳关系分别裁决为“输入不足，商业准入待验证”。MySQL工程基线与快照已永久归档；未实现Milvus/Neo4j，也未把输入不足算作功能通过。D1真实MySQL22专项、V9→V11升级、根verify和浏览器已通过，范围为单个自建UTF-8文件/支付后24小时；新供给换版不改旧订单文件与金额，未领可退/已领拒退仅Demo规则。4D2真实MySQL22/22、V9→V12升级1/1、最终根283总/202执行通过/81条件skip/0失败错误、浏览器桌面与390px/键盘/减少动态均已通过。main与私有origin/main的首交付SHA ec489168d619bda072b4964ed7b2881e44597fd5相同，GitHub verify push CI通过。真实供给、视觉/嵌入模型、实体设备与真实支付不在已通过声明内。
 
 
 预约Demo固定规则：每单一个服务/时段、数量1、CNY；容量独立于SKU。预占最长15分钟且不超过时段开始，失败/取消/过期释放；付款只CONFIRMED，OWNER显式“模拟测试完成”才FULFILLED。未完成整单退款释放名额，已完成拒退。混交付类型服务端拒绝，原实物跨商家购物袋与拆单保持。当前测试offer1/v7/29.90，slot3 2026-10-05 10:00–11:00北京时间、容量2；slot1有FULFILLED历史、slot2关闭但原已购order8仍CONFIRMED。时段过后商家正常新建未来测试slot、重新确认发布即可恢复演示，不修改旧订单快照。
@@ -39,3 +39,12 @@ B语义召回与C多跳关系分别裁决为“输入不足，商业准入待验
 当前sameDemo Flyway V12；旧数字订单3/4和原实物订单1/2保留。数字order3领取期限为2026-10-04 04:55北京时间，过期后应正常购买新测试订单，不能延长已购买权益。所有费用/库存/容量/资格/交付由Java和MySQL决定。第三方API本阶段新增1次文本调用，无法获取费用；数字/预约0次模型调用。无视觉/OCR/嵌入真实调用、无购买/升级/重置权益。
 
 最终代码5965869；相应后端专项说明 `apps/backend/INGESTION.md`、`DIGITAL_DELIVERY.md`、`APPOINTMENT_DELIVERY.md` 与 `PHASE_4_ACCEPTANCE.md`。原始日志与截图在集成目录ignored证据，含认证头的原始失败日志不提交/导出；长期非敏感B/C评测摘要在docs/phase4-evaluation。面向用户的交付报告与安全JSON/精选截图将归档本次聊天outputs，Git/远端/CI核实后补最终凭据。不要以文档里旧PID作为结束进程依据。
+
+
+## 主干与远端最终归档
+
+2026-10-03，主目录 `/Users/qin/Desktop/MegaGraph‑Shop` main由c7ccb1d快进至ec489168d619bda072b4964ed7b2881e44597fd5，原7文件SHA检查在合入前后均一致，原tracked与untracked改动保持，不stash/reset/清理worktree。实时gh确认origin `powerful05/megagraph-shop` 为private/default main；fetch后origin/main9625916是基线祖先，正常git push main成功，无force。远端ls-remote确认ec48916。
+
+代码最终5965869，首交付仅叠加审核文档。GitHub push工作流[verify run37104192321](https://github.com/powerful05/megagraph-shop/actions/runs/37104192321)对ec48916 completed/success，Java21/Node22/pnpm11.19.0、frozen安装与pnpm verify通过。当前归档提交只更新验收/执行/交付文档；最终文档提交SHA、远端一致性和其触发CI最终凭据将记录本次聊天 `outputs/evidence/final-git-ci.json` 与 `outputs/阶段4交付报告.md`，不写自引用SHA。
+
+本次聊天交付目录 `/Users/qin/Documents/Codex/2026-10-03/goal-referenced-pasted-text-files-pasted/outputs`，有10份安全业务JSON、验证汇总、最终Git/CI凭据、15张精选图、详细中文报告和契约/QA文档；SHA256.json供文件核对。原认证日志、私有库、凭据和付费响应原文不导出。原始非公开证据仍在integration ignored路径。必做Demo范围通过；B/C明确输入不足，无Milvus/Neo4j实施，外部真实验证见限制。

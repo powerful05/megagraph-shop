@@ -11,7 +11,7 @@
 | MySQL空库/从V9升级/并发不变量 | 通过，均独立执行且0skip | Ingestion15/15、Digital22/22、Appointment22/22、最终V9→V12 Upgrade1/1；MySQL8.4.11 |
 | 前端typecheck/build、根pnpm verify | 最终组合通过 | d2-final-integration-verify.log：283总/202执行通过/81条件skip/0失败错误；两端类型与生产构建、后端打包通过 |
 | 桌面/移动/键盘/减少动态浏览器 | 4A/D1/D2通过 | 稳定桌面与390px截图、订单/详情/商家确认及完成Enter、减少动态checked；非实体手机验证 |
-| 主干集成/远端/CI | 待验收后执行 | 私有远端已确认 |
+| 主干集成/远端/CI | 已合main/正常private push/代码版本CI通过 | ec48916，verify run37104192321 success；最后doc-only归档凭据见交付报告 |
 | 真实视觉/嵌入模型 | 未验证 | 消费者文本模型不证明能力 |
 
 ## D1证据与适用范围

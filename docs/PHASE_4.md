@@ -34,3 +34,6 @@ GET /ingestions 返回最新任务列表；GET /ingestions/{id}读取含steps和
 ## 4A DTO补充核准
 
 POST multipart字段mockScenario可选，默认success；202。GET任务列表为最新100条数组。GET /ingestions/{id}/media为按商家鉴权的原始输入图，包含未完成任务，不开放消费者。artifact rawOutput:string|null，parsedOutput/evidence:JSON|null，unknowns:string[]，usage:JSON|null，errorCode:string|null；steps错误字段nullable。真实Provider尚未准入，配置必须拒绝不支持provider。图片实际解码，像素数量最多32M。孤立扫描至少24小时宽限并保留任意job/image引用。
+
+
+最终状态：4A/4D1/4D2受控Demo、真实MySQL专项/空库/升级、最终组合与浏览器已验收；B/C分别“输入不足，商业准入待验证”，未实现Milvus/Neo4j。main快进与正常私有远端push、代码版本GitHub verify通过，原主目录7文件与旧数据保留。最终交付/限制与证据见PHASE_4_ACCEPTANCE.md、PHASE_4_DELIVERY.md；仅最后文档归档提交的准确SHA/CI结果在用户outputs凭据记录，不修改已验收实现。
