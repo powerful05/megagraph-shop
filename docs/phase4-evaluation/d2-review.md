@@ -1,6 +1,6 @@
 # 4D2 固定时段测试预约独立审查
 
-状态：mutex死锁修复后真实MySQL预约22/22、V9→V12升级1/1及最终根pnpm verify均通过，固定日志已独立读取；根测试283总数、202执行通过、81条件跳过。sameDemo增量V12后的正常Session旧数字/实物保留摘要已复核。D2整体仍待Lead实际预约浏览器闭环，不能宣布全部通过。首轮两个死锁保留为历史实证，当前结论以“最终组合验证与sameDemo旧事实保留”节为准。
+状态：D2固定时段测试预约在受控Demo范围通过。mutex修复后的真实MySQL22/22、V9→V12升级1/1、最终根verify（283总、202执行通过、81条件跳过）、正常Session旧事实保留与实际预约浏览器闭环已取得证据；QA只读复核固定日志、JSON、稳定截图及最终源码。首轮两个死锁保留为历史实证，最终结论见“实际浏览器闭环与受控D2验收”节。此结论不等于整个阶段4交付或生产预约上线。
 
 审查基线：QA worktree `/Users/qin/.codex/worktrees/phase-4d2-qa/MegaGraph‑Shop`，branch `codex/phase-4d2-qa`，HEAD `8e3a733`。已完整读取本目录 AGENTS.md 与 `docs/PHASE_4_D2_CONTRACT.md` v1。QA 仅拥有 `docs/phase4-evaluation` 文档写权限，其余业务实现只读；真实 MySQL、服务、浏览器由 Lead 执行。
 
@@ -27,19 +27,19 @@ QA 提出的 close 重放与时间界点歧义已由 Lead 明确：now==startAt 
 
 | 范围 | 不变量/实际失败风险 | 必需证据 | 当前状态 |
 | --- | --- | --- | --- |
-| 最后容量 | 两不同账号同一最后名额最多一个 HELD，独立账号 mutex 不得串行掩盖竞争 | 真实 MySQL 定序/并发，最终订单/预约数量与 remaining | 修复后MySQL两账号最后容量已过；实际浏览器竞争待 |
+| 最后容量 | 两不同账号同一最后名额最多一个 HELD，独立账号 mutex 不得串行掩盖竞争 | 真实 MySQL 定序/并发，最终订单/预约数量与 remaining | MySQL已过；Lead两账号浏览器并发点击同slot，winner HELD、loser无名额，稳定截图已核 |
 | 过期与复用 | 已过期 HELD 不占当前容量；新买成功后旧单晚成功不可重新占用 | 过期尚未扫描→新购买→旧支付成功，完整终态 | MySQL过期复用/晚成功终态已过 |
-| 支付重复 | 不同 eventId 重复成功只一 CONFIRMED 与一确认事件，支付不等于 FULFILLED | Inbox/Outbox与 reservation 计数，重复/并发回调 | MySQL重复支付/仅确认已过；浏览器待 |
-| 释放 | 失败、渠道取消、主动取消、超时仅一次释放；同 slot 多订单扫描无跨订单死锁 | 各终态、expiry-vs-pay 定序、当前容量与 Outbox | MySQL各释放与逐单expiry/陈旧candidate定序已过 |
-| 退款/完成 | REQUESTED/PROCESSING/FAILED 禁完成；拒绝恢复；FULFILLED拒退；成功退款RELEASED | 两方向定序竞争、refund终态与容量、角色/键冲突 | MySQL退款、完成及竞争已过；浏览器待 |
-| 快照/当前事实 | 锁读价格/版本/时段/容量/售后；资料编辑不能改已购约定 | 先普通RR snapshot后编辑/付款/完成，双expectedVersion与旧单事实 | MySQL购买快照与RR容量/完成退款守卫已过 |
+| 支付重复 | 不同 eventId 重复成功只一 CONFIRMED 与一确认事件，支付不等于 FULFILLED | Inbox/Outbox与 reservation 计数，重复/并发回调 | MySQL重复支付/唯一确认已过；浏览器付款仅CONFIRMED，显式操作后FULFILLED已核 |
+| 释放 | 失败、渠道取消、主动取消、超时仅一次释放；同 slot 多订单扫描无跨订单死锁 | 各终态、expiry-vs-pay 定序、当前容量与 Outbox | MySQL各释放与逐单expiry定序已过；浏览器主动取消释放后他账号重购已核 |
+| 退款/完成 | REQUESTED/PROCESSING/FAILED 禁完成；拒绝恢复；FULFILLED拒退；成功退款RELEASED | 两方向定序竞争、refund终态与容量、角色/键冲突 | MySQL竞争已过；浏览器退款后RELEASED、重购显式FULFILLED，完成后退款409已核 |
+| 快照/当前事实 | 锁读价格/版本/时段/容量/售后；资料编辑不能改已购约定 | 先普通RR snapshot后编辑/付款/完成，双expectedVersion与旧单事实 | MySQLRR与快照已过；正常Session现offer v7、旧order7快照v4已核 |
 | 幂等 | account购买键跨类型双向拒绝；merchant完成键跨订单同key仅一结果 | 同key并发/异载荷/不同订单计数，败方无预约/键/事件残留 | 首轮mutex死锁已修；修复后22项含原竞争与两个已有mutex测试全过 |
-| 时间与请求 | 带offsetISO、UTC/+08等价事实；排他界点；拒绝无时区/past/非法时长与long小数溢出 | strict根/items白名单、时间边界及服务端now断言 | MySQL strict/offset/millis/期限及迟到已过；前端实际时区展示待 |
-| 权限 | OWNER/EDITOR编辑确认、OWNER/PUBLISHER发布、OWNER完成；跨商家/账号404 | 正常Session/CSRF、角色及测试开关专项 | MySQL角色/租户拒绝已过；实际Session浏览器待 |
+| 时间与请求 | 带offsetISO、UTC/+08等价事实；排他界点；拒绝无时区/past/非法时长与long小数溢出 | strict根/items白名单、时间边界及服务端now断言 | MySQL strict/offset/millis/期限及迟到已过；实际页面UTC事实对应北京时间已核 |
+| 权限 | OWNER/EDITOR编辑确认、OWNER/PUBLISHER发布、OWNER完成；跨商家/账号404 | 正常Session/CSRF、角色及测试开关专项 | MySQL角色已过；正常Session跨账号/商家404、匿名401、缺CSRF403已核 |
 | 回滚 | 创建、确认、释放、退款、完成的业务与Outbox同事务 | JDBC/JPA故障注入，订单/payment/reservation/key全状态 | MySQL创建/HELD/确认/释放/退款/完成及晚释放故障回滚已过 |
-| 导购/前端 | 无key真资料JAVA_APPOINTMENT；每次reply标来源；未知下单原payload恢复 | 历史JSON兼容、unknownpending/account fence、实际统一入口 | MySQL无模型对话/历史已过；Frontend静态一致，实际入口待 |
-| 回归/迁移 | V12仅新增，旧V9代表数据保留，D1与实物能力保持 | 空库/V9→V12真实MySQL与相称根verify | 空库/V9升级、最终根verify、sameDemo V11→V12正常Session保留摘要已过；实际预约浏览器仍待 |
-| 浏览器 | 对话→试购→取消再购/付款/退款/显式完成→重新打开恢复 | Lead真实浏览器、稳定390px/键盘/减少动态图像 | 待实现/执行 |
+| 导购/前端 | 无key真资料JAVA_APPOINTMENT；每次reply标来源；未知下单原payload恢复 | 历史JSON兼容、unknownpending/account fence、实际统一入口 | MySQL无模型/历史已过；统一对话实际试购与账号恢复已核；unknownpending按源码与专项分列 |
+| 回归/迁移 | V12仅新增，旧V9代表数据保留，D1与实物能力保持 | 空库/V9→V12真实MySQL与相称根verify | 空库/V9升级、根verify、sameDemo旧事实摘要及V10–V12 SQL成功记录均已核 |
+| 浏览器 | 对话→试购→取消再购/付款/退款/显式完成→重新打开恢复 | Lead真实浏览器、稳定390px/键盘/减少动态图像 | 实际桌面闭环、重开恢复、390px稳定截图、键盘与减少动态已核 |
 
 首轮合同审查时Backend/Frontend尚在新D2基线开工，当时没有最终实现提交或D2运行证据。本轮风险已发Lead和两位实现者；只有新源码、实际报告或状态变化才继续评审，不无变化忙轮询，不重复D1已充分通过检查。最终首轮提交与MySQL失败见下节。
 
@@ -116,4 +116,29 @@ QA随后读取独立升级日志 `mg_p4_phase4_upgrade_20261003_062240_660481.lo
 
 同摘要capabilities：mockPaymentAvailable=true、guideAvailable=false、demoCatalogAvailable=false、digitalDeliveryAvailable=true、appointmentDeliveryAvailable=true；normalSessionCsrfClient=true。这些说明恢复预览的能力配置与旧事实保留，不替代预约浏览器验收，不把available标志视作全部准入已通过。迁移版本由Lead另作MySQL检查，HTTP摘要明确记录这一来源。
 
-当前剩余D2必做gate只有Lead实际预约浏览器闭环与相应记录：统一对话/当前slot明确试购、最后名额两账号、取消再购、关闭已HELD后合法付款、退款/显式模拟完成、重新打开恢复，以及稳定桌面/390px、键盘与减少动态。正常Session预约角色/账号拒绝也按实际交互/API证据归档。真实供给、实体手机、真实服务和生产支付未验证，不属于本受控Demo已验证范围。D2及整个阶段4尚不能整体完成。
+上一轮尚待D2必做gate为Lead实际预约浏览器闭环与相应记录：统一对话/当前slot明确试购、最后名额两账号、取消再购、关闭已HELD后合法付款、退款/显式模拟完成、重新打开恢复，以及稳定桌面/390px、键盘与减少动态。正常Session预约角色/账号拒绝也按实际交互/API证据归档。真实供给、实体手机、真实服务和生产支付未验证，不属于本受控Demo已验证范围。当时D2及整个阶段4尚不能整体完成；最新D2结论见下节。
+
+
+## 实际浏览器闭环与受控D2验收
+
+前一QA提交`d71cbb40`已由Lead集成为`b927501`。本次QA没有发送业务请求、执行SQL、启动服务或重跑已充分通过测试；只读integration最新代码、三个固定JSON与浏览器截图。浏览器操作、正常Session/CSRF请求和只读SQL由Lead执行，独立静态检查、JSON一致性与图像核对由QA完成。运行数据、截图和敏感原始日志仍放ignored evidence，Git只提交本脱敏记录。
+
+Lead先在商家工作台创建测试offer#1、29.90 CNY、两个future slot各capacity1，并确认发布v4；消费者统一对话取得当前测试资料后明确选择slot1。两个已有账号以CUA Promise.all点击同一最后名额，`d2-last-seat-winner-held.jpg`显示订单#5预占、快照v4、slot1容量1、北京时间10月4日10:30–11:30及15分钟预占截止；`d2-last-seat-loser.jpg`显示“当前时段无可用名额”。loser详情仍显示此前读取的剩余1/1，这是并发后旧展示，没有误创建订单的证据；服务端已拒绝，用户需要重新查询当前名额。截图证明实际界面结果，数据库最多一份、同key唯一与Outbox断言另由真实MySQL22证明，不能仅从Promise.all认定数据库语句精确同时执行。
+
+随后winner主动取消#5释放名额，账号2重购#6，Mock付款仅确认预约；申请退款后商家审批，回调完成后#6 REFUNDED/RELEASED，再重购#7付款仍CONFIRMED，OWNER以Enter显式“模拟测试完成”后才FULFILLED。QA查看`d2-refunded-released.jpg`与`d2-explicit-fulfilled.jpg`，前者明确退款完成、释放原因REFUNDED，后者显示完成时间、非真实服务及Demo不再退款规则。`d2-confirmed-not-fulfilled.jpg`显示付款成功后的未测试完成退款入口；完整确认文案另在最终mobile订单图中可见。
+
+处理中禁完成的证据分列：Lead实际CUA getAX观察到REFUND_PROCESSING与“模拟测试完成”disabled；该动作报告并非QA重新执行。保存截图时异步退款已完成，原`d2-refund-processing-guard.jpg`已由Lead改名为`d2-merchant-refunded-released.jpg`，QA看到的是退款成功/RELEASED终态，不能作为处理中截图。源码商家canCompleteAppointment同时要求OWNER、PAID、payment SUCCEEDED、无核查、CONFIRMED、server completeAvailable且无阻塞售后；后端complete在order→payment→merchant mutex→slot→reservation当前锁读内再次检查阻塞售后。实际MySQL两方向退款/完成定序测试支持互斥，无需为补截图重复造退款。
+
+`d2-session-business-check.json`记录normalSessionCsrf=true、modelCalls=0，QA核对订单事实：#5 CANCELLED/RELEASED原因CANCELLED；#6 REFUNDED/RELEASED原因REFUNDED；#7 PAID/FULFILLED且有confirmedAt与fulfilledAt，三单快照均offerVersion4、slot1、29.90 CNY。另slot2正常创建HELD订单#8后关闭slot，期限内合法Mock付款200，#8 PAID/CONFIRMED；与canConfirm只按已购约定及排他时间守卫、不以当前slot CLOSED撤销已购资格的源码一致。
+
+同一正常Session记录的拒绝：跨账号读订单404、跨商家完成404、匿名订单401、缺CSRF写403、已完成退款409、预约走digital claim404、实物receipt409、混合items400。此处是HTTP实证，不将GUI导航工具拦截当服务端拒绝。角色全集、非法token/边界、同键重放、晚支付、回滚等继续引用MySQL专项，浏览器没有逐项重复这些充分测试。
+
+`d2-demo-migration-sql-check.json`来源为Lead在2026-10-03 06:39 UTC只读SQL，schema mg_p4_demo_20261003、MySQL8.4.11，V10/11/12 success=true。预约计数FULFILLED1、RELEASED2、CONFIRMED1与订单5–8的Session终态一致；字段名reservationStatusCountsAt0621Plus不精确，采样时刻以JSON source为准。QA没有独立连DB；空库及V9代表数据升级仍依据此前固定测试日志。
+
+重开消费者后账号对话与订单恢复，商家身份、offer与slots恢复。QA实看`d2-mobile-restored-orders.jpg`（390×844）、`d2-mobile-published-future-slot.jpg`（390×2268全页）、`d2-mobile-reduced-motion.jpg`（390×844）：订单8确认但未完成文案可读，商家OWNER与v7已发布、已关闭slot2、第三future slot独立容量2均可见，减少动态checkbox已选中。Lead浏览器测得两端innerWidth/scrollWidth均390，并以Enter打开订单/模拟完成；QA核对图片像素和焦点可见，不将像素宽度自行等同重新执行scrollWidth检查，也不声称实体手机验收。
+
+商家新增第三future slot为10月5日北京时间10:00–11:00、capacity2，再确认发布v7。`d2-final-future-slot-snapshot.json`正常Session记录currentOfferVersion7、slot3 OPEN/remaining2、UTC02:00–03:00，与商家截图对应；旧order7仍offerVersion4/FULFILLED，说明供给更新未替换该已购快照。本JSON并未再次附全部旧订单字段，价格/标题/条款旧快照来自前述business JSON和此前MySQL快照断言，不扩张为此次完整前后逐字段比对。
+
+最终只读源码复核仍保持两个no-op upsert mutex、早期user共享读、order优先锁序与独立每单expiry事务；购买重放优先原key/hash，两个expectedVersion与current slot资格校验保留。GuideRequestExecutor预约意图使用当前公开MySQL资料并标JAVA_APPOINTMENT；前端显示每次reply来源，current slot明确选择、账号fence、未知下单原payload恢复、HELD界点回读与禁付款均保留。没有新未修静态阻断。实际“重开恢复”证明已保存会话/订单恢复，不声称本轮浏览器注入过网络5xx未知提交；该路径按源码与专项证据验收。
+
+结论：冻结合同的D2受控固定时段测试预约纵切片可通过，覆盖独立容量、当前价格/版本、唯一购买、支付仅确认、取消/失败/超时释放、晚支付核查、退款与显式完成互斥、正常Session权限、快照保留、Outbox回滚、迁移回归，以及实际统一入口与恢复、稳定390px/键盘/减少动态。范围是项目自建测试供给、Mock支付与明确模拟完成，未提供真实预约或线下服务。真实商家供给、生产支付渠道、真实履约及实体手机未验证且不属于该受控D2范围；整个阶段4的最终集成、main保护审计和交付仍由Lead单独收敛。
