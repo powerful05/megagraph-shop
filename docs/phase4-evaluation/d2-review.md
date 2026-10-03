@@ -1,6 +1,6 @@
 # 4D2 固定时段测试预约独立审查
 
-状态：mutex死锁修复后真实MySQL预约22/22通过，V9→V12升级1/1通过，已独立读取固定日志与断言；首轮两个死锁保留为历史实证。D2整体仍待最终组合验证和Lead浏览器闭环，不能宣布全部通过。此文不把D1验收、H2成功或静态守卫当作预约场景已通过，当前结论以“mutex修复后MySQL与升级证据”节为准。
+状态：mutex死锁修复后真实MySQL预约22/22、V9→V12升级1/1及最终根pnpm verify均通过，固定日志已独立读取；根测试283总数、202执行通过、81条件跳过。sameDemo增量V12后的正常Session旧数字/实物保留摘要已复核。D2整体仍待Lead实际预约浏览器闭环，不能宣布全部通过。首轮两个死锁保留为历史实证，当前结论以“最终组合验证与sameDemo旧事实保留”节为准。
 
 审查基线：QA worktree `/Users/qin/.codex/worktrees/phase-4d2-qa/MegaGraph‑Shop`，branch `codex/phase-4d2-qa`，HEAD `8e3a733`。已完整读取本目录 AGENTS.md 与 `docs/PHASE_4_D2_CONTRACT.md` v1。QA 仅拥有 `docs/phase4-evaluation` 文档写权限，其余业务实现只读；真实 MySQL、服务、浏览器由 Lead 执行。
 
@@ -38,7 +38,7 @@ QA 提出的 close 重放与时间界点歧义已由 Lead 明确：now==startAt 
 | 权限 | OWNER/EDITOR编辑确认、OWNER/PUBLISHER发布、OWNER完成；跨商家/账号404 | 正常Session/CSRF、角色及测试开关专项 | MySQL角色/租户拒绝已过；实际Session浏览器待 |
 | 回滚 | 创建、确认、释放、退款、完成的业务与Outbox同事务 | JDBC/JPA故障注入，订单/payment/reservation/key全状态 | MySQL创建/HELD/确认/释放/退款/完成及晚释放故障回滚已过 |
 | 导购/前端 | 无key真资料JAVA_APPOINTMENT；每次reply标来源；未知下单原payload恢复 | 历史JSON兼容、unknownpending/account fence、实际统一入口 | MySQL无模型对话/历史已过；Frontend静态一致，实际入口待 |
-| 回归/迁移 | V12仅新增，旧V9代表数据保留，D1与实物能力保持 | 空库/V9→V12真实MySQL与相称根verify | 空库V1–V12与V9→V12已过；D1/实物相称Worker回归已报，最终根verify待 |
+| 回归/迁移 | V12仅新增，旧V9代表数据保留，D1与实物能力保持 | 空库/V9→V12真实MySQL与相称根verify | 空库/V9升级、最终根verify、sameDemo V11→V12正常Session保留摘要已过；实际预约浏览器仍待 |
 | 浏览器 | 对话→试购→取消再购/付款/退款/显式完成→重新打开恢复 | Lead真实浏览器、稳定390px/键盘/减少动态图像 | 待实现/执行 |
 
 首轮合同审查时Backend/Frontend尚在新D2基线开工，当时没有最终实现提交或D2运行证据。本轮风险已发Lead和两位实现者；只有新源码、实际报告或状态变化才继续评审，不无变化忙轮询，不重复D1已充分通过检查。最终首轮提交与MySQL失败见下节。
@@ -104,4 +104,16 @@ QA独立读取integration固定日志 `apps/backend/var/phase4-evidence/mg_p4_ap
 
 QA随后读取独立升级日志 `mg_p4_phase4_upgrade_20261003_062240_660481.log`：先迁移V1–V9，加入代表性旧事实，再追加V10–V12；MySqlPhase4UpgradeTest 1 test/0 failures/0 errors/0 skipped，BUILD SUCCESS，2.028s（Maven总3.165s），结束06:22:44 UTC。已读实际断言：旧用户、已发布商品version7、SKU价格/库存、订单/订单行/支付、Session及属性bytes、会话、ingestion历史与Outbox保留，旧订单delivery_type=PHYSICAL，原数字表空，新增7预约表空，V12迁移历史成功。不是只检查表存在。
 
-当前准入结论：后端核心与真实MySQL并发/回滚、mutex修复、空库与升级gate已通过；前端静态契约一致，但最终集成根verify和正常Session实际预约浏览器仍待。Lead说明本轮停机期间8084/3004/5176无监听，将随后恢复sameDemo并V11→V12，不将未启动的新预览或running进程当成页面验收，也未新增模型调用。D2尚不能整体通过，整个阶段4更未完成。
+上一轮准入结论：后端核心与真实MySQL并发/回滚、mutex修复、空库与升级gate已通过；当时最终根verify和正常Session实际预约浏览器仍待。Lead停机后恢复sameDemo并增量V12，最新组合与保留证据见下节；不将运行进程当成页面验收，也未新增模型调用。
+
+## 最终组合验证与sameDemo旧事实保留
+
+前一QA更新`ac853063`已由Lead集成为`bbf4e5a`。QA独立读取固定 `apps/backend/var/phase4-evidence/d2-final-integration-verify.log`：根命令链typecheck → build → test:backend → package:backend；两端typecheck Done与production build Done。后端283 tests、0 failures、0 errors、81 skipped，即202实际执行通过，测试BUILD SUCCESS结束2026-10-03 14:24:46北京时间；package明确-DskipTests，仅打包BUILD SUCCESS结束14:24:49，不能把第二次打包算又执行一轮测试。
+
+本根轮次的81条件跳过含MySQL预约22、数字22、ingestion15、导购会话12、跨商家6，以及4项迁移/升级/commerce smoke；缺环境所以跳过，不是实际MySQL通过。真实预约22、升级1分别引用此前独立schema固定日志。根H2实际预约22、数字22、commerce15、跨商家6等均执行通过；此次最终组合验证已覆盖前端最终构建与原交易回归。
+
+`d2-v11-preservation-session-check.json`由Lead在恢复后的sameDemo `mg_p4_demo_20261003`使用正常Session/CSRF客户端记录，QA只读取摘要，没有重新发送请求。记录oldMigration=11、newMigration=12，旧D1订单#3为PAID、#4为REFUNDED，二者unchanged=true；旧文件读取248 bytes，SHA-256 `3fe446074ea9314be1e9776e88c5eb1fdff616dcd8fce05462d142b6adecaf1a`与D1购买快照和QA此前实际下载文件hash相同。旧实物订单#1 PAID/支付SUCCEEDED，#2 PAYMENT_FAILED/支付FAILED，product#68仍公开。摘要不包含完整前后订单对象，本次只确认这些记录与已归档D1事实一致，不扩展为新的一次逐字段双快照比对。
+
+同摘要capabilities：mockPaymentAvailable=true、guideAvailable=false、demoCatalogAvailable=false、digitalDeliveryAvailable=true、appointmentDeliveryAvailable=true；normalSessionCsrfClient=true。这些说明恢复预览的能力配置与旧事实保留，不替代预约浏览器验收，不把available标志视作全部准入已通过。迁移版本由Lead另作MySQL检查，HTTP摘要明确记录这一来源。
+
+当前剩余D2必做gate只有Lead实际预约浏览器闭环与相应记录：统一对话/当前slot明确试购、最后名额两账号、取消再购、关闭已HELD后合法付款、退款/显式模拟完成、重新打开恢复，以及稳定桌面/390px、键盘与减少动态。正常Session预约角色/账号拒绝也按实际交互/API证据归档。真实供给、实体手机、真实服务和生产支付未验证，不属于本受控Demo已验证范围。D2及整个阶段4尚不能整体完成。
