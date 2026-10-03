@@ -122,3 +122,16 @@ Lead串行真实MySQL新空库：`python3 var/phase4-tooling/mysql-run.py MYSQL_
 另一空schema `mg_p4_phase4_upgrade_20261003_062240_660481`：`python3 var/phase4-tooling/mysql-run.py MYSQL_PHASE4_UPGRADE MySqlPhase4UpgradeTest`，V9代表账号、商品/SKU、订单/支付、Session/属性、连续对话、任务/步骤与Outbox升级V12均保留，1/1执行通过、0skip、BUILD SUCCESS；新增7预约表空与V12成功断言通过。两个原日志在ignored evidence同schema名.log。
 
 当前代码5965869，Lead最终组合 `pnpm verify > apps/backend/var/phase4-evidence/d2-final-integration-verify.log 2>&1` 进行中（session68775），无并行同target Maven，无本轮预览进程。完成后同mg_p4_demo_20261003仅启动增量V11→V12、旧D1/实物Session对比；准备ignored `var/phase4-tooling/d2-preservation-check.py`，未执行不能记通过。下一项真实浏览器商家资料/北京时间固定slot、两已有账号最后名额与取消再购/付款/退款/OWNER模拟完成，390px/键盘/减少动态/刷新恢复。主干/私有push/CI仍整个阶段最终验收后执行，第三方调用仍仅4A文本1次费用未知。
+
+
+## D2本地完整验收恢复点 2026-10-03 14:44
+
+QA ac853063→bbf4e5a、d71cbb40→b927501已审集成。代码最终5965869，串行根pnpm verify session68775实际exit0；283总/202执行通过/81条件skip/0错误失败，两端typecheck/production build与后端package成功；打包-DskipTests不是又一轮测试。修复后真实MySQL22及升级1独立0skip已记上节。
+
+仅本轮恢复服务8084 PID56507/session46135、merchant5176 PID56527/session39666、shopper3004 PID56526/session32510，cwd integration三相应apps；no-guide/key，sameDemo mg_p4_demo_20261003增量V12无reset。真实只读SQL history 10/11/12 success1，正常Session D1旧3/4和248byteSHA、实物1/2与68保持，d2-v11-preservation-session-check.json及d2-demo-migration-sql-check.json。
+
+浏览器完成merchant offer1资料与两北京时间slot各cap1→confirmpublishv4→统一对话JAVA_APPOINTMENT→当前slot显式选择。两已有账号UI同时提交最后slot1：order5 HELD、另一账号无名额；5取消RELEASED后另一账号order6重购pay仅CONFIRMED→退款请求/merchant完成disabled→审批Mockrefund REFUNDED/RELEASED→order7再购pay→OWNER Enter显式FULFILLED。d2-session-business-check.py正常Session负例/类型守卫/已完成拒退并证明slot2 HELD后关闭仍合法付款order8 CONFIRMED；数字claim错误类型实际404，初次脚本误预期409即停，修改证据预期404后成功，不改服务守卫。先前UI hydration显示SSR登录按钮时点击曾导致第二账号退出，正常商家预填会话恢复后重新开页已正确读取既有账号，不改任何权限/账号。
+
+390px消费者重开对话与orders、商家重开身份与offer slots，Enter/减少动态checked；实际innerWidth/scrollWidth390，稳定截图Lead view核准。小屏减少动态在折叠历史内，首次locator无匹配，打开历史后check成功。退款处理中getAX观察disabled真实，但保存截图时已成功，已将误命名processing图改merchant-refunded-released，不把截图作处理中证据。slot3未来Oct5 10–11cap2小屏添加使offerDRAFT，重新Enterconfirm/publishv7，旧order7v4不变，d2-final-future-slot-snapshot.json。
+
+主目录main实时仍c7ccb1d；baseline-preserved manifest7文件SHA逐一一致；V1–V9 byte同基线。117阶段4文件范围审计、git diff --check/冲突/忽略数据无异常。2026-10-03实时gh确认powerful05/megagraph-shop private/main，fetch origin/main9625916仍是基线祖先。未夹带原AGENTS/README/架构/设计资料。第三方仍4A文本1次费用未知，D1/D2零模型。独立QA最终浏览器复核和backend说明doconly交接进行中，随后本地main快进、正常private origin main推送和可用CI核实。没有待用户批准事项。
