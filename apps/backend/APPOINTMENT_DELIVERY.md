@@ -18,9 +18,20 @@ OrderResponse新增nullable appointment，数字delivery保持原用途，实物
 
 Worker测试 `mvn -s .mvn/settings.xml -f apps/backend/pom.xml -Dtest=AppointmentDeliveryIntegrationTest test`。真实MySQL由Lead使用独立空8.4+schema及MYSQL_APPOINTMENT_URL/USERNAME/PASSWORD运行MySqlAppointmentDeliveryTest（继承全部专项）；V9最新版升级另schema独立运行，追加V12成功及新表为空断言。不要同时构建同一个Maven target。单元/本地测试与真实MySQL、浏览器证据分别记录，不据H2声明预约最终已准入。
 
-首版Worker相称批次109/109通过，0失败/0跳过：预约20、数字22、实物commerce15、跨商家6、GuideAgent26、GuideChat8、GuideConversation12。预约包括两不同账号最后名额、同key并发、版本与价格快照、严格token/时区/精度、关闭已HELD后付款、重复事件确认、失败取消超时/迟到释放、退款/拒绝/失败资格、显式完成及键、RR定序、各业务Outbox回滚、merchant共享父锁与售后FK定序、逐单expiry对同slot付款定序、stale expiry已支付守卫、已有账号mutex与D1数字同账号真实服务并发、无模型连续对话与历史JSON。跨D1父锁循环此前仅潜在评审，未宣称曾复现；新增显式共享顺序和正常既有mutex测试作为保护。Lead真实MySQL与浏览器尚需验证。
+首版Worker相称批次109/109通过，0失败/0跳过：预约20、数字22、实物commerce15、跨商家6、GuideAgent26、GuideChat8、GuideConversation12。预约包括两不同账号最后名额、同key并发、版本与价格快照、严格token/时区/精度、关闭已HELD后付款、重复事件确认、失败取消超时/迟到释放、退款/拒绝/失败资格、显式完成及键、RR定序、各业务Outbox回滚、merchant共享父锁与售后FK定序、逐单expiry对同slot付款定序、stale expiry已支付守卫、已有账号mutex与D1数字同账号真实服务并发、无模型连续对话与历史JSON。跨D1父锁循环此前仅潜在评审，未宣称曾复现；新增显式共享顺序和正常既有mutex测试作为保护。该首版H2结果未能发现随后真实MySQL暴露的mutex升级死锁；修复及最终Lead验收分别记录如下。
 
 
 D2首次真实MySQL专项20例为0断言失败、2数据库错误，未通过准入。失败日志分别定位account/merchant mutex的SELECT FOR UPDATE死锁；InnoDB最后死锁报告明确双方持同一appointment_merchant_lock PRIMARY记录S，并同时等待升级X。INSERT IGNORE的重复键检查使事务先拿S，之后再升级X会形成环。修复两个mutex为INSERT ... ON DUPLICATE KEY UPDATE user_id=user_id / merchant_id=merchant_id，使重复主键路径直接获取X，保留真实FK、后续行存在验证、父表共享读与全部原业务断言；没有捕获或重试掩盖数据库错误。这与未复现的跨D1父表假设是不同问题。
 
-修复后Worker当前预约22/22通过、0失败/0跳过，原20例完整保留。新增两个定序测试以正常业务建立已有mutex行，第一事务在upsert完成后暂持锁，证明第二upsert在第一事务释放前仍被阻塞，而不是两方都完成duplicate检查后竞争SELECT升级；随后同账号同key返回唯一订单，不同订单同完成key只有一份完成记录/履行事实。当前日志apps/backend/var-d2-mutex.log。真实MySQL22例、V9→V12及最终浏览器验收由Lead继续，当前H2通过不能替代这些证据。
+修复后Worker当前预约22/22通过、0失败/0跳过，原20例完整保留。新增两个定序测试以正常业务建立已有mutex行，第一事务在upsert完成后暂持锁，证明第二upsert在第一事务释放前仍被阻塞，而不是两方都完成duplicate检查后竞争SELECT升级；随后同账号同key返回唯一订单，不同订单同完成key只有一份完成记录/履行事实。当前日志`apps/backend/var-d2-mutex.log`，对应代码修复提交`3bb4a68604a719c6b737711ebbaa3d3484833dd5`。以上是Worker H2证据，真实MySQL与集成验收由Lead另行执行。
+
+Lead最终数据库与集成验收已通过（2026-10-03）。以下日志均位于集成worktree的`apps/backend/var/phase4-evidence/`，不是本Worker新增运行结果：
+
+- 新空MySQL 8.4 schema `mg_p4_appointment_20261003_062150_100114`运行完整预约22例，22执行、0失败、0错误、0跳过；日志`mg_p4_appointment_20261003_062150_100114.log`为BUILD SUCCESS，包含原两个失败业务用例及新增两个mutex定序保护。
+- 独立schema `mg_p4_phase4_upgrade_20261003_062240_660481`的V9→V12升级专项1执行、0失败、0错误、0跳过；日志`mg_p4_phase4_upgrade_20261003_062240_660481.log`为BUILD SUCCESS，验证代表性V9数据保留、V12成功及新增预约表初始为空。
+- 最终根`pnpm verify`通过，日志`d2-final-integration-verify.log`记录后端283总例、202实际执行、81条件跳过、0失败、0错误及前端构建成功。该根批次中的MySQL条件专项跳过不算执行通过；其真实执行证据是上述两份独立日志。
+- 首次MySQL失败仍保留在`mg_p4_appointment_20261002_215627_269959.log`和`d2-first-mysql-deadlock.txt`；最终通过不覆盖首次20例中的2个数据库错误记录。锁报告直接确证merchant mutex的S→X环，account mutex错误由该次测试日志记录，未声称另有account锁报告。
+
+Lead浏览器完成商家资料/时段确认发布、两个账号争最后名额、取消和退款释放、付款仅确认、OWNER显式FULFILLED。`d2-appointment-published.jpg`、`d2-last-seat-winner-held.jpg`、`d2-last-seat-loser.jpg`、`d2-refunded-released.jpg`、`d2-confirmed-not-fulfilled.jpg`和`d2-explicit-fulfilled.jpg`保留对应画面。正常Session/CSRF业务校验`d2-session-business-check.json`记录订单5 CANCELLED/RELEASED、订单6 REFUNDED/RELEASED、订单7 PAID/FULFILLED，以及先HELD后关闭slot仍在期限内付款得到CONFIRMED；越账号/跨商家404、匿名401、缺CSRF403、已完成退款409、混合items400、预约走数字领取404及实物收货409均实际返回，modelCalls为0。
+
+实际Demo库`mg_p4_demo_20261003`在MySQL 8.4.11追加V11→V12后，`d2-demo-migration-sql-check.json`只读SQL确认迁移10/11/12均成功；`d2-v11-preservation-session-check.json`通过正常Session确认D1已支付/已退款订单状态与历史248字节文件SHA-256保留，既有实物支付失败/成功订单及公开商品仍可读，guideAvailable=false时数字与预约能力分别可用。`d2-final-future-slot-snapshot.json`记录当前offer版本7和北京时间2026-10-05 10:00–11:00的OPEN时段（capacity/remaining均2），历史订单7仍保存offer版本4与FULFILLED事实。D2受控Demo验收完成；本次归档仅补验收文档，没有修改业务代码或重复运行测试。
