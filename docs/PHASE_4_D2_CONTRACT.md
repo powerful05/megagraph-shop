@@ -38,7 +38,7 @@ ShopCapabilities追加appointmentDeliveryAvailable。GuideChatResult追加appoin
 
 当前事实须locking read，不以锁ID后的普通RR旧快照判断价格、容量、售后或履行。超时扫描不能预加载managed旧SalesOrder再拿锁误认为当前；外层scalar ID扫描无业务事务，每ID独立REQUIRES_NEW短事务current lock复查。不跨订单持有slot锁，避免批处理持A/slot再等B与B付款持B等slot成环；定序验证同slot多单付款/超时竞争。容量写变更、取消、退款与完成均锁同slot并读当前reservation；支付前名额不能被付款重复增加。只在Demo/test启用；merchant/账号跨租户404、正常Session写保留CSRF。
 
-购买mutex批准具体方案：appointment_account_lock(user_id PK，FK app_user)，INSERT IGNORE确保行存在，再SELECT自身mutex行FOR UPDATE；保留FK校验且必须取得行才继续。账号外键仅S，不能改为app_user X；旧订单重放先校验交付类型与canonicalhash，不反向锁旧order。H2兼容与真实MySQL同键/不同账号容量需实际证明。
+购买mutex当前批准方案：appointment_account_lock(user_id PK，FK app_user)，以INSERT ON DUPLICATE KEY UPDATE user_id=user_id的no-op upsert确保行存在并直接取得记录X，再SELECT自身mutex行FOR UPDATE验证必须取得行才继续；商家完成/资料mutex同理merchant_id=merchant_id。保留FK与独立mutex，并在供给/商家/slot之前显式app_user共享当前读；不得以app_user X替代。首轮INSERT IGNORE重复行后再SELECT X在真实MySQL20项中出现2项死锁，InnoDB确证双方mutex记录S→X升级；该旧方案已废止，原失败证据保留。旧订单重放先校验交付类型与canonicalhash，不反向锁旧order。修订后H2与真实MySQL同键/不同账号容量、既有mutex阻塞顺序必须重新实证。
 
 ## 前端与验收
 
